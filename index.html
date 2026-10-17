@@ -156,7 +156,7 @@ function dayCount(d) { return d ? MEALS.reduce(function (n, m) { return n + (d.m
 var $ = function (s) { return document.querySelector(s); };
 
 function viewDay() {
-  var date = st.date, d = D.days[date], tg = target(date), l = label(monday(date)), soft = l === 'P', t = dayTot(date);
+  var date = st.date, d = D.days[date], tg = target(date), l = label(monday(date)), soft = false, t = dayTot(date);
   var rem = tg.k - t.k;
   var head = '<div class="top"><button class="ib" data-a="d" data-n="-1" aria-label="Jour précédent">‹</button><div class="t"><h1>' + long(date) + '</h1><span class="chip">' + lname(l) + (date === today ? ' · aujourd\'hui' : '') + '</span></div><button class="ib" data-a="d" data-n="1" aria-label="Jour suivant">›</button></div>';
   if (!dayCount(d)) return head + '<div class="empty">Rien de prévu ce jour-là.' + (date < D.start || date > D.end ? '<br><span class="mini">Cette page ne couvre que du ' + short(D.start) + ' au ' + short(D.end) + '.</span>' : '') + '</div>' + foot();
@@ -178,7 +178,7 @@ function viewDay() {
 }
 function foot() { var g = new Date(D.generated); return (window.mtNote ? '<p class="foot" style="color:var(--warn)">' + window.mtNote + '</p>' : '') + '<div class="acts"><button class="btn" data-a="refresh">Actualiser</button></div><p class="foot">Mis à jour le ' + g.getDate() + ' ' + MONTHS[g.getMonth()] + ' à ' + pad(g.getHours()) + ':' + pad(g.getMinutes()) + ' depuis l\'ordinateur.</p>'; }
 function viewWeek() {
-  var mon = monday(st.date), l = label(mon), tg = D.targets[l] || D.targets['1'], soft = l === 'P';
+  var mon = monday(st.date), l = label(mon), tg = D.targets[l] || D.targets['1'], soft = false;
   var h = '<div class="top"><button class="ib" data-a="w" data-n="-1" aria-label="Semaine précédente">‹</button><div class="t"><h1>' + short(mon) + ' → ' + short(add(mon, 6)) + '</h1><span class="chip">' + lname(l) + ' · ' + n0(tg.k) + ' kcal</span></div><button class="ib" data-a="w" data-n="1" aria-label="Semaine suivante">›</button></div><div class="card">';
   for (var i = 0; i < 7; i++) {
     var date = add(mon, i), d = D.days[date], t = dayTot(date), n = dayCount(d), over = n && t.k > tg.k && !soft;
@@ -189,10 +189,24 @@ function viewWeek() {
 function shopList(mon) {
   var agg = {};
   for (var i = 0; i < 7; i++) { var d = D.days[add(mon, i)]; if (!d) continue; MEALS.forEach(function (m) { (d.meals[m[0]] || []).forEach(function (e) { agg[e[0]] = (agg[e[0]] || 0) + e[1]; }); }); }
+  Object.keys(agg).forEach(function (id) { var f = foods[id]; if (f && f.r) { var bt = Math.max(1, Math.ceil(agg[id] / f.r.parts - 1e-9)); delete agg[id]; f.r.items.forEach(function (it) { if (it[1] > 0) agg[it[0]] = (agg[it[0]] || 0) + it[1] * bt; }); } });
   var g = {}; Object.keys(agg).forEach(function (id) { var f = foods[id]; if (f) (g[f.cat] = g[f.cat] || []).push({ f: f, q: agg[id] }); });
   return Object.keys(g).sort(function (a, b) { return a.localeCompare(b, 'fr'); }).map(function (c) { return [c, g[c].sort(function (a, b) { return a.f.name.localeCompare(b.f.name, 'fr'); })]; });
 }
+function shopKey() { return D.shop ? 'p' + D.shop.from : monday(st.date); }
+function viewShop2() {
+  var S2 = D.shop, ck = st.shop[shopKey()] || {}, n = 0, done = 0;
+  var line = function (id, name, qt, sub) { n++; if (ck[id]) done++; return '<button class="chk' + (ck[id] ? ' on' : '') + '" data-a="chk" data-id="' + esc(id) + '"><span class="bx"></span><span class="tx">' + esc(name) + (sub ? '<small class="mini" style="display:block;text-decoration:none">' + esc(sub) + '</small>' : '') + '</span>' + (qt ? '<span class="qt">' + esc(qt) + '</span>' : '') + '</button>'; };
+  var body = '';
+  if (S2.recs && S2.recs.length) body += '<div class="gh">Recettes à préparer</div><div class="card">' + S2.recs.map(function (r) { return '<div class="chk" style="cursor:default"><span class="tx">' + esc(r.n) + '</span><span class="qt">' + esc(r.t) + '</span></div>'; }).join('') + '</div>';
+  S2.groups.forEach(function (g) { body += '<div class="gh">' + esc(g[0]) + '</div><div class="card">' + g[1].map(function (r) { return line(r.id, r.n, r.q, r.s); }).join('') + '</div>'; });
+  if (S2.extra && S2.extra.length) body += '<div class="gh">Ajoutés à la main</div><div class="card">' + S2.extra.map(function (r) { return line(r.id, r.n, '', ''); }).join('') + '</div>';
+  var h = '<div class="top"><div class="t" style="text-align:left"><h1>Courses</h1><span class="mini">' + short(S2.from) + ' → ' + short(S2.to) + ' · ' + done + ' / ' + n + ' dans le panier</span></div></div>';
+  if (!n) return h + '<div class="empty">La liste est vide.</div>' + foot();
+  return h + body + '<div class="acts"><button class="btn" data-a="unchk">Tout décocher</button></div><p class="mini" style="margin-top:10px">Liste préparée sur l\'ordinateur. Tes cases cochées restent sur ce téléphone.</p>' + foot();
+}
 function viewShop() {
+  if (D.shop) return viewShop2();
   var mon = monday(st.date), groups = shopList(mon), ck = st.shop[mon] || {};
   var h = '<div class="top"><button class="ib" data-a="w" data-n="-1" aria-label="Semaine précédente">‹</button><div class="t"><h1>Courses</h1><span class="chip">' + short(mon) + ' → ' + short(add(mon, 6)) + '</span></div><button class="ib" data-a="w" data-n="1" aria-label="Semaine suivante">›</button></div>';
   if (!groups.length) return h + '<div class="empty">Aucun repas prévu cette semaine-là.</div>' + foot();
@@ -251,8 +265,8 @@ document.addEventListener('click', function (e) {
   else if (a === 'step') { var inp = $('#sq'); inp.value = qtxt(Math.max(0, num(inp.value) + +el.dataset.d)); sheetUpdate(); }
   else if (a === 'sreset') { $('#sq').value = qtxt(cur.key ? cur.q0 : 0); sheetUpdate(); }
   else if (a === 'calcpick') { var f2 = foods[el.dataset.id]; cur = { f: f2, key: null }; sheet(f2, f2.unit === 'portion' ? 1 : 100, null); }
-  else if (a === 'chk') { var mon = monday(st.date); (st.shop[mon] = st.shop[mon] || {}); st.shop[mon][el.dataset.id] = !st.shop[mon][el.dataset.id]; saveShop(); render(); }
-  else if (a === 'unchk') { st.shop[monday(st.date)] = {}; saveShop(); render(); }
+  else if (a === 'chk') { var mon = shopKey(); (st.shop[mon] = st.shop[mon] || {}); st.shop[mon][el.dataset.id] = !st.shop[mon][el.dataset.id]; saveShop(); render(); }
+  else if (a === 'unchk') { st.shop[shopKey()] = {}; saveShop(); render(); }
 });
 document.addEventListener('input', function (e) {
   if (e.target.id === 'sq') sheetUpdate();
