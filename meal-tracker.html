@@ -709,6 +709,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .rgfmt{border:1px dashed var(--line);background:none;color:var(--mute);border-radius:7px;padding:3px 8px;font-size:12.5px;cursor:pointer}.rgfmt:hover{border-color:var(--accent);color:var(--accent)}
 .rgadd{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:4px 0 2px 32px}.rgadd input{width:130px}.rgadd .btn.sm{padding:6px 10px}
 @media (max-width:560px){.rgc{flex-basis:100%;justify-content:flex-start;padding-left:32px;margin-left:0}}
+
+.rgchip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}.rgchip.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}.rgchip i{font-style:normal;opacity:.85;margin-left:4px}
+.rgt{font-size:13px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1625,7 +1628,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 19/10/2026 à 00:00 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 19/10/2026 à 00:08 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2821,11 +2824,14 @@ renderModal3 = function (m, root) {
   const pkl = (f, n) => f.unit === 'portion' ? `${qtxt(n)} part${n > 1 ? 's' : ''}` : packSz(f, n);
   const rows = m.rows.map((r, i) => { const f = foodMap.get(r.id); if (!f) return '';
     const tot = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy;
-    const pill = r.on && !f.recipe && !r.addOpen ? `<button class="rgfmt" data-a="rgaddopen" data-r="${i}" title="${r.counts ? 'Ajouter une autre taille de paquet' : 'Indiquer la taille du paquet acheté'}">+ format</button>` : '';
-    const ctl = r.counts ? '<span class="u">paquets :</span>' + Object.keys(r.counts).sort((a, b) => b - a).map(n => `<div class="qc"><span class="u">${esc(pkl(f, +n))}</span><button class="qs" data-a="rgstep" data-r="${i}" data-s="${n}" data-d="-1" tabindex="-1">−</button><b class="rgn">${r.counts[n]}</b><button class="qs" data-a="rgstep" data-r="${i}" data-s="${n}" data-d="1" tabindex="-1">+</button></div>`).join('')
+    const sizes = r.counts ? Object.keys(r.counts).sort((a, b) => a - b) : [];
+    const sel = sizes.includes(String(r.sel)) ? String(r.sel) : (sizes.filter(n => r.counts[n] > 0).pop() || sizes[sizes.length - 1]);
+    const pill = !f.recipe && !r.addOpen ? `<button class="rgfmt" data-a="rgaddopen" data-r="${i}" title="${r.counts ? 'Ajouter une autre taille de paquet' : 'Indiquer la taille du paquet acheté'}">+ format</button>` : '';
+    const chips = sizes.length > 1 ? sizes.map(n => `<button class="rgchip ${n === sel ? 'on' : ''}" data-a="rgsel" data-r="${i}" data-s="${n}">${esc(pkl(f, +n))}${r.counts[n] > 0 ? `<i>×${r.counts[n]}</i>` : ''}</button>`).join('') : sizes.length ? `<span class="u">paquet de ${esc(pkl(f, +sizes[0]))}</span>` : '';
+    const stp = r.counts ? `<div class="qc"><button class="qs" data-a="rgstep" data-r="${i}" data-s="${sel}" data-d="-1" tabindex="-1">−</button><b class="rgn">${r.counts[sel]}</b><button class="qs" data-a="rgstep" data-r="${i}" data-s="${sel}" data-d="1" tabindex="-1">+</button></div><b class="rgt">= ${esc(pkl(f, tot))}</b>`
       : `<div class="qc"><button class="qs" data-a="rgbuy" data-r="${i}" data-d="-1" tabindex="-1">−</button><b class="rgn" style="min-width:56px">${qtxt(r.buy)}</b><button class="qs" data-a="rgbuy" data-r="${i}" data-d="1" tabindex="-1">+</button><span class="u">${unitLabel(f)}</span></div>`;
     const ed = r.on && r.addOpen && !f.recipe ? `<div class="rgadd"><span class="mini">${r.counts ? 'Nouveau format' : 'Taille d\'un paquet'} :</span><input type="text" inputmode="decimal" data-i="rgnew" data-r="${i}" data-fk="rgnew-${i}" value="${esc(r.addVal || '')}" placeholder="${f.unit === 'portion' ? 'ex. 6' : 'ex. 1000 ou 1 kg'}" autocomplete="off"><span class="u">${esc(unitLabel(f))}</span><button class="btn sm pri" data-a="rgaddok" data-r="${i}">Ajouter</button><button class="btn sm" data-a="rgaddopen" data-r="${i}">Annuler</button></div>` : '';
-    return `<div class="rgr ${r.on ? '' : 'off'}"><input type="checkbox" data-a="rgon" data-r="${i}" ${r.on ? 'checked' : ''} aria-label="Acheté : ${esc(f.name)}"><div class="stn"><b>${esc(f.name)}</b><small>besoin ${esc(haveTxt(f, r.q))} · ajouté : ${f.unit === 'portion' ? qtxt(tot) : esc(packSz(f, tot))}</small></div>${r.on ? `<div class="rgc">${ctl}${pill}</div>` : ''}${ed}</div>`; }).join('');
+    return `<div class="rgr ${r.on ? '' : 'off'}"><input type="checkbox" data-a="rgon" data-r="${i}" ${r.on ? 'checked' : ''} aria-label="Acheté : ${esc(f.name)}"><div class="stn"><b>${esc(f.name)}</b><small>besoin ${esc(haveTxt(f, r.q))}</small></div>${r.on ? `<div class="rgc">${chips}${stp}${pill}</div>` : ''}${ed}</div>`; }).join('');
   const nOn = m.rows.filter(r => r.on).length;
   root.innerHTML = shell('Ranger les achats dans le stock', `<p class="mini">Les articles cochés dans ta liste sont déjà sélectionnés : coche les autres si tu les as aussi achetés, et ajuste les quantités réellement achetées${m.rows.some(r => r.counts) ? ' (paquets)' : ''}.</p>${rows}${m.clearX ? '' : ''}${shopXs().length ? `<label class="swr" style="margin-top:12px"><input type="checkbox" data-a="rgx" ${m.clearX ? 'checked' : ''}><span><b>Vider les articles ajoutés à la main</b><small>${shopXs().length} article${shopXs().length > 1 ? 's' : ''}</small></span></label>` : ''}`, `<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="rgdo">Ranger ${nOn} article${nOn > 1 ? 's' : ''}</button>`);
   const bd = root.querySelector('.bd'); if (bd) bd.scrollTop = sc;
@@ -2850,9 +2856,10 @@ Object.assign(actions, {
     n = Math.round(n * 100) / 100; if (!(n > 0)) { toast('Indique la taille du paquet (un nombre)'); return; }
     mut(s => { const ff = s.foods.find(x => x.id === f.id); if (ff) ff.packs = [...new Set([...(ff.packs || []), n])].sort((a, b) => a - b); });
     if (!r.counts) r.counts = { [n]: Math.max(1, Math.ceil(r.q / n - 1e-9)) }; else if (!(r.counts[n] > 0)) r.counts[n] = 1;
-    r.addOpen = false; r.addVal = ''; toast(`Format ajouté pour ${f.name} : ${packLbl(f, n)}`, [], 3500); renderModal();
+    r.sel = String(n); r.addOpen = false; r.addVal = ''; toast(`Format ajouté pour ${f.name} : ${packLbl(f, n)}`, [], 3500); renderModal();
   },
   rgx: () => { ui.modal.clearX = !ui.modal.clearX; renderModal(); },
+  rgsel: el => { ui.modal.rows[+el.dataset.r].sel = el.dataset.s; renderModal(); },
   rgstep: el => { const m = ui.modal, r = m.rows[+el.dataset.r], n = el.dataset.s; r.counts[n] = Math.max(0, (r.counts[n] || 0) + +el.dataset.d); renderModal(); },
   rgdo: () => { const m = ui.modal, ov = {}; for (const r of m.rows) if (r.on) ov[r.id] = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy; const cx = m.clearX; closeModal(); rangeStock(ov, cx); },
   stkloc: el => { ui.stock.loc = el.dataset.l; render(); },
