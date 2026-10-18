@@ -703,6 +703,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .tw.wktw{max-height:none;overflow-y:visible}
 
 .devme{border-left:4px solid var(--accent)}.devme .row{gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.devme input{flex:1 1 160px;min-width:0}.devme code{font-size:12px}
+
+.rgadd{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:2px 0 12px 32px;border-bottom:1px solid var(--line)}.rgadd .btn.sm{padding:6px 10px}
 </style>
 </head>
 <body>
@@ -1618,7 +1620,8 @@ function viewSettings() {
     <h3 class="sgrp">Avancé</h3>
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
-    <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p></main>`;
+    <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
+    <p class="mini">Version du 18/10/2026 à 23:49 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2815,7 +2818,10 @@ renderModal3 = function (m, root) {
     const tot = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy;
     const ctl = r.counts ? Object.keys(r.counts).sort((a, b) => b - a).map(n => `<div class="qc"><span class="u">${esc(packLbl(f, +n))}</span><button class="qs" data-a="rgstep" data-r="${i}" data-s="${n}" data-d="-1" tabindex="-1">−</button><b class="rgn">${r.counts[n]}</b><button class="qs" data-a="rgstep" data-r="${i}" data-s="${n}" data-d="1" tabindex="-1">+</button></div>`).join('')
       : `<div class="qc"><button class="qs" data-a="rgbuy" data-r="${i}" data-d="-1" tabindex="-1">−</button><b class="rgn" style="min-width:56px">${qtxt(r.buy)}</b><button class="qs" data-a="rgbuy" data-r="${i}" data-d="1" tabindex="-1">+</button><span class="u">${unitLabel(f)}</span></div>`;
-    return `<div class="rgr ${r.on ? '' : 'off'}"><input type="checkbox" data-a="rgon" data-r="${i}" ${r.on ? 'checked' : ''} aria-label="Acheté : ${esc(f.name)}"><div class="stn"><b>${esc(f.name)}</b><small>besoin ${esc(haveTxt(f, r.q))} · ajouté : ${f.unit === 'portion' ? qtxt(tot) : esc(packSz(f, tot))}</small></div>${r.on ? ctl : ''}</div>`; }).join('');
+    const fmt = !r.on || f.recipe ? '' : r.addOpen
+      ? `<div class="rgadd"><span class="mini">${r.counts ? 'Autre format d\'achat' : 'Format d\'achat (taille d\'un paquet)'} :</span><input type="text" inputmode="decimal" data-i="rgnew" data-r="${i}" data-fk="rgnew-${i}" value="${esc(r.addVal || '')}" placeholder="${f.unit === 'portion' ? 'ex. 6' : 'ex. 1000'}" autocomplete="off" style="width:96px"><span class="u">${esc(unitLabel(f))}</span><button class="btn sm pri" data-a="rgaddok" data-r="${i}">Ajouter</button><button class="btn sm" data-a="rgaddopen" data-r="${i}">Annuler</button><p class="mini" style="flex-basis:100%;margin:0">Il est enregistré pour cet aliment et proposé la prochaine fois (aussi dans les Aliments et le Stock).</p></div>`
+      : `<div class="rgadd"><button class="btn sm" data-a="rgaddopen" data-r="${i}">${r.counts ? '+ Autre format d\'achat' : '+ Renseigner le format d\'achat'}</button></div>`;
+    return `<div class="rgr ${r.on ? '' : 'off'}"><input type="checkbox" data-a="rgon" data-r="${i}" ${r.on ? 'checked' : ''} aria-label="Acheté : ${esc(f.name)}"><div class="stn"><b>${esc(f.name)}</b><small>besoin ${esc(haveTxt(f, r.q))} · ajouté : ${f.unit === 'portion' ? qtxt(tot) : esc(packSz(f, tot))}</small></div>${r.on ? ctl : ''}</div>${fmt}`; }).join('');
   const nOn = m.rows.filter(r => r.on).length;
   root.innerHTML = shell('Ranger les achats dans le stock', `<p class="mini">Les articles cochés dans ta liste sont déjà sélectionnés : coche les autres si tu les as aussi achetés, et ajuste les quantités réellement achetées${m.rows.some(r => r.counts) ? ' (paquets)' : ''}.</p>${rows}${m.clearX ? '' : ''}${shopXs().length ? `<label class="swr" style="margin-top:12px"><input type="checkbox" data-a="rgx" ${m.clearX ? 'checked' : ''}><span><b>Vider les articles ajoutés à la main</b><small>${shopXs().length} article${shopXs().length > 1 ? 's' : ''}</small></span></label>` : ''}`, `<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="rgdo">Ranger ${nOn} article${nOn > 1 ? 's' : ''}</button>`);
   const bd = root.querySelector('.bd'); if (bd) bd.scrollTop = sc;
@@ -2832,6 +2838,16 @@ Object.assign(actions, {
   },
   rgon: el => { const r = ui.modal.rows[+el.dataset.r]; r.on = !r.on; renderModal(); },
   rgbuy: el => { const r = ui.modal.rows[+el.dataset.r], f = foodMap.get(r.id); r.buy = Math.max(0, Math.round((r.buy + stkStep(f) * +el.dataset.d) * 100) / 100); renderModal(); },
+  rgaddopen: el => { const r = ui.modal.rows[+el.dataset.r]; r.addOpen = !r.addOpen; r.addVal = ''; renderModal(); setTimeout(() => document.querySelector(`[data-fk="rgnew-${el.dataset.r}"]`)?.focus(), 0); },
+  rgaddok: el => {
+    const r = ui.modal.rows[+el.dataset.r], f = r && foodMap.get(r.id); if (!f) return;
+    const t = String(r.addVal || '').toLowerCase(); let n = num(t);
+    if (/k/.test(t) && f.unit === 'g') n *= 1000; else if (/(^|[\d\s])l/.test(t) && f.unit === 'ml') n *= 1000;
+    n = Math.round(n * 100) / 100; if (!(n > 0)) { toast('Indique la taille du paquet (un nombre)'); return; }
+    mut(s => { const ff = s.foods.find(x => x.id === f.id); if (ff) ff.packs = [...new Set([...(ff.packs || []), n])].sort((a, b) => a - b); });
+    if (!r.counts) r.counts = { [n]: Math.max(1, Math.ceil(r.q / n - 1e-9)) }; else if (!(r.counts[n] > 0)) r.counts[n] = 1;
+    r.addOpen = false; r.addVal = ''; toast(`Format ajouté pour ${f.name} : ${packLbl(f, n)}`, [], 3500); renderModal();
+  },
   rgx: () => { ui.modal.clearX = !ui.modal.clearX; renderModal(); },
   rgstep: el => { const m = ui.modal, r = m.rows[+el.dataset.r], n = el.dataset.s; r.counts[n] = Math.max(0, (r.counts[n] || 0) + +el.dataset.d); renderModal(); },
   rgdo: () => { const m = ui.modal, ov = {}; for (const r of m.rows) if (r.on) ov[r.id] = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy; const cx = m.clearX; closeModal(); rangeStock(ov, cx); },
@@ -2849,6 +2865,7 @@ Object.assign(actions, {
 const prevExtraInputStk = extraInput;
 extraInput = function (e) {
   const el = e.target;
+  if (el.dataset?.i === 'rgnew') { const r = ui.modal?.rows?.[+el.dataset.r]; if (r) r.addVal = el.value; return true; }
   if (el.dataset?.i === 'stq') { ui.stock.q = el.value; render(); return true; }
   if (el.dataset?.i === 'stqty') return true;
   return prevExtraInputStk(e);
@@ -3011,6 +3028,8 @@ renderModal3 = function (m, root) {
   }
   return prevRMwipe(m, root);
 };
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target?.dataset?.i === 'rgnew') { e.preventDefault(); actions.rgaddok(e.target); } });
 
 // ---- share.js ----
 // Étape 4 : partage à deux (gists GitHub).
