@@ -682,6 +682,14 @@ html[data-mode=light]{color-scheme:light}
   .xr>.xn{font-size:12px}
 }
 @media (max-width:640px){.dlg .ft2>.mini,.dlg .foot>.mini{display:none}.ov{padding-bottom:calc(66px + env(safe-area-inset-bottom))}}
+.sgrp{margin:26px 0 10px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mute)}
+.help{border:1px dashed var(--line);border-radius:10px;margin:0 0 12px;background:var(--bg)}
+.help>summary{cursor:pointer;padding:9px 12px;font-size:14px;font-weight:600;color:var(--accent);list-style:none}
+.help>summary::-webkit-details-marker{display:none}.help>summary::before{content:'ⓘ ';font-weight:400}
+.help>div{padding:2px 14px 12px;font-size:14px;line-height:1.5}.help ol{margin:6px 0 8px;padding-left:20px}.help li{margin:4px 0}.help p{margin:6px 0}.help code{background:var(--soft);padding:1px 5px;border-radius:5px;font-size:13px}
+.help.start{margin:0 0 6px;background:var(--surface)}
+.setd>.help{margin-left:16px;margin-right:16px}
+@media(max-width:640px){.setd>summary{flex-wrap:wrap;gap:2px 12px}.setd>summary .mini{flex-basis:100%;order:3}.setd>summary::after{order:2}}
 </style>
 </head>
 <body>
@@ -875,7 +883,13 @@ function exportJSON() { return JSON.stringify(S); }
 function importJSON(text) {
   const st = JSON.parse(text);
   if (!st || !Array.isArray(st.foods) || typeof st.days !== 'object') throw new Error('Fichier de sauvegarde invalide');
+  // copie de sécurité des données d'avant (restauration, liaison d'un appareil) : permet de revenir en arrière
+  if (typeof S !== 'undefined' && S?.days) { try { idbSet('prev', { at: Date.now(), json: exportJSON() }); if (typeof ui !== 'undefined') ui.prev = { at: Date.now(), days: Object.keys(S.days).length }; } catch { } }
+  const keepDev = typeof S !== 'undefined' && S?.meta?.dev, keepSh = typeof S !== 'undefined' && S?.meta?.share;
   S = st; cleanDays(S); addWheyRecipes(S); migrateRecipes(S); S.meta ||= { profile: 'moi', lastBackup: null }; S.program ||= { targets: clone(DEFAULT_TARGETS) }; S.weeks ||= {}; S.templates ||= []; S.weights ||= []; S.stock ||= { items: {} };
+  // une restauration est une modification récente : on garde l'identité de synchro de cet appareil (appareils / partage), pour que la restauration ne soit pas écrasée par les autres
+  if (keepDev) { keepDev.lc = Date.now(); S.meta.dev = keepDev; } else delete S.meta.dev;
+  if (keepSh) S.meta.share = keepSh; else delete S.meta.share;
   rebuild(); scheduleSave(); emit();
 }
 
@@ -1477,12 +1491,30 @@ function draftToFood(d) {
 
 // ---------- vue Réglages ----------
 ui.setOpen = ui.setOpen || {};
-const SET_HINT = { 'Sauvegarde GitHub': 'copie complète en ligne', 'Apparence': 'couleurs et mode sombre', 'Programme': 'objectifs par semaine', 'Sauvegarde': 'fichier et dossier automatique', 'Journées remplacées': 'retrouver une journée écrasée', 'Téléphone': 'consulter sur l\'iPhone', 'Partage à deux': 'aliments, stock et courses en commun', 'Données de départ': 'tout réinitialiser' };
-const settingsOpen = t => `<details class="card setd" data-sec="${esc(t)}" ${ui.setOpen[t] ? 'open' : ''}><summary><h2>${t}</h2><span class="mini">${esc(SET_HINT[t] || '')}</span></summary>`;
+const ghTok = () => ui.cbk?.cfg?.token || ui.dev?.cfg?.token || ui.sync?.cfg?.token || ui.share?.cfg?.token || '';
+const SET_HINT = {
+  'Objectifs du programme': 'protéines, glucides, lipides, kcal par semaine', 'Apparence': 'couleurs et mode sombre',
+  'Sauvegarde sur fichier': 'un fichier à garder, à la main ou automatique', 'Sauvegarde en ligne (GitHub)': 'copie complète sur ton compte GitHub',
+  'Retrouver une version précédente': 'annuler une copie ou une suppression de journée',
+  'Synchroniser téléphone et ordinateur': 'modifier sur les deux, tout reste à jour', 'Partager avec une autre personne': 'aliments, stock et courses en commun',
+  'Page iPhone en lecture seule': 'ancienne méthode, pour consulter seulement', 'Tout réinitialiser': 'revenir aux données de départ' };
+const TOKEN_HELP = `<li><b>Créer le jeton GitHub</b> (une seule fois, il sert à tout) : connecte-toi sur <a href="https://github.com" target="_blank" rel="noopener">github.com</a> (compte gratuit si tu n'en as pas), puis ouvre <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">cette page</a> : la case « gist » est déjà cochée.</li><li>Choisis la durée « No expiration » (sans date de fin), puis clique sur « Generate token » en bas de la page.</li><li>Copie le code qui commence par <code>ghp_</code> : GitHub ne le montre qu'une fois. Colle-le dans le champ « Jeton ». C'est un mot de passe limité aux « gists » (petits fichiers privés) : ne le donne à personne.</li>`;
+const SET_HELP = {
+  'Objectifs du programme': `<ol><li>Ce tableau fixe tes objectifs <b>par jour</b> : une ligne par semaine du programme.</li><li>Clique dans une case, tape le nouveau chiffre (virgule acceptée) : c'est enregistré tout de suite.</li><li>Les barres de l'onglet Journée se comparent à ces chiffres.</li><li>Un doute ? « Rétablir les valeurs de ton Excel » remet tout comme au départ.</li></ol>`,
+  'Apparence': `<ol><li>Clique sur une palette pour changer les couleurs.</li><li>« Auto » suit le réglage de ton appareil (clair le jour, sombre la nuit) ; « Clair » et « Sombre » forcent un mode.</li><li>Ce choix ne concerne que cet appareil : le téléphone a le sien.</li></ol>`,
+  'Sauvegarde sur fichier': `<p><b>Pourquoi ?</b> Tes données vivent dans ce navigateur. Si tu effaces les données de Chrome ou changes d'ordinateur, elles disparaissent. Un fichier de sauvegarde permet de tout retrouver.</p><ol><li>Clique sur « Enregistrer une sauvegarde » : un fichier se télécharge. Range-le dans un endroit sûr (OneDrive, clé USB…).</li><li>Pour tout retrouver : « Restaurer une sauvegarde », puis choisis le fichier. <b>Attention : cela remplace tout</b> ce qui est dans l'application.</li><li>Pour ne plus y penser (Chrome ou Edge sur ordinateur) : « Choisir le dossier… » sous « Sauvegarde automatique ». Une copie par jour y est écrite toute seule quand l'application est ouverte.</li></ol>`,
+  'Sauvegarde en ligne (GitHub)': `<p><b>Pourquoi ?</b> Une copie complète de toutes tes données, gardée en ligne et protégée même si ton ordinateur tombe en panne. Elle se met à jour toute seule.</p><ol>${TOKEN_HELP}<li>Clique sur « Activer la sauvegarde GitHub ». La première copie part tout de suite.</li><li>Pour retrouver tes données un jour : « Restaurer la dernière copie ».</li></ol><p><b>Suspendre</b> arrête les envois mais garde la copie en ligne. <b>Supprimer la copie GitHub</b> l'efface en ligne (tes données sur cet appareil restent intactes).</p>`,
+  'Retrouver une version précédente': `<ol><li>Tu as copié une journée par-dessus une autre, ou vidé une journée par erreur ? Rien n'est perdu.</li><li>« Retrouver une version précédente… » ouvre la liste des états d'avant : choisis celui que tu veux récupérer.</li><li>Plus bas, « Journées remplacées » liste les journées écrasées : « Restaurer » les remet à leur place.</li><li>Tu t'es trompé en restaurant une sauvegarde ou en reliant un appareil ? « Données d'avant la dernière restauration » te rend tes données d'avant.</li><li>Pour une erreur toute récente, le bouton « Annuler » (ou Ctrl+Z) suffit.</li></ol>`,
+  'Synchroniser téléphone et ordinateur': `<p><b>Pourquoi ?</b> Tu modifies sur le téléphone, c'est aussi sur l'ordinateur, et inversement. Pratique si tu n'as pas ton ordinateur pendant quelques jours.</p><p><b>1. Sur l'ordinateur</b></p><ol>${TOKEN_HELP}<li>Écris un nom d'appareil (par exemple « Ordinateur »), puis clique sur « Créer le groupe ».</li><li>Un code apparaît : clique sur « Copier le code » et envoie-le-toi (message, mail…).</li></ol><p><b>2. Sur le téléphone</b></p><ol><li>Ouvre l'application sur le téléphone (la page <code>app.html</code> de ton GitHub Pages, dans Safari), puis « Partager » → « Sur l'écran d'accueil » pour l'installer.</li><li>Va dans Réglages → cette section. Écris un nom (« iPhone »), colle le même jeton et le code, puis clique sur « Relier cet appareil ». Les données du téléphone sont remplacées par celles de l'ordinateur.</li></ol><p><b>3. Ensuite</b>, tout est automatique : les modifications partent après quelques secondes et chaque appareil relit les autres toutes les 45 secondes. Si tu as modifié la même journée sur les deux, la version la plus récente est gardée et la section « Conflits » te permet de récupérer l'autre.</p>`,
+  'Partager avec une autre personne': `<p><b>Pourquoi ?</b> Partager aliments, recettes, stock et courses (par exemple avec ton conjoint). Vos journées restent séparées.</p><ol>${TOKEN_HELP}<li>Écris ton prénom, puis « Activer le partage ». Un code de partage apparaît : envoie-le à l'autre personne.</li><li>L'autre personne fait la même chose dans son application, puis colle <b>ton</b> code dans « Code de partage de l'autre personne » et clique sur « Relier ». Toi, colle le sien.</li><li>Si c'est l'application de la 2<sup>e</sup> personne et qu'elle repart de zéro, elle coche « partir de journées vides » avant d'activer.</li></ol><p>« Arrêter le partage » coupe l'échange, sans rien supprimer chez l'un ni chez l'autre.</p>`,
+  'Page iPhone en lecture seule': `<p>Ancienne méthode : une page simple pour <b>consulter</b> tes repas sur l'iPhone, sans pouvoir les modifier. Si tu utilises « Synchroniser téléphone et ordinateur », tu n'en as plus besoin.</p><ol>${TOKEN_HELP}<li>Écris l'adresse de ta page GitHub Pages, puis « Activer la synchronisation ». Ouvre ensuite le lien donné dans Safari sur l'iPhone et ajoute-le à l'écran d'accueil.</li></ol>`,
+  'Tout réinitialiser': `<p>Remplace tout ce que tu as saisi par les données importées de tes deux fichiers Excel de départ. <b>C'est définitif</b> : fais d'abord une sauvegarde sur fichier.</p>`,
+};
+const settingsOpen = t => `<details class="card setd" data-sec="${esc(t)}" ${ui.setOpen[t] ? 'open' : ''}><summary><h2>${t}</h2><span class="mini">${esc(SET_HINT[t] || '')}</span></summary>${SET_HELP[t] ? `<details class="help" data-sec="?${esc(t)}" ${ui.setOpen['?' + t] ? 'open' : ''}><summary>Aide : comment ça marche ?</summary><div>${SET_HELP[t]}</div></details>` : ''}`;
 function settingsStatus(days) {
-  const lb = S.meta?.lastBackup, bk = ui.bk?.state === 'ok', ph = !!ui.sync?.cfg;
+  const lb = S.meta?.lastBackup, bk = ui.bk?.state === 'ok', dv = !!ui.dev?.cfg, ph = !!ui.sync?.cfg;
   const li = (ok, a, b) => `<div class="stl ${ok ? 'ok' : 'ko'}"><b>${ok ? '✓' : '!'}</b> ${a}<span class="mini"> ${b}</span></div>`;
-  return `<div class="stat">${li(!!lb && days < 14, 'Sauvegarde', lb ? `dernière il y a ${days} jour${days > 1 ? 's' : ''}${bk ? ' · dossier automatique actif' : ''}` : 'aucune sauvegarde pour le moment')}${li(ph, 'iPhone', ph ? 'synchronisation active' : 'pas encore activé')}${li(!!ui.cbk?.cfg, 'GitHub', ui.cbk?.cfg ? (ui.cbk.cfg.paused ? 'copie en pause' : 'copie complète active') : 'pas encore activé')}</div>`;
+  return `<div class="stat">${li(!!lb && days < 14, 'Sauvegarde sur fichier', lb ? `dernière il y a ${days} jour${days > 1 ? 's' : ''}${bk ? ' · dossier automatique actif' : ''}` : 'aucune pour le moment')}${li(!!ui.cbk?.cfg, 'Sauvegarde en ligne', ui.cbk?.cfg ? (ui.cbk.cfg.paused ? 'en pause' : 'active') : 'pas encore activée')}${li(dv || ph, 'Téléphone', dv ? 'synchronisé avec cet ordinateur' : ph ? 'page en lecture seule' : 'pas encore relié')}</div>`;
 }
 document.addEventListener('toggle', e => { const d = e.target; if (d?.dataset?.sec) ui.setOpen[d.dataset.sec] = d.open; }, true);
 function viewSettings() {
@@ -1490,19 +1522,25 @@ function viewSettings() {
   const row = l => { const t = targetForLabel(l); return `<tr><td><b>${labelName(l)}</b></td>${['p', 'c', 'l', 'f', 'k'].map(k => `<td><input type="text" inputmode="decimal" value="${String(t[k]).replace('.', ',')}" data-i="tgt" data-l="${l}" data-k="${k}" aria-label="${labelName(l)} ${k}"></td>`).join('')}</tr>`; };
   const html = `<main class="main wide"><div class="dh"><h1>Réglages</h1></div>
     ${settingsStatus(days)}
-    <section class="card"><h2>Programme</h2><p class="mini">Objectifs par jour pour chaque semaine du programme. Les semaines 5 à 8 reprennent 4 à 1.</p>
+    <details class="help start" data-sec="?start" ${ui.setOpen['?start'] ? 'open' : ''}><summary>Par où commencer ?</summary><div><p>Chaque section a sa propre aide (« Aide : comment ça marche ? ») avec les étapes détaillées. Pour bien démarrer, dans cet ordre :</p><ol><li><b>Sauvegarde sur fichier</b> : enregistre un premier fichier (2 minutes). C'est l'essentiel.</li><li><b>Sauvegarde en ligne (GitHub)</b> : une copie qui se met à jour toute seule.</li><li><b>Synchroniser téléphone et ordinateur</b> : si tu veux utiliser l'application sur le téléphone.</li><li><b>Partager avec une autre personne</b> : seulement si vous partagez courses et stock.</li></ol><p class="mini">Le reste (objectifs, apparence) est facultatif.</p></div></details>
+    <h3 class="sgrp">Mon programme</h3>
+    <section class="card"><h2>Objectifs du programme</h2><p class="mini">Objectifs par jour pour chaque semaine du programme. Les semaines 5 à 8 reprennent 4 à 1.</p>
     <div class="tw"><table class="ft tg"><thead><tr><th>Semaine</th><th>Prot. (g)</th><th>Gluc. (g)</th><th>Lip. (g)</th><th>Fib. (g)</th><th>kcal</th></tr></thead><tbody>${LABELS.map(row).join('')}</tbody></table></div>
     <div class="row" style="margin-top:12px"><button class="btn" data-a="resettgt">Rétablir les valeurs de ton Excel</button></div></section>
-    <section class="card"><h2>Sauvegarde</h2><p>Tes données sont enregistrées dans ce navigateur, sur cet ordinateur. Fais une sauvegarde de temps en temps : si tu effaces les données de Chrome ou si tu changes d'ordinateur, ce fichier te permet de tout retrouver.</p>
+    <h3 class="sgrp">Mes données</h3>
+    <section class="card"><h2>Sauvegarde sur fichier</h2><p>Tes données sont enregistrées dans ce navigateur, sur cet ordinateur. Fais une sauvegarde de temps en temps : si tu effaces les données de Chrome ou si tu changes d'ordinateur, ce fichier te permet de tout retrouver.</p>
     <p class="mini">${lb ? `Dernière sauvegarde : il y a ${days} jour${days > 1 ? 's' : ''} (${esc(fmtShort(iso(new Date(lb))))}).` : 'Aucune sauvegarde faite pour le moment.'}</p>
     <div class="row"><button class="btn pri" data-a="export">Enregistrer une sauvegarde</button><label class="btn">Restaurer une sauvegarde<input type="file" accept=".json,application/json" data-i="import" hidden></label></div>${bkCard()}</section>
-    <section class="card"><h2>Versions précédentes</h2><p>Chaque copie ou suppression de journée garde l'état d'avant. Tu peux revenir en arrière même plusieurs jours après, ou récupérer un jour depuis l'import Excel d'origine.</p><div class="row"><button class="btn" data-a="journal">Retrouver une version précédente…</button></div></section>
-    ${trashCard()}
-    ${phoneCard()}
     ${cbkCard()}
-    ${themeCard()}
+    ${trashCard()}
+    <h3 class="sgrp">Téléphone et partage</h3>
+    ${devCard()}
     ${shareCard()}
-    <section class="card"><h2>Données de départ</h2><p>Revenir aux données importées de tes deux fichiers Excel efface tout ce que tu as saisi depuis.</p><div class="row"><button class="btn dng" data-a="reset">Revenir aux données importées</button></div></section>
+    <h3 class="sgrp">Affichage</h3>
+    ${themeCard()}
+    <h3 class="sgrp">Avancé</h3>
+    ${phoneCard()}
+    <section class="card"><h2>Tout réinitialiser</h2><p>Revenir aux données importées de tes deux fichiers Excel efface tout ce que tu as saisi depuis.</p><div class="row"><button class="btn dng" data-a="reset">Revenir aux données importées</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p></main>`;
   return html.replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
@@ -2304,7 +2342,7 @@ async function syncInit() {
 }
 function syncCard() {
   const s = ui.sync, c = s.cfg, f = s.form;
-  const head = `<h2>Téléphone</h2><p>Pour consulter tes repas sur l'iPhone (lecture seule, avec calcul de quantités), l'application envoie une copie de tes 6 semaines autour d'aujourd'hui sur ton compte GitHub (un « gist » secret). La page installée sur l'iPhone la relit à chaque ouverture : tu installes une seule fois, ensuite tout se met à jour tout seul. Tes poids et ton historique complet ne sont pas envoyés.</p>`;
+  const head = `<h2>Page iPhone en lecture seule</h2><p>Pour consulter tes repas sur l'iPhone (lecture seule, avec calcul de quantités), l'application envoie une copie de tes 6 semaines autour d'aujourd'hui sur ton compte GitHub (un « gist » secret). La page installée sur l'iPhone la relit à chaque ouverture : tu installes une seule fois, ensuite tout se met à jour tout seul. Tes poids et ton historique complet ne sont pas envoyés.</p>`;
   if (!c) return `<section class="card">${head}
     <label class="fld"><span class="mini">Adresse de ta page GitHub (ex. https://ton-nom.github.io/meal-tracker/)</span><input type="url" data-i="syfield" data-k="page" data-fk="sy-page" value="${esc(f.page)}" placeholder="https://…github.io/meal-tracker/" autocomplete="off"></label>
     <label class="fld"><span class="mini">Jeton GitHub (commence par ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">le créer</a></span><input type="password" data-i="syfield" data-k="token" data-fk="sy-token" value="${esc(f.token)}" placeholder="ghp_…" autocomplete="off"></label>
@@ -2519,11 +2557,12 @@ extraChange = function (e) { if (e.target.dataset?.i === 'seeddate') { ui.modal.
 function trashCard() {
   const t = S.meta?.trash || [];
   const rows = t.slice(0, 12).map((x, i) => { const n = MEALS.reduce((c, m) => c + (x.day.meals[m.id]?.length || 0), 0); return `<div class="li" style="padding:8px 0"><div class="b"><b>${esc(fmtDM(x.date))} · ${esc(x.day.title || 'Sans nom')}</b><span>${n} aliment${n > 1 ? 's' : ''} · ${esc(x.reason)} · ${esc(fmtShort(iso(new Date(x.at))))} ${esc(new Date(x.at).toTimeString().slice(0, 5))}</span></div><button class="btn sm" data-a="trashrestore" data-i="${i}">Restaurer</button></div>`; }).join('');
-  return `<section class="card"><h2>Journées remplacées</h2><p class="mini">Quand une journée est remplacée par une copie ou vidée, son ancien contenu est gardé ici (les 40 dernières) pour pouvoir le récupérer.</p>${rows || '<p class="mini">Rien à restaurer pour le moment.</p>'}</section>`;
+  return `<section class="card"><h2>Retrouver une version précédente</h2><p>Chaque copie ou suppression de journée garde l'état d'avant. Tu peux revenir en arrière même plusieurs jours après, ou récupérer un jour depuis l'import Excel d'origine.</p><div class="row"><button class="btn" data-a="journal">Retrouver une version précédente…</button></div>${ui.prev ? `<h3 style="font-size:15px;margin:16px 0 4px">Données d'avant la dernière restauration</h3><p class="mini">Avant chaque restauration de fichier, restauration GitHub ou liaison d'un appareil, une copie de tes données est gardée (${esc(fmtShort(iso(new Date(ui.prev.at))))} ${esc(new Date(ui.prev.at).toTimeString().slice(0, 5))}, ${ui.prev.days} journées). Tu peux les récupérer si tu t'es trompé.</p><div class="row"><button class="btn" data-a="prevrestore">Récupérer ces données</button></div>` : ''}<h3 style="font-size:15px;margin:16px 0 4px">Journées remplacées</h3><p class="mini">Quand une journée est remplacée par une copie ou vidée, son ancien contenu est gardé ici (les 40 dernières) pour pouvoir le récupérer.</p>${rows || '<p class="mini">Rien à restaurer pour le moment.</p>'}</section>`;
 }
 Object.assign(actions, {
   gundo: () => { if (undoLast()) toast('Modification annulée'); },
   gredo: () => { if (redoLast()) toast('Modification rétablie'); },
+  prevrestore: async () => { if (!window.confirm('Remplacer les données actuelles par la copie gardée avant la dernière restauration ? Tes données actuelles seront à leur tour gardées.')) return; try { const p = await idbGet('prev'); if (!p?.json) throw new Error('Copie introuvable'); importJSON(p.json); toast('Données d\'avant récupérées', [], 5000); render(); } catch (e) { toast(e.message || String(e)); } },
   trashrestore: el => { restoreTrash(+el.dataset.i); toast('Journée restaurée'); },
 });
 document.addEventListener('keydown', e => {
@@ -2800,11 +2839,11 @@ function cbkPullCard() {
 }
 function cbkCard() {
   const s = ui.cbk, c = s.cfg;
-  const head = `<h2>Sauvegarde GitHub</h2><p>Une copie <b>complète</b> de tes données (journées, poids, repas types, objectifs, aliments, stock…) est envoyée dans un gist privé sur ton compte GitHub. GitHub garde l'historique des versions : tu peux revenir en arrière. Elle te protège si ton ordinateur ou ton navigateur perd ses données.</p>`;
+  const head = `<h2>Sauvegarde en ligne (GitHub)</h2><p>Une copie <b>complète</b> de tes données (journées, poids, repas types, objectifs, aliments, stock…) est envoyée dans un gist privé sur ton compte GitHub. GitHub garde l'historique des versions : tu peux revenir en arrière. Elle te protège si ton ordinateur ou ton navigateur perd ses données.</p>`;
   if (!c) return `<section class="card">${head}
     ${s.tok ? '<p class="mini">Le jeton déjà enregistré (téléphone ou partage) sera utilisé.</p>' : `<label class="fld"><span class="mini">Jeton GitHub avec le droit « gist » (ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">le créer</a></span><input type="password" data-i="cbkfield" data-fk="cbk-token" value="${esc(s.form.token)}" placeholder="ghp_…" autocomplete="off"></label>`}
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
-    <div class="row"><button class="btn pri" data-a="cbkon" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Activation…' : 'Activer la sauvegarde GitHub'}</button></div>${cbkPullCard()}</section>`;
+    <div class="row"><button class="btn pri" data-a="cbkon" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Activation…' : 'Activer la sauvegarde GitHub'}</button></div></section>`;
   return `<section class="card">${head}<p class="mini" id="cbkinfo">${cbkInfo()}</p>
     <div class="row">${c.paused ? '' : '<button class="btn pri" data-a="cbknow">Sauvegarder maintenant</button>'}<a class="btn" href="https://gist.github.com/${esc(c.gistId)}" target="_blank" rel="noopener">Voir sur GitHub</a><button class="btn" data-a="cbkrestore">Restaurer la dernière copie</button><button class="btn" data-a="cbkid">Copier l'identifiant</button><button class="btn" data-a="cbkpause">${c.paused ? 'Reprendre' : 'Suspendre'}</button><button class="btn dng" data-a="cbkstop">Supprimer la copie GitHub</button></div></section>`;
 }
@@ -2819,7 +2858,7 @@ Object.assign(actions, {
     s.busy = true; render();
     try {
       const text = await cbkReadGist(token, gistId);
-      importJSON(text); mut(st => { delete st.meta.share; });
+      importJSON(text); mut(st => { delete st.meta.share; delete st.meta.dev; });
       const c = { token, gistId, last: Date.now() }; await idbSet('cbkpull', c); s.pull = c; s.form.link = ''; s.form.ptoken = ''; toast('Données récupérées', [], 4000);
     } catch (e) { s.err = e.message || String(e); }
     s.busy = false; render();
@@ -2828,7 +2867,7 @@ Object.assign(actions, {
     const s = ui.cbk, p = s.pull; if (!p) return; s.err = '';
     if (!window.confirm('Remplacer TOUTES les données de cet appareil par la dernière copie ?')) return;
     s.busy = true; render();
-    try { importJSON(await cbkReadGist(p.token, p.gistId)); mut(st => { delete st.meta.share; }); p.last = Date.now(); await idbSet('cbkpull', { ...p }); toast('Données rechargées', [], 4000); }
+    try { importJSON(await cbkReadGist(p.token, p.gistId)); mut(st => { delete st.meta.share; delete st.meta.dev; }); p.last = Date.now(); await idbSet('cbkpull', { ...p }); toast('Données rechargées', [], 4000); }
     catch (e) { s.err = e.message || String(e); }
     s.busy = false; render();
   },
@@ -2867,6 +2906,8 @@ Object.assign(actions, {
 const prevExtraInputCbk = extraInput;
 extraInput = function (e) { if (e.target.dataset?.i === 'cbkfield') { ui.cbk.form[e.target.dataset.k || 'token'] = e.target.value; return true; } return prevExtraInputCbk(e); };
 cbkInit();
+
+ui.prev = null; idbGet('prev').then(p => { if (p?.json) { try { const o = JSON.parse(p.json); ui.prev = { at: p.at, days: Object.keys(o.days || {}).length }; if (ui.view === 'reglages') render(); } catch { } } }).catch(() => { });
 
 // ---- share.js ----
 // Étape 4 : partage à deux (gists GitHub).
@@ -3029,12 +3070,12 @@ function shareInfo() {
 function sharePaint() { const el = document.getElementById('shareinfo'); if (el) el.innerHTML = shareInfo(); }
 function shareCard() {
   const s = ui.share, c = s.cfg, f = s.form;
-  const head = `<h2>Partage à deux</h2><p>Partage les aliments, les recettes, le stock et les courses avec une autre personne. Tes journées, tes semaines et tes réglages restent à toi : l'autre ne voit que les repas pour calculer les courses. Chacun garde son propre « gist » secret sur GitHub, et lit celui de l'autre.</p>`;
+  const head = `<h2>Partager avec une autre personne</h2><p>Partage les aliments, les recettes, le stock et les courses avec une autre personne. Tes journées, tes semaines et tes réglages restent à toi : l'autre ne voit que les repas pour calculer les courses. Chacun garde son propre « gist » secret sur GitHub, et lit celui de l'autre.</p>`;
   if (!c) {
-    const tok = f.token || ui.sync?.cfg?.token || '';
+    const tok = f.token || ghTok();
     return `<section class="card">${head}
     <label class="fld"><span class="mini">Ton prénom</span><input type="text" data-i="shfield" data-k="name" data-fk="sh-name" value="${esc(f.name)}" placeholder="ex. Deborah" autocomplete="off"></label>
-    <label class="fld"><span class="mini">Jeton GitHub (commence par ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker%20partage" target="_blank" rel="noopener">le créer</a>${ui.sync?.cfg?.token && !f.token ? ' · jeton déjà enregistré dans cette application (celui de la synchronisation du téléphone) : tu peux le garder' : ''}</span><input type="password" data-i="shfield" data-k="token" data-fk="sh-token" value="${esc(tok)}" placeholder="ghp_…" autocomplete="off"></label>
+    <label class="fld"><span class="mini">Jeton GitHub (commence par ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker%20partage" target="_blank" rel="noopener">le créer</a>${ghTok() && !f.token ? ' · jeton déjà enregistré dans cette application : tu peux le garder' : ''}</span><input type="password" data-i="shfield" data-k="token" data-fk="sh-token" value="${esc(tok)}" placeholder="ghp_…" autocomplete="off"></label>
     <label class="sw"><input type="checkbox" data-i="shempty" ${f.empty ? 'checked' : ''}> Cette application est celle de la 2e personne : partir de journées vides (les repas types sont conservés). Les aliments et recettes de l'autre sont ajoutés, et en cas de différence sur un même aliment, sa version est reprise</label>
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
     <div class="row"><button class="btn pri" data-a="shareon" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Activation…' : 'Activer le partage'}</button></div></section>`;
@@ -3047,7 +3088,7 @@ function shareCard() {
 }
 Object.assign(actions, {
   shareon: async () => {
-    const s = ui.share, f = s.form, name = f.name.trim(), token = (f.token || ui.sync?.cfg?.token || '').trim();
+    const s = ui.share, f = s.form, name = f.name.trim(), token = (f.token || ghTok()).trim();
     if (!name) { s.err = 'Indique ton prénom.'; render(); return; }
     if (!token) { s.err = 'Colle ton jeton GitHub.'; render(); return; }
     if (f.empty && !confirm('Cette application va repartir de journées, de semaines et de poids vides (les repas types sont conservés). Les aliments et recettes de l\'autre personne seront ajoutés aux tiens, et en cas de différence sur un même aliment, sa version sera reprise. Continuer ?')) return;
@@ -3124,6 +3165,185 @@ async function shareInit() {
   render();
 }
 shareInit();
+
+// ---- dev.js ----
+// Mes appareils : synchronisation dans les deux sens (ordinateur ↔ téléphone) pour une même personne.
+// Un seul gist privé pour tous les appareils : « base.json » (copie de départ) et un fichier « dev-<appareil>.json » par appareil.
+// Chaque appareil n'écrit que son fichier et lit ceux des autres. Chaque enregistrement porte une date ; le plus récent gagne.
+// Le plus récent gagne par enregistrement (une journée, un aliment, un poids…) : si deux appareils modifient le même enregistrement, la version perdue est gardée dans « Conflits ».
+const DEV_BASE = 'base.json', devFile = id => `dev-${id}.json`;
+ui.dev = { cfg: null, err: '', busy: false, applying: false, form: { name: '', token: '', code: '' }, copied: false };
+const devOn = () => !!(typeof S !== 'undefined' && S && S.meta && S.meta.dev && S.meta.dev.on);
+function devCollect() {
+  const m = shareCollect();
+  for (const [d, day] of Object.entries(S.days)) m.set('d|' + d, day);
+  for (const w of S.weights || []) m.set('w|' + w.date, w);
+  for (const [mon, w] of Object.entries(S.weeks || {})) m.set('wk|' + mon, w);
+  for (const t of S.templates || []) m.set('t|' + t.id, t);
+  for (const [l, t] of Object.entries(S.program?.targets || {})) m.set('pg|' + l, t);
+  return m;
+}
+// date chaque enregistrement modifié ici (base : date 0, ils perdent contre toute vraie modification) ; renvoie les clés modifiées
+function devStamp(base, cur) {
+  const dv = S.meta.dev, recs = dv.recs, now = Date.now(), at = Math.min(now, dv.lc || now), ch = new Set(); cur ||= devCollect();
+  const stamp = (k, h, prev) => { recs[k] = { h, u: base ? 0 : Math.max(at, (prev?.u || 0) + 1), by: dv.me.id, b: prev ? prev.h : '' }; ch.add(k); };
+  for (const [k, v] of cur) { const h = shareHash(k, v), r = recs[k]; if (!r || r.h !== h) stamp(k, h, r); }
+  for (const k of Object.keys(recs)) if (!cur.has(k) && recs[k].h !== '') stamp(k, '', recs[k]);
+  return ch;
+}
+function devBuild(cur) {
+  const dv = S.meta.dev, recs = {};
+  for (const [k, r] of Object.entries(dv.recs)) recs[k] = r.h === '' ? { u: r.u, by: r.by, b: r.b } : { u: r.u, by: r.by, b: r.b, v: cur.get(k) };
+  return { v: 1, who: dv.me, at: new Date().toISOString(), recs };
+}
+function devApply(k, val) {
+  const [t, a] = k.split('|');
+  if (t === 'd') { if (val === undefined) delete S.days[a]; else S.days[a] = clone(val); }
+  else if (t === 'w') { S.weights = (S.weights || []).filter(w => w.date !== a); if (val !== undefined) { S.weights.push(clone(val)); S.weights.sort((x, y) => x.date.localeCompare(y.date)); } }
+  else if (t === 'wk') { S.weeks ||= {}; if (val === undefined) delete S.weeks[a]; else S.weeks[a] = clone(val); }
+  else if (t === 't') { S.templates = (S.templates || []).filter(x => x.id !== a); if (val !== undefined) S.templates.push(clone(val)); }
+  else if (t === 'pg') { S.program ||= { targets: {} }; S.program.targets ||= {}; if (val === undefined) delete S.program.targets[a]; else S.program.targets[a] = clone(val); }
+  else shareApply(k, val);
+}
+function devLabel(k, v) {
+  const [t, a, b] = k.split('|');
+  if (t === 'd') return 'Journée du ' + fmtDM(a);
+  if (t === 'f') return 'Aliment « ' + (v?.name || foodMap.get(a)?.name || a) + ' »';
+  if (t === 'w') return 'Poids du ' + fmtDM(a);
+  if (t === 'wk') return 'Semaine du ' + fmtDM(a);
+  if (t === 't') return 'Repas type « ' + (v?.name || '…') + ' »';
+  if (t === 'pg') return 'Objectifs du programme';
+  if (t === 'st') return 'Stock : ' + (foodMap.get(a)?.name || a);
+  return 'Courses';
+}
+function devMerge(files) {
+  const dv = S.meta.dev, me = dv.me.id; let n = 0; ui.dev.applying = true;
+  try {
+    const cur = devCollect(), pend = devStamp(false, cur), conf = (dv.conf ||= []);
+    for (const p of files) {
+      for (const [k, r] of Object.entries(p.recs || {})) {
+        const loc = dv.recs[k], has = 'v' in r, val = has ? r.v : undefined, h = shareHash(k, val);
+        if (loc && r.u <= loc.u) continue;
+        if ((loc && loc.h === h) || (!loc && !has)) { dv.recs[k] = { h, u: r.u, by: r.by }; continue; }
+        if (loc && cur.has(k) && r.b !== loc.h && (pend.has(k) || loc.by === me)) { conf.unshift({ k, lost: clone(cur.get(k)), at: Date.now(), by: p.who?.name || 'autre appareil', label: devLabel(k, cur.get(k)) }); if (conf.length > 30) conf.length = 30; }
+        devApply(k, val); dv.recs[k] = { h, u: r.u, by: r.by, b: r.b }; n++;
+      }
+    }
+    if (n) { cleanDays(S); rebuild(); scheduleSave(); stockCache = null; listeners.forEach(fn => fn()); }
+  } finally { ui.dev.applying = false; }
+  return n;
+}
+async function devRead(c) {
+  const r = await ghGet(c.token, '/gists/' + c.gist, c.etag); if (r.status === 304) return null;
+  const out = [], seen = c.seen || (c.seen = {});
+  for (const [name, f] of Object.entries(r.json.files || {})) {
+    if (!name.startsWith('dev-') || name === devFile(c.me.id)) continue;
+    if (seen[name] && seen[name] === f.raw_url) continue;
+    let text = f.content; if (f.truncated || text == null) text = await (await fetch(f.raw_url, { cache: 'no-store' })).text();
+    out.push({ name, url: f.raw_url, ...JSON.parse(text) });
+  }
+  return { files: out, etag: r.etag };
+}
+let devTimer = null;
+const devSoon = (ms = 3000) => { clearTimeout(devTimer); devTimer = setTimeout(() => devSync(false), ms); };
+async function devSync(force) {
+  const s = ui.dev, c = s.cfg; if (!c || s.busy || !S || !devOn()) return;
+  s.busy = true; devPaint();
+  try {
+    const rd = await devRead(c);
+    if (rd) { if (rd.files.length) devMerge(rd.files); for (const p of rd.files) (c.seen ||= {})[p.name] = p.url; c.etag = rd.etag; }
+    const cur = devCollect(); if (devStamp(false, cur).size) scheduleSave();
+    const out = devBuild(cur), hash = fnv(JSON.stringify({ ...out, at: '' }));
+    if (force || hash !== c.hash) { await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [devFile(c.me.id)]: { content: JSON.stringify(out) } } }); c.hash = hash; c.etag = ''; }
+    c.last = Date.now(); s.err = ''; await idbSet('dev', { ...c });
+  } catch (e) { s.err = e.message || String(e); if (force) toast(s.err, [], 5000); }
+  s.busy = false; devPaint();
+}
+function devInfo() {
+  const s = ui.dev, c = s.cfg; if (!c) return '';
+  if (s.busy) return 'Synchronisation…';
+  const when = c.last ? `Dernière synchro : ${esc(new Date(c.last).toTimeString().slice(0, 5))}.` : 'Pas encore synchronisé.';
+  return s.err ? `<span class="warn">${esc(s.err)}</span> ${when}` : `Appareil « ${esc(c.me.name)} ». ${when} Les changements partent quelques secondes après chaque modification, et l'application relit les autres appareils toutes les 45 secondes.`;
+}
+function devPaint() { const el = document.getElementById('devinfo'); if (el) el.innerHTML = devInfo(); }
+function devCard() {
+  const s = ui.dev, c = s.cfg, f = s.form, tok = f.token || ghTok();
+  const head = `<h2>Synchroniser téléphone et ordinateur</h2><p>Garde ton ordinateur et ton téléphone à jour <b>dans les deux sens</b> : journées, semaines, poids, repas types, aliments, stock, courses… Tout ce que tu modifies sur l'un apparaît sur l'autre. Les données passent par un gist privé de ton compte GitHub, sans serveur de plus.</p>`;
+  if (!c) return `<section class="card">${head}
+    <label class="fld"><span class="mini">Nom de cet appareil (ex. Ordinateur, iPhone)</span><input type="text" data-i="devfield" data-k="name" data-fk="dv-name" value="${esc(f.name)}" placeholder="Ordinateur" autocomplete="off"></label>
+    <label class="fld"><span class="mini">Jeton GitHub (ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">le créer</a>${tok && !f.token ? ' · jeton déjà enregistré dans cette application : tu peux le garder' : ''}</span><input type="password" data-i="devfield" data-k="token" data-fk="dv-token" value="${esc(tok)}" placeholder="ghp_…" autocomplete="off"></label>
+    ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
+    <div class="fld" style="margin-top:6px"><b>Sur l'appareil principal (ordinateur)</b><p class="mini">Crée le groupe d'appareils. Il te donne un code à saisir sur le téléphone.</p><div class="row"><button class="btn pri" data-a="devcreate" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Création…' : 'Créer le groupe'}</button></div></div>
+    <div class="fld" style="margin-top:10px"><b>Sur un autre appareil (téléphone)</b><p class="mini">Colle le code donné par l'ordinateur. Les données de cet appareil seront remplacées par celles de l'ordinateur.</p>
+      <label class="fld"><span class="mini">Code du groupe</span><input type="text" data-i="devfield" data-k="code" data-fk="dv-code" value="${esc(f.code)}" placeholder="coller le code ici" autocomplete="off"></label>
+      <div class="row"><button class="btn pri" data-a="devjoin" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Connexion…' : 'Relier cet appareil'}</button></div></div></section>`;
+  const conf = S.meta.dev?.conf || [];
+  return `<section class="card">${head}<p class="mini" id="devinfo">${devInfo()}</p>
+    <label class="fld"><span class="mini">Code du groupe (à saisir sur les autres appareils)</span><input type="text" readonly value="${esc(c.gist)}" onclick="this.select()"></label>
+    ${conf.length ? `<div class="fld"><b>Conflits (${conf.length})</b><p class="mini">Un autre appareil a modifié la même chose que toi : sa version plus récente a été gardée. Ta version est conservée ici.</p>${conf.slice(0, 8).map((x, i) => `<div class="row" style="justify-content:space-between;align-items:center"><span class="mini">${esc(x.label)} · ${esc(x.by)} · ${esc(fmtShort(iso(new Date(x.at))))}</span><span><button class="btn sm" data-a="devkeep" data-i="${i}">Garder ma version</button><button class="btn sm" data-a="devdrop" data-i="${i}">Ignorer</button></span></div>`).join('')}</div>` : ''}
+    <div class="row"><button class="btn pri" data-a="devcopy">${s.copied ? 'Copié' : 'Copier le code'}</button><button class="btn" data-a="devnow">Synchroniser maintenant</button><button class="btn" data-a="devquit">Quitter ce groupe</button></div></section>`;
+}
+Object.assign(actions, {
+  devcreate: async () => {
+    const s = ui.dev, f = s.form, name = (f.name || '').trim() || 'Ordinateur', token = (f.token || ghTok()).trim();
+    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Colle ton jeton GitHub (ghp_…).'; return render(); }
+    s.busy = true; s.err = ''; render();
+    try {
+      const me = { id: uid('dv'), name };
+      const b = JSON.parse(exportJSON()); if (b.meta) { delete b.meta.dev; delete b.meta.share; }
+      const g = await ghFetch(token, '/gists', 'POST', { description: 'Meal Tracker : mes appareils (ne pas supprimer)', public: false, files: { [DEV_BASE]: { content: JSON.stringify(b) }, [devFile(me.id)]: { content: JSON.stringify({ v: 1, who: me, at: new Date().toISOString(), recs: {} }) } } });
+      mut(st => { st.meta.dev = { on: true, me, recs: {}, lc: 0, conf: [] }; });
+      devStamp(true);
+      s.cfg = { token, gist: g.id, me, etag: '', hash: '', last: 0, seen: {} }; await idbSet('dev', { ...s.cfg }); f.token = '';
+      toast('Groupe créé : saisis son code sur le téléphone'); s.busy = false; scheduleSave(); await devSync(true);
+    } catch (e) { s.err = e.message || String(e); s.busy = false; }
+    render();
+  },
+  devjoin: async () => {
+    const s = ui.dev, f = s.form, name = (f.name || '').trim() || 'Téléphone', token = (f.token || ghTok()).trim(), gist = (f.code || '').match(/[0-9a-f]{20,}/i)?.[0]?.toLowerCase();
+    if (!gist) { s.err = 'Colle le code du groupe.'; return render(); }
+    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Colle ton jeton GitHub (ghp_…).'; return render(); }
+    if (!window.confirm('Remplacer TOUTES les données de cet appareil par celles du groupe ?')) return;
+    s.busy = true; s.err = ''; render();
+    try {
+      const r = await ghGet(token, '/gists/' + gist), bf = r.json.files?.[DEV_BASE]; if (!bf) throw new Error('Ce code ne correspond pas à un groupe Meal Tracker.');
+      let text = bf.content; if (bf.truncated || text == null) text = await (await fetch(bf.raw_url, { cache: 'no-store' })).text();
+      importJSON(text);
+      const me = { id: uid('dv'), name };
+      mut(st => { delete st.meta.share; st.meta.dev = { on: true, me, recs: {}, lc: 0, conf: [] }; });
+      devStamp(true);
+      s.cfg = { token, gist, me, etag: '', hash: '', last: 0, seen: {} }; await idbSet('dev', { ...s.cfg }); f.token = ''; f.code = '';
+      toast('Appareil relié'); s.busy = false; scheduleSave(); await devSync(true);
+    } catch (e) { s.err = e.message || String(e); s.busy = false; }
+    render();
+  },
+  devnow: () => devSync(true).then(() => { if (!ui.dev.err) toast('Appareils à jour'); render(); }),
+  devcopy: () => { const c = ui.dev.cfg; if (!c) return; (navigator.clipboard?.writeText(c.gist) || Promise.reject()).then(() => { ui.dev.copied = true; render(); setTimeout(() => { ui.dev.copied = false; render(); }, 2000); }, () => toast('Copie impossible : sélectionne le code à la main')); },
+  devquit: async () => {
+    if (!window.confirm('Quitter le groupe ? Tu gardes tes données ici, mais cet appareil n\'échangera plus de modifications avec les autres.')) return;
+    await idbSet('dev', null); ui.dev.cfg = null; clearTimeout(devTimer); mut(st => { delete st.meta.dev; }); toast('Appareil détaché');
+  },
+  devkeep: el => { const i = +el.dataset.i, x = (S.meta.dev?.conf || [])[i]; if (!x) return; mut(st => { devApply(x.k, x.lost); st.meta.dev.conf.splice(i, 1); st.meta.dev.lc = Date.now(); }); devSoon(500); toast('Ta version est rétablie'); },
+  devdrop: el => { const i = +el.dataset.i; mut(st => { st.meta.dev?.conf?.splice(i, 1); }); },
+});
+const prevExtraInputDv = extraInput;
+extraInput = function (e) { const el = e.target; if (el.dataset?.i === 'devfield') { ui.dev.form[el.dataset.k] = el.value; return true; } return prevExtraInputDv(e); };
+async function devInit() {
+  while (!S) await new Promise(r => setTimeout(r, 50));
+  try {
+    const c = await idbGet('dev');
+    if (c?.token && c?.gist) {
+      ui.dev.cfg = c;
+      if (!devOn()) { S.meta.dev = { on: true, me: c.me, recs: {}, lc: 0, conf: [] }; devStamp(true); scheduleSave(); }
+      devSoon(2500);
+    }
+  } catch { }
+  subscribe(() => { if (ui.dev.cfg && !ui.dev.applying && devOn()) { S.meta.dev.lc = Date.now(); devSoon(3000); } });
+  setInterval(() => { if (!document.hidden && ui.dev.cfg) devSync(false); }, 45000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ui.dev.cfg) devSoon(500); });
+  render();
+}
+devInit();
 
 // ---- main.js ----
 
