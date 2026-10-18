@@ -1541,6 +1541,8 @@ const SET_HELP = {
 const BTN_HELP = {
   wkadd: "Crée une semaine supplémentaire avec ses propres objectifs. Tu choisis si elle entre dans ton programme actuel.",
   wkadd: "Crée une nouvelle semaine avec ses propres objectifs (par exemple « Reprise »). Tu choisis si elle entre dans ton programme actuel ou si elle reste en réserve.",
+  devclean: "Supprime sur GitHub les fichiers des appareils cochés (inactifs depuis plus de 14 jours, données déjà reprises ici).",
+  devpick: "",
   devrename: "Change le nom de cet appareil (visible sur tes autres appareils et dans le nom de son fichier GitHub).",
   tokchg: "Affiche le champ pour saisir un autre jeton GitHub que celui déjà enregistré (rarement utile).",
   export: "Télécharge un fichier de sauvegarde avec toutes tes données. Range-le dans un endroit sûr (OneDrive, clé USB…).",
@@ -3451,13 +3453,14 @@ async function devRead(c) {
   const out = [], seen = c.seen || (c.seen = {});
   for (const [name, f] of Object.entries(r.json.files || {})) {
     if (!name.startsWith('dev-') || name === c.file || name === devFile(c.me.id)) continue;
-    (c.peers ||= {})[name] = c.peers[name] || '';
+    const pe = (c.peers ||= {}); if (typeof pe[name] !== 'object') pe[name] = { n: pe[name] || '' }; pe[name].url = f.raw_url;
     if (seen[name] && seen[name] === f.raw_url) continue;
     let text = f.content; if (f.truncated || text == null) text = await (await fetch(f.raw_url, { cache: 'no-store' })).text();
-    const pj = JSON.parse(text); if (pj.who?.id === c.me.id) continue;
-    c.peers[name] = pj.who?.name || ''; out.push({ name, url: f.raw_url, ...pj });
+    const pj = JSON.parse(text); if (pj.who?.id === c.me.id) { delete c.peers[name]; continue; }
+    c.peers[name].n = pj.who?.name || ''; c.peers[name].at = pj.at || ''; out.push({ name, url: f.raw_url, ...pj });
   }
   for (const k of Object.keys(c.peers || {})) if (!(k in (r.json.files || {}))) delete c.peers[k];
+  c.missing = !!c.file && !(c.file in (r.json.files || {}));
   return { files: out, etag: r.etag };
 }
 let devTimer = null;
@@ -3470,11 +3473,11 @@ async function devSync(force) {
     if (rd) { if (rd.files.length) devMerge(rd.files); for (const p of rd.files) (c.seen ||= {})[p.name] = p.url; c.etag = rd.etag; }
     const cur = devCollect(); if (devStamp(false, cur).size) scheduleSave();
     const out = devBuild(cur), hash = fnv(JSON.stringify({ ...out, at: '' }));
-    if (force || hash !== c.hash || c.file !== devFileOf(c.me)) {
+    if (force || hash !== c.hash || c.file !== devFileOf(c.me) || c.missing) {
       const want = devFileOf(c.me), content = JSON.stringify(out);
       if (c.file && c.file !== want) { try { await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [c.file]: { filename: want, content } } }); } catch (e) { if (e.code === 401 || e.code === 0) throw e; await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [want]: { content } } }); } }
       else await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [want]: { content } } });
-      c.file = want; c.hash = hash; c.etag = '';
+      c.file = want; c.hash = hash; c.etag = ''; c.missing = false;
     }
     c.last = Date.now(); s.err = ''; await idbSet('dev', { ...c });
   } catch (e) { s.err = e.message || String(e); if (force) toast(s.err, [], 5000); }
@@ -3487,6 +3490,9 @@ function devInfo() {
   return s.err ? `<span class="warn">${esc(s.err)}</span> ${when}` : `Appareil « ${esc(c.me.name)} ». ${when} Les changements partent quelques secondes après chaque modification, et l'application relit les autres appareils toutes les 45 secondes.`;
 }
 function devPaint() { const el = document.getElementById('devinfo'); if (el) el.innerHTML = devInfo(); }
+const DEV_IDLE = 14 * 864e5;
+// fichiers d'autres appareils : inactifs depuis plus de 14 jours ET déjà lus ici dans leur dernière version
+function devIdle(c) { return Object.entries(c.peers || {}).filter(([k, p]) => typeof p === 'object' && k !== c.file && p.at && Date.now() - Date.parse(p.at) > DEV_IDLE && (c.seen || {})[k] === p.url).map(([k, p]) => ({ k, n: p.n || k, at: p.at })); }
 function devCard() {
   const s = ui.dev, c = s.cfg, f = s.form;
   const head = `<h2>Synchroniser téléphone et ordinateur</h2><p>Garde ton ordinateur et ton téléphone à jour <b>dans les deux sens</b> : journées, semaines, poids, repas types, aliments, stock, courses… Tout ce que tu modifies sur l'un apparaît sur l'autre. Les données passent par un gist privé de ton compte GitHub, sans serveur de plus.</p>`;
@@ -3502,8 +3508,9 @@ function devCard() {
   return `<section class="card">${head}<p class="mini" id="devinfo">${devInfo()}</p>
     <div class="note devme"><b>Cet appareil s'appelle « ${esc(c.me.name)} »</b><p class="mini">Ce nom sert à reconnaître l'appareil dans le groupe et dans le nom de son fichier sur GitHub. Tu peux le changer quand tu veux.</p>
       <div class="row"><input type="text" data-i="devfield" data-k="ren" data-fk="dv-ren" value="${esc(f.ren ?? c.me.name)}" placeholder="Ordinateur" autocomplete="off"><button class="btn pri" data-a="devrename">Renommer</button></div>
-      ${Object.keys(c.peers || {}).length ? `<p class="mini" style="margin-top:8px"><b>Appareils du groupe :</b> ${esc(c.me.name)} (cet appareil)${Object.entries(c.peers).map(([k, v]) => ', ' + esc(v || k)).join('')}</p>` : ''}
+      ${Object.keys(c.peers || {}).length ? `<p class="mini" style="margin-top:8px"><b>Appareils du groupe :</b> ${esc(c.me.name)} (cet appareil)${Object.entries(c.peers).map(([k, v]) => ', ' + esc((typeof v === 'object' ? v.n : v) || k)).join('')}</p>` : ''}
       <p class="mini">Sur GitHub, chaque appareil a son fichier <code>dev-nom-identifiant.json</code> dans le gist du groupe : <a href="https://gist.github.com/${esc(c.gist)}" target="_blank" rel="noopener">ouvrir le groupe sur GitHub</a> · <a href="https://gist.github.com/" target="_blank" rel="noopener">tous mes gists</a>.</p></div>
+    ${(() => { const idle = devIdle(c); if (!idle.length) return ''; const pk = s.pick || {}; return `<div class="fld"><b>Appareils inactifs (${idle.length})</b><p class="mini">Ces appareils n'ont rien envoyé depuis plus de 14 jours et leurs données ont déjà été reprises ici. Coche ceux dont tu veux supprimer le fichier sur GitHub (par exemple un ancien raccourci supprimé). Si l'appareil est encore utilisé, il recrée son fichier tout seul.</p>${idle.map(x => `<label class="row" style="gap:8px;align-items:center"><input type="checkbox" data-a="devpick" data-n="${esc(x.k)}" ${pk[x.k] ? 'checked' : ''}><span>${esc(x.n)} <span class="mini">· dernier envoi le ${esc(new Date(x.at).toLocaleDateString('fr-FR'))} · ${esc(x.k)}</span></span></label>`).join('')}<div class="row"><button class="btn dng" data-a="devclean" ${idle.some(x => pk[x.k]) ? '' : 'disabled'}>Supprimer la sélection</button></div></div>`; })()}
     <label class="fld"><span class="mini">Code du groupe (à saisir sur les autres appareils)</span><input type="text" readonly value="${esc(c.gist)}" onclick="this.select()"></label>
     ${conf.length ? `<div class="fld"><b>Conflits (${conf.length})</b><p class="mini">Un autre appareil a modifié la même chose que toi : sa version plus récente a été gardée. Ta version est conservée ici.</p>${conf.slice(0, 8).map((x, i) => `<div class="row" style="justify-content:space-between;align-items:center"><span class="mini">${esc(x.label)} · ${esc(x.by)} · ${esc(fmtShort(iso(new Date(x.at))))}</span><span><button class="btn sm" data-a="devkeep" data-i="${i}">Garder ma version</button><button class="btn sm" data-a="devdrop" data-i="${i}">Ignorer</button></span></div>`).join('')}</div>` : ''}
     <div class="row"><button class="btn pri" data-a="devcopy">${s.copied ? 'Copié' : 'Copier le code'}</button><button class="btn" data-a="devnow">Synchroniser maintenant</button><button class="btn" data-a="devquit">Quitter ce groupe</button></div></section>`;
@@ -3542,6 +3549,18 @@ Object.assign(actions, {
       s.cfg = { token, gist, me, file: '', peers: {}, etag: '', hash: '', last: 0, seen: {} }; await idbSet('dev', { ...s.cfg }); f.token = ''; f.code = '';
       toast('Appareil relié'); s.busy = false; scheduleSave(); await devSync(true);
     } catch (e) { s.err = e.message || String(e); s.busy = false; }
+    render();
+  },
+  devpick: el => { const s = ui.dev; s.pick = { ...(s.pick || {}), [el.dataset.n]: !(s.pick || {})[el.dataset.n] }; render(); },
+  devclean: async () => {
+    const s = ui.dev, c = s.cfg; if (!c) return; const sel = devIdle(c).filter(x => (s.pick || {})[x.k]); if (!sel.length) return;
+    if (!window.confirm('Supprimer sur GitHub le fichier de ' + sel.map(x => '« ' + x.n + ' »').join(', ') + ' ? Leurs données sont déjà reprises ici.')) return;
+    try {
+      const files = {}; for (const x of sel) files[x.k] = null;
+      await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files });
+      for (const x of sel) { delete c.peers[x.k]; delete (c.seen || {})[x.k]; }
+      s.pick = {}; c.etag = ''; await idbSet('dev', { ...c }); toast(sel.length > 1 ? 'Fichiers supprimés' : 'Fichier supprimé');
+    } catch (e) { toast(e.message || String(e), [], 5000); }
     render();
   },
   devrename: () => {
