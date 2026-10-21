@@ -889,6 +889,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .vtabs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:8px 10px;scrollbar-width:none}.vtabs .chip{flex:none;white-space:nowrap;min-height:40px}
   .wseg button{min-height:40px}
 }
+@media (max-width:640px){.xcp [data-a=tplopen]{display:none!important}.xcp .dng.mob{color:var(--warn)}}
 </style>
 </head>
 <body>
@@ -1822,7 +1823,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 23:18 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 23:22 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2172,13 +2173,13 @@ function viewWeek() {
 function destStrip() {
   const dm = mondayOf(ui.dest.date), wl = weekLabel(dm), t0 = mondayOf(today()), tg = targetForLabel(wl.label), cur = dinfo(ui.dest.date);
   const days = Array.from({ length: 7 }, (_, i) => addDays(dm, i));
-  return `${ui.copyOpen ? '<div class="dscrim" data-a="copyclose"></div>' : ''}<div class="dstrip2${ui.copyOpen ? ' sheetopen' : ''}"><button class="btn sm dsx" data-a="copyclose">Fermer</button><b>${ui.copySrc ? `Copier ${esc(dayName(ui.copySrc).toLowerCase())} ${esc(fmtDM(ui.copySrc))} vers` : 'Copier vers'}</b>
+  return `${ui.copyOpen ? '<div class="dscrim" data-a="copyclose"></div>' : ''}<div class="dstrip2${ui.copyOpen ? ' sheetopen' : ''}"><button class="btn sm dsx" data-a="copyclose">Fermer</button><b>${ui.copyTpl ? `Copier « ${esc(S.templates.find(t => t.id === ui.copyTpl)?.name || '')} » vers` : ui.copySrc ? `Copier ${esc(dayName(ui.copySrc).toLowerCase())} ${esc(fmtDM(ui.copySrc))} vers` : 'Copier vers'}</b>
     <div class="chips"><button class="chip ${dm === t0 ? 'on' : ''}" data-a="destweek" data-n="now">Cette semaine</button><button class="chip ${dm === addDays(t0, 7) ? 'on' : ''}" data-a="destweek" data-n="next">Semaine prochaine</button></div>
     <div class="dnav"><button class="ib" data-a="destweek" data-n="-1" aria-label="Semaine précédente">${icon('left')}</button><div><b>${esc(fmtDM(dm))} → ${esc(fmtDM(addDays(dm, 6)))}</b><div class="mini">${labelName(wl.label)} · ${f0(tg.k)} kcal</div></div><button class="ib" data-a="destweek" data-n="1" aria-label="Semaine suivante">${icon('right')}</button></div>
     <div class="dest7">${days.map(d => `<button class="${d === ui.dest.date ? 'on' : ''}${dinfo(d).n ? ' has' : ''}" data-a="destday" data-d="${d}" title="${dinfo(d).n ? 'Contient déjà des repas' : 'Journée vide'}">${WEEKDAYS[weekdayIdx(d)].slice(0, 3)} ${+d.slice(8)}</button>`).join('')}</div>
     
     <span class="mini dcur2">${cur.n ? `${esc(dayName(ui.dest.date))} contient ${f0(cur.tot.k)} kcal (${esc(cur.d.title || 'sans nom')})` : `${esc(dayName(ui.dest.date))} : journée vide`}</span>
-    <div class="seg"><button class="${ui.dest.mode === 'replace' ? 'on' : ''}" data-a="destmode" data-m="replace" title="Vide les moments copiés avant de les remplir">Remplacer</button><button class="${ui.dest.mode === 'add' ? 'on' : ''}" data-a="destmode" data-m="add" title="Conserve l'existant et ajoute à la suite">Ajouter</button></div>${ui.copySrc ? `<button class="lnk dmom" data-a="copymoment">Copier un seul moment…</button><button class="btn pri dok" data-a="copyvalid"${ui.copySrc === ui.dest.date ? ' disabled title="C\'est la journée de destination"' : ''}>Valider</button>` : ''}
+    <div class="seg"><button class="${ui.dest.mode === 'replace' ? 'on' : ''}" data-a="destmode" data-m="replace" title="Vide les moments copiés avant de les remplir">Remplacer</button><button class="${ui.dest.mode === 'add' ? 'on' : ''}" data-a="destmode" data-m="add" title="Conserve l'existant et ajoute à la suite">Ajouter</button></div>${ui.copySrc || ui.copyTpl ? `<button class="lnk dmom" data-a="copymoment">Copier un seul moment…</button><button class="btn pri dok" data-a="copyvalid"${ui.copySrc && ui.copySrc === ui.dest.date ? ' disabled title="C\'est la journée de destination"' : ''}>Valider</button>` : ''}
     </div>`;
 }
 const jumpBrowse = () => setTimeout(() => document.getElementById('browse')?.scrollIntoView({ block: 'start' }), 30);
@@ -2250,7 +2251,7 @@ function tplBlock(fam) {
   const tabs = items.length > 1 ? `<div class="vtabs">${items.map((v, i) => `<button class="chip ${i === sel ? 'on' : ''}" data-a="tplvar" data-k="${esc(fam.key)}" data-v="${i}" title="${f0(templateTotals(v).k)} kcal">Variante ${i + 1} · ${f0(templateTotals(v).k)} kcal</button>`).join('')}</div>` : '';
   const op = ui.tpl.open === fam.key;
   return `<section class="xb xcol${op ? ' xo' : ''}"><button class="xtog ttog" data-a="tpltog" data-k="${esc(fam.key)}" aria-expanded="${op}"><b>${esc(x.name)}</b><span class="xtt">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} var.` : ''}</span><span class="xtk">${f0(xx.tot.k)}</span><i>${op ? '▾' : '▸'}</i></button><button class="xh" data-a="tplopen" data-id="${x.id}" title="Copier ce repas type vers un jour">${esc(x.name)}</button><div class="xti">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} variantes` : ''}</div><div class="xsm">${g ? gName(g) : esc(x.group || '')} · ${f0(xx.tot.k)} kcal${diff.length ? ` · diffère de la variante 1 : ${diff.join(', ')}` : ''}</div>${tabs}
-    ${xBody(xx, null, false, false, true)}<div class="xcp"><button class="btn sm" data-a="tplopen" data-id="${x.id}">Copier vers…</button></div></section>`;
+    ${xBody(xx, null, false, false, true)}<div class="xcp"><button class="btn sm" data-a="tplopen" data-id="${x.id}">Copier vers…</button>${x.hidden ? `<button class="btn sm mob" data-a="tplrestore" data-id="${x.id}">Restaurer</button><button class="btn sm dng mob" data-a="tplpurge" data-id="${x.id}">Supprimer</button>` : `<button class="btn sm mob" data-a="copytpl2" data-id="${x.id}">Copier vers…</button><button class="btn sm dng mob" data-a="tpldel" data-id="${x.id}">Archiver</button>`}</div></section>`;
 }
 function viewTpl() {
   const t = ui.tpl, words = qwords(t.q), tables = t.mode === 'tables';
@@ -2264,7 +2265,7 @@ function viewTpl() {
   const body = order.filter(g => vg[g]).map(g => tables
     ? `<div class="gh">${esc(g)}</div><div class="xgrid xg-t">${vg[g].map(tplBlock).join('')}</div>`
     : `<div class="gh">${esc(g)}</div><div class="card list">${vg[g].map(x => { const tot = templateTotals(x); return `<button class="li" data-a="tplopen" data-id="${x.id}"><div class="b"><b>${esc(x.name)}</b><span>${esc(OWNERS[x.owner] || x.owner)}${variantOf(x).n > 1 ? ` · variante ${variantOf(x).i + 1}/${variantOf(x).n}` : ''}</span></div><div class="r">${f0(tot.k)} kcal · P ${f0(tot.p)}</div></button>`; }).join('')}</div>`).join('');
-  return `<main class="main wide2"><div class="dh"><h1>Repas types</h1><span class="mini">${tables ? `${flat.length} repas · ${list.length} variantes` : `${list.length} sur ${S.templates.length} repas`}</span></div>
+  return `<main class="main wide2">${ui.copyOpen && ui.copyTpl ? destStrip() : ''}<div class="dh"><h1>Repas types</h1><span class="mini">${tables ? `${flat.length} repas · ${list.length} variantes` : `${list.length} sur ${S.templates.length} repas`}</span></div>
     <div class="seg wseg"><button class="${tables ? 'on' : ''}" data-a="tplmode" data-m="tables">Tableaux</button><button class="${!tables ? 'on' : ''}" data-a="tplmode" data-m="list">Liste</button></div>
     <div class="chips fchips" style="margin-bottom:8px">${[['all', 'Tous'], ...Object.entries(OWNERS), ...(S.templates.some(x => x.hidden) || t.owner === 'arch' ? [['arch', `Archivés (${S.templates.filter(x => x.hidden).length})`]] : [])].map(([k, l]) => `<button class="chip ${t.owner === k ? 'on' : ''}" data-a="tplowner" data-o="${k}">${l}</button>`).join('')}</div>
     <div class="chips fchips" style="margin-bottom:8px">${wchips}</div>
@@ -2383,10 +2384,20 @@ const actions2 = {
   copyopen: () => { ui.copyOpen = true; render(); },
   daymenu: () => { ui.dmenu = !ui.dmenu; render(); },
   dmact: el => { ui.dmenu = false; render(); actions[el.dataset.k](el); },
-  copyclose: () => { ui.copyOpen = false; ui.copySrc = null; render(); },
+  copyclose: () => { ui.copyOpen = false; ui.copySrc = null; ui.copyTpl = null; render(); },
+  copytpl2: el => { ui.copyTpl = el.dataset.id; ui.copySrc = null; ui.dest.date = ui.date; ui.copyOpen = true; render(); },
   copysheet: el => { ui.copySrc = el.dataset.d; ui.copyOpen = true; render(); },
-  copyvalid: () => { const src = ui.copySrc; ui.copyOpen = false; ui.copySrc = null; render(); actions.histcopy({ dataset: { d: src } }); },
-  copymoment: () => { const src = ui.copySrc; ui.copyOpen = false; ui.copySrc = null; render(); actions.histmoment({ dataset: { d: src } }); },
+  copyvalid: () => {
+    if (ui.copyTpl) {
+      const t = S.templates.find(x => x.id === ui.copyTpl), ids = MEALS.map(x => x.id).filter(id => (t.meals[id] || []).length), d = ui.dest.date, mode = ui.dest.mode;
+      ui.copyOpen = false; ui.copyTpl = null; render();
+      const go = () => { doCopy(t.meals, t.name, d, ids, mode); render(); };
+      if (mode === 'replace' && dayCount(S.days[d])) openModal({ type: 'confirm', title: 'Remplacer cette journée ?', text: `${dayName(d)} ${fmtDM(d)} contient déjà des repas. Ils seront remplacés (tu pourras les retrouver avec Annuler ou dans Réglages › Journées remplacées).`, ok: 'Remplacer', onOk: go });
+      else go();
+      return;
+    }
+    const src = ui.copySrc; ui.copyOpen = false; ui.copySrc = null; render(); actions.histcopy({ dataset: { d: src } }); },
+  copymoment: () => { if (ui.copyTpl) { const t = S.templates.find(x => x.id === ui.copyTpl); ui.copyOpen = false; ui.copyTpl = null; render(); openModal({ type: 'tpl', id: t.id, date: ui.dest.date, mode: ui.dest.mode, sel: new Set(MEALS.map(x => x.id).filter(id => (t.meals[id] || []).length)) }); return; } const src = ui.copySrc; ui.copyOpen = false; ui.copySrc = null; render(); actions.histmoment({ dataset: { d: src } }); },
   destday: el => { ui.dest.date = el.dataset.d; render(); },
   destmode: el => { ui.dest.mode = el.dataset.m; render(); },
   histcopy: el => {
@@ -2401,9 +2412,9 @@ const actions2 = {
   tplopen: el => { const t = S.templates.find(x => x.id === el.dataset.id); openModal({ type: 'tpl', id: t.id, date: ui.date, mode: 'replace', sel: new Set(MEALS.map(x => x.id).filter(id => (t.meals[id] || []).length)) }); },
   tmode: el => { ui.modal.mode = el.dataset.m; renderModal(); },
   tpldo: () => { const m = ui.modal, t = S.templates.find(x => x.id === m.id), ids = MEALS.map(x => x.id).filter(id => m.sel.has(id)); closeModal(); doCopy(t.meals, t.name, m.date, ids, m.mode); ui.date = m.date; ui.view = 'jour'; render(); },
-  tpldel: () => { const id = ui.modal.id, t = S.templates.find(x => x.id === id); if (!window.confirm(`Archiver le repas type « ${t ? t.name : ''} » ?\n\nIl disparaît de la liste mais tu peux le restaurer depuis le filtre « Archivés ».`)) return; mut(s => { s.templates.find(x => x.id === id).hidden = true; }); closeModal(); toast('Repas type archivé', [{ a: 'gundo', l: 'Annuler' }], 6000); },
-  tplrestore: () => { const id = ui.modal.id; mut(s => { delete s.templates.find(x => x.id === id).hidden; }); if (!S.templates.some(x => x.hidden)) ui.tpl.owner = 'all'; closeModal(); toast('Repas type restauré'); },
-  tplpurge: () => { const id = ui.modal.id, t = S.templates.find(x => x.id === id); if (!window.confirm(`Supprimer définitivement « ${t ? t.name : ''} » ? C'est irréversible (sauf bouton Annuler juste après).`)) return; deleteTemplate(id); if (!S.templates.some(x => x.hidden)) ui.tpl.owner = 'all'; closeModal(); toast('Repas type supprimé', [{ a: 'gundo', l: 'Annuler' }], 6000); },
+  tpldel: el => { const id = el?.dataset?.id || ui.modal?.id, t = S.templates.find(x => x.id === id); if (!window.confirm(`Archiver le repas type « ${t ? t.name : ''} » ?\n\nIl disparaît de la liste mais tu peux le restaurer depuis le filtre « Archivés ».`)) return; mut(s => { s.templates.find(x => x.id === id).hidden = true; }); closeModal(); toast('Repas type archivé', [{ a: 'gundo', l: 'Annuler' }], 6000); },
+  tplrestore: el => { const id = el?.dataset?.id || ui.modal?.id; mut(s => { delete s.templates.find(x => x.id === id).hidden; }); if (!S.templates.some(x => x.hidden)) ui.tpl.owner = 'all'; closeModal(); toast('Repas type restauré'); },
+  tplpurge: el => { const id = el?.dataset?.id || ui.modal?.id, t = S.templates.find(x => x.id === id); if (!window.confirm(`Supprimer définitivement « ${t ? t.name : ''} » ? C'est irréversible (sauf bouton Annuler juste après).`)) return; deleteTemplate(id); if (!S.templates.some(x => x.hidden)) ui.tpl.owner = 'all'; closeModal(); toast('Repas type supprimé', [{ a: 'gundo', l: 'Annuler' }], 6000); },
   undo: () => { const fn = ui.undoFn; ui.undoFn = null; $('#toast').classList.remove('show'); fn?.(); },
   see: () => { ui.date = ui.seeDate; ui.view = 'jour'; $('#toast').classList.remove('show'); render(); window.scrollTo(0, 0); },
 };
