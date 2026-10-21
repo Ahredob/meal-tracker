@@ -825,6 +825,26 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .main .ln .qs{width:40px;height:40px}.main .ln .qin{width:56px;min-height:40px}
   .main .ln .x,.main .ln .swap,.main .ln .acts button{width:40px;height:40px}
 }
+
+/* ===== téléphone : onglet Courses ===== */
+.shopsum{display:none}
+@media (max-width:640px){
+  .dh:has(.sp>[data-a=shopcopy]){display:block}
+  .dh:has(.sp>[data-a=shopcopy])>.dt{margin-bottom:10px}
+  .dh:has(.sp>[data-a=shopcopy])>.sp{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0!important;width:100%}
+  .dh:has(.sp>[data-a=shopcopy]) .sp .btn{min-height:44px;font-size:14px;justify-content:center}
+  .dh:has(.sp>[data-a=shopcopy]) .sp [data-a=shopreset]{grid-column:1/-1}
+  .shopcfg{padding:0}
+  .shopcfg .shopsum{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:left;background:transparent;border:0;font-size:13.5px}
+  .shopcfg .shopsum b{flex:none;color:var(--accent);font-size:13px}
+  .shopcfg:not(.open)>*:not(.shopsum){display:none}
+  .shopcfg.open>*:not(.shopsum){margin-left:14px;margin-right:14px}.shopcfg.open{padding-bottom:12px}
+  .shopi{min-height:48px;padding:6px 0}
+  .shopi input[type=checkbox]{width:24px;height:24px;flex:none}
+  .shopbar{bottom:calc(66px + env(safe-area-inset-bottom));padding:8px 0;margin-top:8px}
+  .shopbar .btn{width:100%;min-height:48px;font-size:15px}
+  .shopc .padd .btn{min-height:44px}.shopc .padd input{min-height:44px}
+}
 </style>
 </head>
 <body>
@@ -1758,7 +1778,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 13:26 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 13:33 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2394,7 +2414,7 @@ const shopXf = () => (S.meta.shopx || []).filter(x => x.fid && foodMap.get(x.fid
 function shopFoodAddHtml() {
   const sh = ui.shop, f = sh.fpick && foodMap.get(sh.fpick);
   if (f) { const pk = packsOf(f); return `<div class="padd"><b class="sname">${esc(f.name)}</b><input id="shopfqty" type="text" inputmode="decimal" value="${esc(sh.fqty ?? '')}" data-i="shopfqty" style="width:80px" aria-label="Quantité"><span class="mini">${f.unit === 'portion' ? '×' : f.unit}</span><button class="btn sm pri" data-a="shopfadd">Ajouter</button><button class="btn sm" data-a="shopfcancel">Annuler</button></div>${pk.length ? `<div class="chips" style="margin-top:6px"><span class="mini">Paquets :</span>${pk.map(n => `<button class="chip" data-a="shopfset" data-q="${n}">${f.unit === 'portion' ? n + ' ×' : packSz(f, n)}</button>`).join('')}</div>` : ''}`; }
-  return `<div class="padd"><input id="shopfin" type="search" placeholder="Ajouter un aliment de ma base (ex. skyr, œufs…)" value="${esc(sh.fq || '')}" data-i="shopfq" autocomplete="off"></div><div id="shopfres" class="alist">${shopFoodRes()}</div>`;
+  return `<div class="padd"><input id="shopfin" type="search" placeholder="Chercher un aliment (skyr, œufs…)" value="${esc(sh.fq || '')}" data-i="shopfq" autocomplete="off"></div><div id="shopfres" class="alist">${shopFoodRes()}</div>`;
 }
 function shopFoodRes() {
   const words = qwords(ui.shop.fq || ''); if (!words.length) return '';
@@ -2436,7 +2456,7 @@ function viewShop() {
   const sw = (a, on, t, d) => `<label class="swr"><input type="checkbox" data-a="${a}" ${on ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`;
   const empty = !total ? `<section class="card"><p>Rien à acheter : aucun repas n'est planifié pour les jours choisis.</p></section>` : '';
   return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Courses</h1><span class="mini">${esc(range)}</span></div><div class="sp"><button class="btn sm pri" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
-    <section class="card shopcfg"><div class="lbl">Période</div><div class="seg"><button class="${mode === 'sun' ? 'on' : ''}" data-a="shopmode" data-m="sun">Jusqu'à dimanche</button><button class="${mode === 'two' ? 'on' : ''}" data-a="shopmode" data-m="two">2 semaines</button><button class="${mode === 'custom' ? 'on' : ''}" data-a="shopmode" data-m="custom">Choisir les jours</button></div>
+    <section class="card shopcfg${ui.cfgOpen ? ' open' : ''}"><button class="shopsum" data-a="shopcfgt" aria-expanded="${!!ui.cfgOpen}"><span>${mode === 'sun' ? 'Jusqu\'à dimanche' : mode === 'two' ? '2 semaines' : 'Jours choisis'} · ${useStock ? 'stock retiré' : 'stock ignoré'}${shopExpand() ? ' · recettes en ingrédients' : ''}</span><b>${ui.cfgOpen ? 'Fermer ▴' : 'Modifier ▾'}</b></button><div class="lbl">Période</div><div class="seg"><button class="${mode === 'sun' ? 'on' : ''}" data-a="shopmode" data-m="sun">Jusqu'à dimanche</button><button class="${mode === 'two' ? 'on' : ''}" data-a="shopmode" data-m="two">2 semaines</button><button class="${mode === 'custom' ? 'on' : ''}" data-a="shopmode" data-m="custom">Choisir les jours</button></div>
     ${remote && shareOn() ? `<div class="lbl" style="margin-top:12px">Pour qui</div><div class="seg"><button class="${shopWho() === 'all' ? 'on' : ''}" data-a="shopwho" data-w="all">Tout le monde</button><button class="${shopWho() === 'me' ? 'on' : ''}" data-a="shopwho" data-w="me">${esc(S.meta.share.me.name)}</button><button class="${shopWho() === 'other' ? 'on' : ''}" data-a="shopwho" data-w="other">${esc(remote.name)}</button></div>` : ''}
     ${mode === 'custom' ? `<div class="shopdays">${row(all.slice(0, 7), 'Cette semaine')}${row(all.slice(7), 'Semaine prochaine')}</div>` : ''}
     <div class="swrs">${sw('shopstk', useStock, 'Retirer ce que j\'ai en stock', stockN ? `${stockN} produit${stockN > 1 ? 's' : ''} en stock` : 'ton stock est vide pour le moment')}${sw('shopexp', shopExpand(), 'Remplacer les recettes par leurs ingrédients', 'on cuisine toujours des recettes entières')}</div></section>
@@ -2634,6 +2654,7 @@ const actions3 = {
   shopfpick: el => { const f = foodMap.get(el.dataset.id); if (!f) return; const pk = packsOf(f); ui.shop.fpick = f.id; ui.shop.fqty = qtxt(pk[0] || (f.unit === 'portion' ? 1 : 100)); render(); setTimeout(() => { const q = $('#shopfqty'); q?.focus(); q?.select(); }, 0); },
   thpal: el => mut(s => { s.meta.theme = { ...(s.meta.theme || {}), palette: el.dataset.k }; }),
   thmode: el => mut(s => { s.meta.theme = { ...(s.meta.theme || {}), mode: el.dataset.m }; }),
+  shopcfgt: () => { ui.cfgOpen = !ui.cfgOpen; render(); },
   shopgoadd: () => { const e = document.querySelector('.shopadd'); e?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => $('#shopfin')?.focus({ preventScroll: true }), 350); },
   shopfset: el => { ui.shop.fqty = el.dataset.q; render(); },
   shopfcancel: () => { ui.shop.fpick = null; ui.shop.fq = ''; render(); },
