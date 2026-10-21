@@ -880,6 +880,15 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .fform .row{position:fixed;left:0;right:0;bottom:0;z-index:91;display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
   .fform .row .btn{flex:1;min-height:46px;justify-content:center}
 }
+
+/* ===== téléphone : onglet Repas types ===== */
+@media (max-width:640px){
+  .xb.xcol .xtog.ttog b{flex:1;min-width:0;font-size:15px;line-height:1.25}
+  .xb.xcol .xtog.ttog .xtt{flex:none;max-width:38%;text-align:right;font-size:12px}
+  .xb.xcol .xtog.ttog .xtk{flex:none}
+  .vtabs{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding:8px 10px;scrollbar-width:none}.vtabs .chip{flex:none;white-space:nowrap;min-height:40px}
+  .wseg button{min-height:40px}
+}
 </style>
 </head>
 <body>
@@ -1813,7 +1822,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 23:14 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 23:18 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2239,7 +2248,8 @@ function tplBlock(fam) {
   const xx = { d: { meals: x.meals }, n, tot: templateTotals(x) };
   const diff = sel > 0 ? MEALS.filter(m => mealSig(items[0].meals[m.id]) !== mealSig(x.meals[m.id])).map(m => m.label.toLowerCase()) : [];
   const tabs = items.length > 1 ? `<div class="vtabs">${items.map((v, i) => `<button class="chip ${i === sel ? 'on' : ''}" data-a="tplvar" data-k="${esc(fam.key)}" data-v="${i}" title="${f0(templateTotals(v).k)} kcal">Variante ${i + 1} · ${f0(templateTotals(v).k)} kcal</button>`).join('')}</div>` : '';
-  return `<section class="xb"><button class="xh" data-a="tplopen" data-id="${x.id}" title="Copier ce repas type vers un jour">${esc(x.name)}</button><div class="xti">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} variantes` : ''}</div><div class="xsm">${g ? gName(g) : esc(x.group || '')} · ${f0(xx.tot.k)} kcal${diff.length ? ` · diffère de la variante 1 : ${diff.join(', ')}` : ''}</div>${tabs}
+  const op = ui.tpl.open === fam.key;
+  return `<section class="xb xcol${op ? ' xo' : ''}"><button class="xtog ttog" data-a="tpltog" data-k="${esc(fam.key)}" aria-expanded="${op}"><b>${esc(x.name)}</b><span class="xtt">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} var.` : ''}</span><span class="xtk">${f0(xx.tot.k)}</span><i>${op ? '▾' : '▸'}</i></button><button class="xh" data-a="tplopen" data-id="${x.id}" title="Copier ce repas type vers un jour">${esc(x.name)}</button><div class="xti">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} variantes` : ''}</div><div class="xsm">${g ? gName(g) : esc(x.group || '')} · ${f0(xx.tot.k)} kcal${diff.length ? ` · diffère de la variante 1 : ${diff.join(', ')}` : ''}</div>${tabs}
     ${xBody(xx, null, false, false, true)}<div class="xcp"><button class="btn sm" data-a="tplopen" data-id="${x.id}">Copier vers…</button></div></section>`;
 }
 function viewTpl() {
@@ -2256,8 +2266,8 @@ function viewTpl() {
     : `<div class="gh">${esc(g)}</div><div class="card list">${vg[g].map(x => { const tot = templateTotals(x); return `<button class="li" data-a="tplopen" data-id="${x.id}"><div class="b"><b>${esc(x.name)}</b><span>${esc(OWNERS[x.owner] || x.owner)}${variantOf(x).n > 1 ? ` · variante ${variantOf(x).i + 1}/${variantOf(x).n}` : ''}</span></div><div class="r">${f0(tot.k)} kcal · P ${f0(tot.p)}</div></button>`; }).join('')}</div>`).join('');
   return `<main class="main wide2"><div class="dh"><h1>Repas types</h1><span class="mini">${tables ? `${flat.length} repas · ${list.length} variantes` : `${list.length} sur ${S.templates.length} repas`}</span></div>
     <div class="seg wseg"><button class="${tables ? 'on' : ''}" data-a="tplmode" data-m="tables">Tableaux</button><button class="${!tables ? 'on' : ''}" data-a="tplmode" data-m="list">Liste</button></div>
-    <div class="chips" style="margin-bottom:8px">${[['all', 'Tous'], ...Object.entries(OWNERS), ...(S.templates.some(x => x.hidden) || t.owner === 'arch' ? [['arch', `Archivés (${S.templates.filter(x => x.hidden).length})`]] : [])].map(([k, l]) => `<button class="chip ${t.owner === k ? 'on' : ''}" data-a="tplowner" data-o="${k}">${l}</button>`).join('')}</div>
-    <div class="chips" style="margin-bottom:8px">${wchips}</div>
+    <div class="chips fchips" style="margin-bottom:8px">${[['all', 'Tous'], ...Object.entries(OWNERS), ...(S.templates.some(x => x.hidden) || t.owner === 'arch' ? [['arch', `Archivés (${S.templates.filter(x => x.hidden).length})`]] : [])].map(([k, l]) => `<button class="chip ${t.owner === k ? 'on' : ''}" data-a="tplowner" data-o="${k}">${l}</button>`).join('')}</div>
+    <div class="chips fchips" style="margin-bottom:8px">${wchips}</div>
     <div class="search">${icon('search')}<input type="search" placeholder="Rechercher un repas type ou un aliment (omelette, riz, skyr…)" value="${esc(t.q)}" data-i="tq" data-fk="tq"></div>
     ${body || '<p class="mu">Aucun repas type.</p>'}${tables && flat.length > vis.length ? `<button class="btn" data-a="tplmore">Afficher plus (${flat.length - vis.length})</button>` : ''}</main>`;
 }
@@ -2368,6 +2378,7 @@ const actions2 = {
   histfilters: () => { ui.hist.fopen = !ui.hist.fopen; render(); },
   histmore: () => { ui.hist.shown += 3; render(); },
   destweek: el => { const n = el.dataset.n, wd = weekdayIdx(ui.dest.date); const base = n === 'now' ? mondayOf(today()) : n === 'next' ? addDays(mondayOf(today()), 7) : addDays(mondayOf(ui.dest.date), 7 * +n); ui.dest.date = addDays(base, n === 'now' || n === 'next' ? Math.min(wd, 6) : wd); render(); },
+  tpltog: el => { const k = el.dataset.k; ui.tpl.open = ui.tpl.open === k ? null : k; render(); },
   wtog: el => { const d = el.dataset.d; ui.wopen.has(d) ? ui.wopen.delete(d) : ui.wopen.add(d); render(); },
   copyopen: () => { ui.copyOpen = true; render(); },
   daymenu: () => { ui.dmenu = !ui.dmenu; render(); },
