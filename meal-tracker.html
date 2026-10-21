@@ -817,7 +817,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .shopcfg.open>*:not(.shopsum){margin-left:14px;margin-right:14px}.shopcfg.open{padding-bottom:12px}
   .shopi{min-height:48px;padding:6px 0}
   .shopi input[type=checkbox]{width:24px;height:24px;flex:none}
-  .shopbar{bottom:calc(66px + env(safe-area-inset-bottom));padding:8px 0;margin-top:8px}
+  .shopbar{position:static;padding:12px 0;margin-top:8px;background:none}
   .shopbar .btn{width:100%;min-height:48px;font-size:15px}
   .shopc .padd .btn{min-height:44px}.shopc .padd input{min-height:44px}
 }
@@ -835,6 +835,18 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .stk .qin{width:64px;min-height:40px;font-size:16px}
   .stk .pkb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.stk .pkb .btn{min-height:40px}
   .stkres .li{min-height:52px}
+}
+
+/* téléphone : « Copier vers… » par carte, feuille avec Valider */
+.dok,.dmom{display:none}
+@media (max-width:640px){
+  .cpdest{display:none!important}
+  .xcp [data-a=histcopy],.xcp [data-a=histmoment]{display:none!important}
+  .dstrip2.sheetopen .dsx{order:-1}
+  .dstrip2.sheetopen .seg{margin-left:0!important;order:10}
+  .dstrip2.sheetopen .dmom{display:inline-flex;order:9;flex:1 1 100%;min-height:44px;align-items:center;margin:0;color:var(--accent)}
+  .dstrip2.sheetopen .dok{display:inline-flex;order:11;margin-left:auto;min-height:48px;padding:0 28px;align-items:center;justify-content:center;font-size:16px}
+  .dstrip2.sheetopen .dok:disabled{opacity:.45}
 }
 </style>
 </head>
@@ -1769,7 +1781,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 13:45 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 13:52 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2073,7 +2085,7 @@ function dayBlock(x, tgt, label, copy, edit) {
   const same = x.date === ui.dest.date, dis = same ? ' disabled title="C\'est la journée de destination"' : '';
   const wk = copy === 'week', op = wk && ui.wopen && ui.wopen.has(x.date), ttl = x.n ? (x.d.title && x.d.title !== 'None' ? x.d.title : 'Sans nom') : 'Libre';
   return `<section class="xb${x.date === today() ? ' today' : ''}${x.date === ui.dest.date && copy === 'week' ? ' isdest' : ''}${wk ? ' xcol' : ''}${op ? ' xo' : ''}">${wk ? `<button class="xtog" data-a="wtog" data-d="${x.date}" aria-expanded="${!!op}"><b>${WEEKDAYS[x.i].slice(0, 3)} ${+x.date.slice(8)}</b><span class="xtt">${esc(ttl)}</span><span class="xtk">${x.n ? f0(x.tot.k) : ''}</span><i>${op ? '▾' : '▸'}</i></button>` : ''}<button class="xh" data-a="gotoday" data-d="${x.date}">${WEEKDAYS[x.i].toUpperCase()} ${+x.date.slice(8)}${copy === true ? ' ' + esc(fmtDM(x.date).replace(/^\d+ /, '')) : ''}</button><div class="xti">${x.n ? esc(x.d.title && x.d.title !== 'None' ? x.d.title : 'Sans nom') : 'Libre'}${dupBadge(x.dup)}</div><div class="xsm">${label}</div>
-    ${xBody(x, tgt, true, edit)}${copy && x.n ? `<div class="xcp"><button class="btn sm" data-a="histcopy" data-d="${x.date}"${dis} title="Copier cette journée vers ${destShort()}">Copier vers ${destShort()}</button><button class="btn sm" data-a="histmoment" data-d="${x.date}"${dis}>Un moment vers ${destShort()}…</button>${wk ? `<button class="btn sm xopen" data-a="gotoday" data-d="${x.date}">Ouvrir la journée</button>` : ''}</div>` : ''}</section>`;
+    ${xBody(x, tgt, true, edit)}${copy && x.n ? `<div class="xcp"><button class="btn sm mob" data-a="copysheet" data-d="${x.date}">Copier vers…</button><button class="btn sm" data-a="histcopy" data-d="${x.date}"${dis} title="Copier cette journée vers ${destShort()}">Copier vers ${destShort()}</button><button class="btn sm" data-a="histmoment" data-d="${x.date}"${dis}>Un moment vers ${destShort()}…</button>${wk ? `<button class="btn sm xopen" data-a="gotoday" data-d="${x.date}">Ouvrir la journée</button>` : ''}</div>` : ''}</section>`;
 }
 function viewWeek() {
   const mon = mondayOf(ui.wdate), wl = weekLabel(mon), tgt = targetForLabel(wl.label), soft = false;
@@ -2105,13 +2117,13 @@ function viewWeek() {
 function destStrip() {
   const dm = mondayOf(ui.dest.date), wl = weekLabel(dm), t0 = mondayOf(today()), tg = targetForLabel(wl.label), cur = dinfo(ui.dest.date);
   const days = Array.from({ length: 7 }, (_, i) => addDays(dm, i));
-  return `${ui.copyOpen ? '<div class="dscrim" data-a="copyclose"></div>' : ''}<div class="dstrip2${ui.copyOpen ? ' sheetopen' : ''}"><button class="btn sm dsx" data-a="copyclose">Fermer</button><b>Copier vers</b>
+  return `${ui.copyOpen ? '<div class="dscrim" data-a="copyclose"></div>' : ''}<div class="dstrip2${ui.copyOpen ? ' sheetopen' : ''}"><button class="btn sm dsx" data-a="copyclose">Fermer</button><b>${ui.copySrc ? `Copier ${esc(dayName(ui.copySrc).toLowerCase())} ${esc(fmtDM(ui.copySrc))} vers` : 'Copier vers'}</b>
     <div class="chips"><button class="chip ${dm === t0 ? 'on' : ''}" data-a="destweek" data-n="now">Cette semaine</button><button class="chip ${dm === addDays(t0, 7) ? 'on' : ''}" data-a="destweek" data-n="next">Semaine prochaine</button></div>
     <div class="dnav"><button class="ib" data-a="destweek" data-n="-1" aria-label="Semaine précédente">${icon('left')}</button><div><b>${esc(fmtDM(dm))} → ${esc(fmtDM(addDays(dm, 6)))}</b><div class="mini">${labelName(wl.label)} · ${f0(tg.k)} kcal</div></div><button class="ib" data-a="destweek" data-n="1" aria-label="Semaine suivante">${icon('right')}</button></div>
     <div class="dest7">${days.map(d => `<button class="${d === ui.dest.date ? 'on' : ''}${dinfo(d).n ? ' has' : ''}" data-a="destday" data-d="${d}" title="${dinfo(d).n ? 'Contient déjà des repas' : 'Journée vide'}">${WEEKDAYS[weekdayIdx(d)].slice(0, 3)} ${+d.slice(8)}</button>`).join('')}</div>
     
     <span class="mini dcur2">${cur.n ? `${esc(dayName(ui.dest.date))} contient ${f0(cur.tot.k)} kcal (${esc(cur.d.title || 'sans nom')})` : `${esc(dayName(ui.dest.date))} : journée vide`}</span>
-    <div class="seg"><button class="${ui.dest.mode === 'replace' ? 'on' : ''}" data-a="destmode" data-m="replace" title="Vide les moments copiés avant de les remplir">Remplacer</button><button class="${ui.dest.mode === 'add' ? 'on' : ''}" data-a="destmode" data-m="add" title="Conserve l'existant et ajoute à la suite">Ajouter</button></div>
+    <div class="seg"><button class="${ui.dest.mode === 'replace' ? 'on' : ''}" data-a="destmode" data-m="replace" title="Vide les moments copiés avant de les remplir">Remplacer</button><button class="${ui.dest.mode === 'add' ? 'on' : ''}" data-a="destmode" data-m="add" title="Conserve l'existant et ajoute à la suite">Ajouter</button></div>${ui.copySrc ? `<button class="lnk dmom" data-a="copymoment">Copier un seul moment…</button><button class="btn pri dok" data-a="copyvalid"${ui.copySrc === ui.dest.date ? ' disabled title="C\'est la journée de destination"' : ''}>Valider</button>` : ''}
     </div>`;
 }
 const jumpBrowse = () => setTimeout(() => document.getElementById('browse')?.scrollIntoView({ block: 'start' }), 30);
@@ -2314,7 +2326,10 @@ const actions2 = {
   copyopen: () => { ui.copyOpen = true; render(); },
   daymenu: () => { ui.dmenu = !ui.dmenu; render(); },
   dmact: el => { ui.dmenu = false; render(); actions[el.dataset.k](el); },
-  copyclose: () => { ui.copyOpen = false; render(); },
+  copyclose: () => { ui.copyOpen = false; ui.copySrc = null; render(); },
+  copysheet: el => { ui.copySrc = el.dataset.d; ui.copyOpen = true; render(); },
+  copyvalid: () => { const src = ui.copySrc; ui.copyOpen = false; ui.copySrc = null; render(); actions.histcopy({ dataset: { d: src } }); },
+  copymoment: () => { const src = ui.copySrc; ui.copyOpen = false; ui.copySrc = null; render(); actions.histmoment({ dataset: { d: src } }); },
   destday: el => { ui.dest.date = el.dataset.d; render(); },
   destmode: el => { ui.dest.mode = el.dataset.m; render(); },
   histcopy: el => {
