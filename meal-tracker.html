@@ -760,21 +760,6 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .xb.xcol>.xh,.xb.xcol>.xti,.xb.xcol>.xsm{display:none}
   .xb.xcol:not(.xo)>*:not(.xtog){display:none}
   .xb.xcol.xo>.xtog{border-bottom:1px solid var(--line)}
-  /* lignes d'aliments : quantité / nom / kcal, puis P G L F en dessous */
-  .main .xr,.main .xedit .xr{grid-template-columns:62px repeat(4,minmax(0,1fr)) 52px;gap:1px 4px;padding:7px 12px;font-size:14px;align-items:center}
-  .xr.xc{display:none}
-  .xr>:nth-child(1){grid-column:1;grid-row:1}
-  .xr>:nth-child(2){grid-column:2/6;grid-row:1;white-space:normal!important;overflow:visible;text-overflow:clip;font-size:14px;line-height:1.25}
-  .xr>:nth-child(7){grid-column:6;grid-row:1;font-weight:650;text-align:right}
-  .xr>:nth-child(n+3):nth-child(-n+6){grid-row:2;text-align:left;font-size:12px;color:var(--mute)}
-  .xr>:nth-child(3){grid-column:2}.xr>:nth-child(4){grid-column:3}.xr>:nth-child(5){grid-column:4}.xr>:nth-child(6){grid-column:5}
-  .xr>:nth-child(3)::before{content:'P ';color:var(--p)}.xr>:nth-child(4)::before{content:'G ';color:var(--c)}.xr>:nth-child(5)::before{content:'L ';color:var(--l)}.xr>:nth-child(6)::before{content:'F ';color:var(--f)}
-  .xr>.xq{font-size:14px;align-self:start;padding-top:2px}
-  .xs{font-size:12px;padding:5px 12px;text-align:left}
-  .xr.xt,.xr.xa{font-size:13px}
-  .xqin{font-size:16px;min-height:36px;padding:4px}
-  .xr>.xn.xnw{align-items:flex-start;gap:6px}.xnt{white-space:normal;overflow:visible}
-  .xs2{display:inline-flex!important;gap:4px}.xs2 button{width:34px;height:34px;font-size:18px}
   .xcp{flex-wrap:wrap;padding:10px}.xcp .btn{min-height:44px;flex:1 1 140px;font-size:14px}.xcp .xopen{display:inline-flex;align-items:center;justify-content:center}
   /* grille compacte : colonne des repas figée */
   .wgrid{min-width:760px;grid-template-columns:62px repeat(7,minmax(100px,1fr))}
@@ -814,16 +799,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .tp-m .tb2 .tlx span{font-size:10.5px;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tp-m .tb2 em{font-size:11px;line-height:1.2}
   .sbar-m{position:static}
-  /* repas : bouton « Ajouter » dans l'en-tête, comme sur ordinateur */
-  .meal .mh{gap:8px;padding:8px 12px}.meal .mh h3{font-size:16px}
-  .meal .mh .addh{min-height:44px;flex:1;justify-content:center}
-  /* lignes d'aliments : zones tactiles confortables */
-  .main .ln{grid-template-columns:repeat(5,minmax(0,1fr)) 44px;row-gap:4px}
-  .main .ln .n{grid-column:1/6;grid-row:1}.main .ln .acts{grid-column:6;grid-row:1}
-  .main .ln>span:nth-child(3){grid-column:1;grid-row:2}.main .ln>span:nth-child(4){grid-column:2;grid-row:2}.main .ln>span:nth-child(5){grid-column:3;grid-row:2}.main .ln>span:nth-child(6){grid-column:4;grid-row:2}.main .ln>span.k{grid-column:5/7;grid-row:2}
-  .main .ln .qc{grid-column:1/-1;grid-row:3;gap:6px}
-  .main .ln .qs{width:40px;height:40px}.main .ln .qin{width:56px;min-height:40px}
-  .main .ln .x,.main .ln .swap,.main .ln .acts button{width:40px;height:40px}
+}
 }
 
 /* ===== téléphone : onglet Courses ===== */
@@ -1793,7 +1769,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 13:40 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 13:45 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
