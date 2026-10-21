@@ -727,6 +727,60 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 @media (max-width:560px){.rgc{flex:1 1 100%;grid-template-columns:108px 62px auto;padding-left:32px;margin-left:0;justify-content:start}.rgc .rgtot,.rgc .rgbt{justify-self:start;text-align:left}}
 .rgbt{align-items:center;gap:12px}.rgl .qc{gap:4px}
 .mpair{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mcard{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}.mcard .btn{margin-top:auto}@media (max-width:560px){.mpair{grid-template-columns:1fr}}
+
+/* ===== téléphone : onglet Semaine (toutes largeurs ≤ 640 px) ===== */
+.mob,.xtog,.dsx,.xopen,.dscrim{display:none}
+@media (max-width:640px){
+  /* panneau « Copier vers » : feuille du bas, ouverte à la demande */
+  .dstrip2{display:none!important}
+  .dstrip2.sheetopen{display:flex!important;flex-wrap:wrap!important;position:fixed!important;left:0;right:0;bottom:0;top:auto;z-index:80;margin:0!important;border-radius:18px 18px 0 0;border:0;border-top:1px solid var(--line);padding:14px 14px calc(14px + env(safe-area-inset-bottom));max-height:80vh;overflow:auto!important;box-shadow:0 -8px 28px rgba(0,0,0,.28)}
+  .dstrip2 .dsx{display:inline-flex;margin-left:auto;order:-1}
+  .dscrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:79}
+  .mob{display:inline-flex}
+  .dstrip2 .dest7>button{min-height:44px;font-size:14px}
+  .dstrip2 .seg button{min-height:44px;font-size:14px}
+  .dstrip2 .dnav .ib{width:44px;height:44px}
+  /* en-tête */
+  .dh{gap:8px}
+  .dh>.ib{order:1;width:44px;height:44px}.dh>.dt{order:2;flex:1 1 0;min-width:0;text-align:center}.dh>.dt+.ib{order:3}
+  .dh>.sp{order:4;flex:1 1 100%;margin:0;flex-direction:column;align-items:stretch;gap:8px}
+  .dt h1{font-size:clamp(15px,4.9vw,19px);line-height:1.2}.dt .chips{justify-content:center}
+  .dh .sp .glab{display:none}.dh .sp .grp,.dh .sp .grp.sep{margin:0;padding:0;border:0;flex-wrap:wrap}
+  .dh .sp .seg{width:100%}.dh .sp .seg button{flex:1;min-height:40px}
+  .main .chip,.main .chips .chip{min-height:40px;display:inline-flex;align-items:center;font-size:14px}
+  .cpdest{justify-content:center}
+  /* recherche dans l'historique : barre compacte */
+  .browse{padding:8px 12px;margin:8px 0 12px}.obar h2{font-size:15px}.obar .mini{display:none}
+  .obar .fbadge{margin-left:auto}.obar{flex-wrap:nowrap}.obar h2{flex:1;white-space:nowrap}.obar .dd{flex:0 0 auto;white-space:nowrap}
+  /* cartes par jour repliables */
+  .xgrid{grid-template-columns:1fr!important;gap:10px}
+  .xb.xcol .xtog{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:8px 14px;text-align:left;background:var(--surface);font-size:15px}
+  .xb.xcol .xtog b{min-width:50px;font-size:15px}.xb.xcol .xtog .xtt{flex:1;min-width:0;font-size:14px;line-height:1.2;color:var(--mute)}.xb.xcol .xtog .xtk{font-weight:700;font-variant-numeric:tabular-nums}.xb.xcol .xtog i{font-style:normal;color:var(--mute)}
+  .xb.xcol.today .xtog{background:var(--accent);color:var(--on-accent)}.xb.xcol.today .xtog .xtt,.xb.xcol.today .xtog i{color:var(--on-accent);opacity:.9}
+  .xb.xcol>.xh,.xb.xcol>.xti,.xb.xcol>.xsm{display:none}
+  .xb.xcol:not(.xo)>*:not(.xtog){display:none}
+  .xb.xcol.xo>.xtog{border-bottom:1px solid var(--line)}
+  /* lignes d'aliments : quantité / nom / kcal, puis P G L F en dessous */
+  .main .xr,.main .xedit .xr{grid-template-columns:62px repeat(4,minmax(0,1fr)) 52px;gap:1px 4px;padding:7px 12px;font-size:14px;align-items:center}
+  .xr.xc{display:none}
+  .xr>:nth-child(1){grid-column:1;grid-row:1}
+  .xr>:nth-child(2){grid-column:2/6;grid-row:1;white-space:normal!important;overflow:visible;text-overflow:clip;font-size:14px;line-height:1.25}
+  .xr>:nth-child(7){grid-column:6;grid-row:1;font-weight:650;text-align:right}
+  .xr>:nth-child(n+3):nth-child(-n+6){grid-row:2;text-align:left;font-size:12px;color:var(--mute)}
+  .xr>:nth-child(3){grid-column:2}.xr>:nth-child(4){grid-column:3}.xr>:nth-child(5){grid-column:4}.xr>:nth-child(6){grid-column:5}
+  .xr>:nth-child(3)::before{content:'P ';color:var(--p)}.xr>:nth-child(4)::before{content:'G ';color:var(--c)}.xr>:nth-child(5)::before{content:'L ';color:var(--l)}.xr>:nth-child(6)::before{content:'F ';color:var(--f)}
+  .xr>.xq{font-size:14px;align-self:start;padding-top:2px}
+  .xs{font-size:12px;padding:5px 12px;text-align:left}
+  .xr.xt,.xr.xa{font-size:13px}
+  .xqin{font-size:16px;min-height:36px;padding:4px}
+  .xr>.xn.xnw{align-items:flex-start;gap:6px}.xnt{white-space:normal;overflow:visible}
+  .xs2{display:inline-flex!important;gap:4px}.xs2 button{width:34px;height:34px;font-size:18px}
+  .xcp{flex-wrap:wrap;padding:10px}.xcp .btn{min-height:44px;flex:1 1 140px;font-size:14px}.xcp .xopen{display:inline-flex;align-items:center;justify-content:center}
+  /* grille compacte : colonne des repas figée */
+  .wgrid{min-width:760px;grid-template-columns:62px repeat(7,minmax(100px,1fr))}
+  .wgrid>:nth-child(8n+1){position:sticky;left:0;z-index:2;background:var(--soft)}
+  .wc,.wi{font-size:12.5px}.wh small{font-size:12px}.wh b{font-size:12.5px}
+}
 </style>
 </head>
 <body>
@@ -1660,7 +1714,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 07:59 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 13:19 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -1962,14 +2016,16 @@ function xBody(x, tgt, cmp, edit, skip) {
 // copy : true (historique : date complète + boutons) | 'week' (Semaine : boutons seulement)
 function dayBlock(x, tgt, label, copy, edit) {
   const same = x.date === ui.dest.date, dis = same ? ' disabled title="C\'est la journée de destination"' : '';
-  return `<section class="xb${x.date === today() ? ' today' : ''}${x.date === ui.dest.date && copy === 'week' ? ' isdest' : ''}"><button class="xh" data-a="gotoday" data-d="${x.date}">${WEEKDAYS[x.i].toUpperCase()} ${+x.date.slice(8)}${copy === true ? ' ' + esc(fmtDM(x.date).replace(/^\d+ /, '')) : ''}</button><div class="xti">${x.n ? esc(x.d.title && x.d.title !== 'None' ? x.d.title : 'Sans nom') : 'Libre'}${dupBadge(x.dup)}</div><div class="xsm">${label}</div>
-    ${xBody(x, tgt, true, edit)}${copy && x.n ? `<div class="xcp"><button class="btn sm" data-a="histcopy" data-d="${x.date}"${dis} title="Copier cette journée vers ${destShort()}">Copier vers ${destShort()}</button><button class="btn sm" data-a="histmoment" data-d="${x.date}"${dis}>Un moment vers ${destShort()}…</button></div>` : ''}</section>`;
+  const wk = copy === 'week', op = wk && ui.wopen && ui.wopen.has(x.date), ttl = x.n ? (x.d.title && x.d.title !== 'None' ? x.d.title : 'Sans nom') : 'Libre';
+  return `<section class="xb${x.date === today() ? ' today' : ''}${x.date === ui.dest.date && copy === 'week' ? ' isdest' : ''}${wk ? ' xcol' : ''}${op ? ' xo' : ''}">${wk ? `<button class="xtog" data-a="wtog" data-d="${x.date}" aria-expanded="${!!op}"><b>${WEEKDAYS[x.i].slice(0, 3)} ${+x.date.slice(8)}</b><span class="xtt">${esc(ttl)}</span><span class="xtk">${x.n ? f0(x.tot.k) : ''}</span><i>${op ? '▾' : '▸'}</i></button>` : ''}<button class="xh" data-a="gotoday" data-d="${x.date}">${WEEKDAYS[x.i].toUpperCase()} ${+x.date.slice(8)}${copy === true ? ' ' + esc(fmtDM(x.date).replace(/^\d+ /, '')) : ''}</button><div class="xti">${x.n ? esc(x.d.title && x.d.title !== 'None' ? x.d.title : 'Sans nom') : 'Libre'}${dupBadge(x.dup)}</div><div class="xsm">${label}</div>
+    ${xBody(x, tgt, true, edit)}${copy && x.n ? `<div class="xcp"><button class="btn sm" data-a="histcopy" data-d="${x.date}"${dis} title="Copier cette journée vers ${destShort()}">Copier vers ${destShort()}</button><button class="btn sm" data-a="histmoment" data-d="${x.date}"${dis}>Un moment vers ${destShort()}…</button>${wk ? `<button class="btn sm xopen" data-a="gotoday" data-d="${x.date}">Ouvrir la journée</button>` : ''}</div>` : ''}</section>`;
 }
 function viewWeek() {
   const mon = mondayOf(ui.wdate), wl = weekLabel(mon), tgt = targetForLabel(wl.label), soft = false;
   if (ui.wkDest !== mon) { ui.wkDest = mon; ui.dest.date = addDays(mon, weekdayIdx(ui.dest.date)); }   // la destination de copie suit la semaine affichée
   const acc = { p: 0, c: 0, l: 0, f: 0, k: 0 }; let filled = 0;
   const infos = Array.from({ length: 7 }, (_, i) => { const date = addDays(mon, i), x = dinfo(date); if (x.n) { filled++; for (const k in acc) acc[k] += x.tot[k]; } return { date, i, ...x }; });
+  if (!ui.wopen || ui.wopenMon !== mon) { ui.wopen = new Set(); const f = infos.find(x => x.date === today()) || infos.find(x => x.n); if (f) ui.wopen.add(f.date); ui.wopenMon = mon; }
   const avg = k => filled ? acc[k] / filled : 0;
   const tiles = MACROS.map(m => weekTile(m.k, m.label, avg(m.k), tgt[m.k], filled)).join('');
   const head = infos.map(x => `<button class="wh${x.date === today() ? ' today' : ''}${x.n ? '' : ' empty'}" data-a="gotoday" data-d="${x.date}"><small>${WEEKDAYS[x.i].slice(0, 3)} ${+x.date.slice(8)}</small><b>${x.n ? esc(x.d.title && x.d.title !== 'None' ? x.d.title : 'Sans nom') : 'Libre'}</b></button>`).join('');
@@ -1983,7 +2039,7 @@ function viewWeek() {
   return `<main class="main wide2">${destStrip()}<div class="dh"><button class="ib" data-a="swk" data-n="-1" aria-label="Semaine précédente">${icon('left')}</button>
     <div class="dt"><h1>Semaine du ${esc(fmtDM(mon))} au ${esc(fmtDM(addDays(mon, 6)))}</h1><div class="chips"><button class="chip acc" data-a="weeklabel">${labelName(wl.label)}${wl.auto ? ' · auto' : ''}</button><span class="chip">${f0(tgt.k)} kcal${soft ? ' (souple)' : ''}</span></div></div>
     <button class="ib" data-a="swk" data-n="1" aria-label="Semaine suivante">${icon('right')}</button>
-    <div class="sp"><div class="grp"><span class="glab">Aller à</span><button class="chip ${mon === mondayOf(today()) ? 'on' : ''}" data-a="thisweek">Cette semaine</button><button class="chip ${mon === addDays(mondayOf(today()), 7) ? 'on' : ''}" data-a="nextweek">Semaine prochaine</button></div><div class="grp sep"><span class="glab">Affichage</span><div class="seg wseg"><button class="${ui.weekMode === 'tables' ? 'on' : ''}" data-a="weekmode" data-m="tables">Tableaux par jour</button><button class="${ui.weekMode === 'grid' ? 'on' : ''}" data-a="weekmode" data-m="grid">Grille compacte</button></div></div></div></div>
+    <div class="sp"><button class="chip mob cpdest" data-a="copyopen">Copier vers : ${esc(destShort())} ▾</button><div class="grp"><span class="glab">Aller à</span><button class="chip ${mon === mondayOf(today()) ? 'on' : ''}" data-a="thisweek">Cette semaine</button><button class="chip ${mon === addDays(mondayOf(today()), 7) ? 'on' : ''}" data-a="nextweek">Semaine prochaine</button></div><div class="grp sep"><span class="glab">Affichage</span><div class="seg wseg"><button class="${ui.weekMode === 'tables' ? 'on' : ''}" data-a="weekmode" data-m="tables">Tableaux par jour</button><button class="${ui.weekMode === 'grid' ? 'on' : ''}" data-a="weekmode" data-m="grid">Grille compacte</button></div></div></div></div>
     ${histBar(H, tabs)}
     ${browse ? histResults(H) : `${ui.weekMode === 'tables' ? `<div class="xgrid xedit">${infos.map(x => dayBlock(x, tgt, labelName(wl.label), 'week', true)).join('')}</div>` : ''}<div class="wgw" ${ui.weekMode === 'tables' ? 'hidden' : ''}><div class="wgrid"><div class="wcorner"></div>${head}${rows}${totals}</div></div><p class="mini">Totaux du jour : ▼ en dessous · ▲ au-dessus de l'objectif (à ±5 %, c'est dans l'objectif). Objectif par jour : ${f0(tgt.k)} kcal · P ${f0(tgt.p)} · G ${f0(tgt.c)} · L ${f0(tgt.l)} · F ${f0(tgt.f)}. Clique sur le titre d'un jour pour l'ouvrir. Passe la souris sur un aliment pour ajuster sa quantité avec − et + (ou tape-la directement).</p>
     <section class="meal total"><div class="mh"><h3>Moyenne des jours remplis (${filled}/7)</h3><span>Programme · ${labelName(wl.label).toLowerCase()}${soft ? ' (souple)' : ''}</span></div><div class="tls">${tiles}</div></section>`}
@@ -1994,7 +2050,7 @@ function viewWeek() {
 function destStrip() {
   const dm = mondayOf(ui.dest.date), wl = weekLabel(dm), t0 = mondayOf(today()), tg = targetForLabel(wl.label), cur = dinfo(ui.dest.date);
   const days = Array.from({ length: 7 }, (_, i) => addDays(dm, i));
-  return `<div class="dstrip2"><b>Copier vers</b>
+  return `${ui.copyOpen ? '<div class="dscrim" data-a="copyclose"></div>' : ''}<div class="dstrip2${ui.copyOpen ? ' sheetopen' : ''}"><button class="btn sm dsx" data-a="copyclose">Fermer</button><b>Copier vers</b>
     <div class="chips"><button class="chip ${dm === t0 ? 'on' : ''}" data-a="destweek" data-n="now">Cette semaine</button><button class="chip ${dm === addDays(t0, 7) ? 'on' : ''}" data-a="destweek" data-n="next">Semaine prochaine</button></div>
     <div class="dnav"><button class="ib" data-a="destweek" data-n="-1" aria-label="Semaine précédente">${icon('left')}</button><div><b>${esc(fmtDM(dm))} → ${esc(fmtDM(addDays(dm, 6)))}</b><div class="mini">${labelName(wl.label)} · ${f0(tg.k)} kcal</div></div><button class="ib" data-a="destweek" data-n="1" aria-label="Semaine suivante">${icon('right')}</button></div>
     <div class="dest7">${days.map(d => `<button class="${d === ui.dest.date ? 'on' : ''}${dinfo(d).n ? ' has' : ''}" data-a="destday" data-d="${d}" title="${dinfo(d).n ? 'Contient déjà des repas' : 'Journée vide'}">${WEEKDAYS[weekdayIdx(d)].slice(0, 3)} ${+d.slice(8)}</button>`).join('')}</div>
@@ -2199,6 +2255,9 @@ const actions2 = {
   histfilters: () => { ui.hist.fopen = !ui.hist.fopen; render(); },
   histmore: () => { ui.hist.shown += 3; render(); },
   destweek: el => { const n = el.dataset.n, wd = weekdayIdx(ui.dest.date); const base = n === 'now' ? mondayOf(today()) : n === 'next' ? addDays(mondayOf(today()), 7) : addDays(mondayOf(ui.dest.date), 7 * +n); ui.dest.date = addDays(base, n === 'now' || n === 'next' ? Math.min(wd, 6) : wd); render(); },
+  wtog: el => { const d = el.dataset.d; ui.wopen.has(d) ? ui.wopen.delete(d) : ui.wopen.add(d); render(); },
+  copyopen: () => { ui.copyOpen = true; render(); },
+  copyclose: () => { ui.copyOpen = false; render(); },
   destday: el => { ui.dest.date = el.dataset.d; render(); },
   destmode: el => { ui.dest.mode = el.dataset.m; render(); },
   histcopy: el => {
