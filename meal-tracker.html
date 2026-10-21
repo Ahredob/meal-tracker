@@ -845,6 +845,21 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .shopbar .btn{width:100%;min-height:48px;font-size:15px}
   .shopc .padd .btn{min-height:44px}.shopc .padd input{min-height:44px}
 }
+
+/* ===== téléphone : onglet Stock ===== */
+@media (max-width:640px){
+  .stk{grid-template-columns:minmax(0,1fr) 44px;gap:6px 8px;padding:10px 12px}
+  .stk .stn{grid-column:1;grid-row:1}
+  .stk .stn b{white-space:normal;font-size:15px;line-height:1.25}
+  .stk .stn small{font-size:12px}
+  .stk .stkx{grid-column:2;grid-row:1;opacity:1;width:44px;height:44px;align-self:start}
+  .stk .qc{grid-column:1;grid-row:2;gap:6px}
+  .stk select{grid-column:1;grid-row:3;min-height:40px;font-size:14px;width:150px;justify-self:start}
+  .stk .qs{width:40px;height:40px;opacity:1;font-size:18px}
+  .stk .qin{width:64px;min-height:40px;font-size:16px}
+  .stk .pkb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.stk .pkb .btn{min-height:40px}
+  .stkres .li{min-height:52px}
+}
 </style>
 </head>
 <body>
@@ -1778,7 +1793,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 13:33 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 13:40 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
