@@ -1319,9 +1319,10 @@ function foodIssues(f) {
   return out;
 }
 const dupKey = f => norm(f.name).replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean).sort().join(' ') + '|' + f.unit;
+const isDiff = (x, y) => !!((x.diff || []).includes(y.id) || (y.diff || []).includes(x.id));
 function dupFoods() {
   const m = new Map(); for (const f of S.foods) if (!f.hidden) { const k = dupKey(f); (m.get(k) || m.set(k, []).get(k)).push(f); }
-  return [...m.entries()].filter(([k, a]) => a.length > 1 && !a.every(f => f.nd === k)).sort((a, b) => a[0].localeCompare(b[0])).flatMap(([, a]) => a.sort((x, y) => x.name.localeCompare(y.name, 'fr')));
+  return [...m.entries()].filter(([k, a]) => a.length > 1 && !a.every((x, i) => a.every((y, j) => i >= j || isDiff(x, y)))).sort((a, b) => a[0].localeCompare(b[0])).flatMap(([, a]) => a.sort((x, y) => x.name.localeCompare(y.name, 'fr')));
 }
 function nameUnitIssue(name, unit) {
   const n = name || '';
@@ -1456,7 +1457,7 @@ function viewFoods() {
   return `<main class="main wide"><div class="dh"><h1>Aliments</h1><span class="mini">${S.foods.filter(f => !f.hidden).length} aliments</span><div class="sp"><button class="btn pri" data-a="newfood">${icon('plus')} Aliment</button></div></div>
     <div class="search">${icon('search')}<input id="fq" type="search" placeholder="Rechercher un aliment…" value="${esc(ui.foodQ)}" data-i="fq" data-fk="fq"></div>
     <div class="chips"><button class="chip ${ui.foodCat === 'all' ? 'on' : ''}" data-a="foodcat" data-c="all">Tous</button>${newsCount() ? `<button class="chip ${ui.foodCat === 'news' ? 'on' : ''}" data-a="foodcat" data-c="news" title="Aliments ajoutés ou modifiés par l'autre personne">Nouveautés (${newsCount()})</button>` : ''}${S.foods.some(suspectFood) ? `<button class="chip ${ui.foodCat === 'check' ? 'on' : ''}" data-a="foodcat" data-c="check" title="Aliments à 0 kcal : probablement incomplets">⚠ À vérifier (${S.foods.filter(suspectFood).length})</button>` : ''}${S.foods.some(f => foodIssuesU(f).length) ? `<button class="chip ${ui.foodCat === 'incoh' ? 'on' : ''}" data-a="foodcat" data-c="incoh" title="Calories incohérentes avec les macros, plus de 100 g de macros pour 100 g, fibres supérieures aux glucides">⚖ Écarts possibles (${S.foods.filter(f => foodIssuesU(f).length).length})</button>` : ''}${dups.length ? `<button class="chip ${ui.foodCat === 'dups' ? 'on' : ''}" data-a="foodcat" data-c="dups" title="Aliments dont le nom est identique à la ponctuation ou à l'ordre des mots près">⧉ Doublons possibles (${dups.length})</button>` : ''}${cats.map(c => `<button class="chip ${ui.foodCat === c ? 'on' : ''}" data-a="foodcat" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-    <div class="ftools"><label class="sw"><input type="checkbox" data-i="per100" ${ui.per100 ? 'checked' : ''}> Afficher les portions pour 100 g</label><span class="mini">Astuce : coche deux aliments pour les fusionner.</span><span class="sp2"></span><button class="lnk" data-a="catmanage">Gérer les catégories…</button><button class="lnk" data-a="csvexport">Exporter en CSV</button><button class="lnk" data-a="csvpick">Importer un CSV…</button><input type="file" id="csvf" accept=".csv,text/csv,.txt" hidden data-i="csvfile"></div>
+    <div class="ftools"><label class="sw"><input type="checkbox" data-i="per100" ${ui.per100 ? 'checked' : ''}> Afficher les portions pour 100 g</label><span class="sp2"></span><button class="lnk" data-a="catmanage">Gérer les catégories…</button><button class="lnk" data-a="csvexport">Exporter en CSV</button><button class="lnk" data-a="csvpick">Importer un CSV…</button><input type="file" id="csvf" accept=".csv,text/csv,.txt" hidden data-i="csvfile"></div>
     ${ui.picked.size ? `<div class="bulk"><b>${ui.picked.size} sélectionné${ui.picked.size > 1 ? 's' : ''}</b><input type="text" list="catlist" placeholder="Nouvelle catégorie" value="${esc(ui.bulkCat || '')}" data-i="bulkcat" data-fk="bulkcat"><datalist id="catlist">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist><button class="btn pri sm" data-a="bulkapply">Appliquer</button><button class="btn sm" data-a="bulkok" title="Retire les étiquettes « écart ? », « nom ? » et « à vérifier » de ces aliments">Marquer comme vérifiés</button>${ui.picked.size === 2 ? '<button class="btn sm" data-a="bulkmerge" title="Remplace l\'un par l\'autre partout">Fusionner ces 2</button>' : ''}${ui.picked.size > 1 && [...ui.picked].every(id => { const f = foodMap.get(id); return f && dups.includes(f); }) ? '<button class="btn sm" data-a="bulknd" title="Ne plus les signaler comme doublons">Pas des doublons</button>' : ''}<button class="btn sm" data-a="bulkclear">Désélectionner</button></div>` : ''}
     <div class="tw"><table class="ft"><thead><tr><th class="ck"><input type="checkbox" data-a="selall" aria-label="Tout sélectionner" ${list.length && list.slice(0, 400).every(f => ui.picked.has(f.id)) ? 'checked' : ''}></th>${th('name', 'Aliment')}${th('cat', 'Catégorie')}<th>Pour</th>${th('p', 'P')}${th('c', 'G')}${th('l', 'L')}${th('f', 'F')}${th('k', 'kcal')}${th('pd', 'P/100 kcal')}</tr></thead><tbody>${rows || '<tr><td colspan="10" class="mu">Aucun aliment trouvé.</td></tr>'}</tbody></table></div>
     <label class="sw"><input type="checkbox" data-i="showhidden" ${ui.showHidden ? 'checked' : ''}> Afficher les aliments archivés</label></main>
@@ -1481,10 +1482,11 @@ function okHint(d) {
 }
 function dupHint(d) {
   const n = norm(d.name).trim(); if (n.length < 3) return nameUnitIssue(d.name, d.unit) ? `<div class="note w">${esc(nameUnitIssue(d.name, d.unit))}</div>` : '';
-  const near = S.foods.filter(f => f.id !== d.id && !f.hidden && (norm(f.name).trim() === n || (n.length >= 5 && (norm(f.name).includes(n) || n.includes(norm(f.name).trim()) && norm(f.name).length >= 5)))).slice(0, 4);
+  const cur = d.id ? foodMap.get(d.id) : null, near = S.foods.filter(f => f.id !== d.id && !f.hidden && !(cur && isDiff(cur, f)) && (norm(f.name).trim() === n || (n.length >= 5 && (norm(f.name).includes(n) || n.includes(norm(f.name).trim()) && norm(f.name).length >= 5)))).slice(0, 4);
   const issue = nameUnitIssue(d.name, d.unit);
-  const twins = d.id ? S.foods.filter(f => f.id !== d.id && !f.hidden && dupKey(f) === dupKey({ name: d.name, unit: d.unit })) : [];
-  return (near.length ? `<div class="note w">Un aliment proche existe déjà : ${near.map(f => `<a href="#" data-a="editfood" data-id="${f.id}">${esc(f.name)}</a>`).join(', ')}.</div>` : '') + (issue ? `<div class="note w">${esc(issue)}</div>` : '') + twins.map(f => `<div class="note w">Doublon possible : « ${esc(f.name)} ». <button class="lnk" style="margin:0" data-a="mergefood" data-id="${f.id}">Fusionner dans cet aliment…</button></div>`).join('');
+  const twins = d.id ? S.foods.filter(f => f.id !== d.id && !f.hidden && !(cur && isDiff(cur, f)) && dupKey(f) === dupKey({ name: d.name, unit: d.unit })) : [];
+  const diffIds = [...new Set([...near, ...twins].map(f => f.id))];
+  return (near.length ? `<div class="note w">Un aliment proche existe déjà : ${near.map(f => `<a href="#" data-a="editfood" data-id="${f.id}">${esc(f.name)}</a>`).join(', ')}.</div>` : '') + (issue ? `<div class="note w">${esc(issue)}</div>` : '') + twins.map(f => `<div class="note w">Doublon possible : « ${esc(f.name)} ». <button class="lnk" style="margin:0" data-a="mergefood" data-id="${f.id}">Fusionner dans cet aliment…</button></div>`).join('') + (cur && diffIds.length ? `<div class="mini" style="margin:-4px 0 8px"><button class="lnk" style="margin:0" data-a="notdup" data-ids="${diffIds.join(',')}">Ce sont des aliments différents : ne plus me le signaler</button></div>` : '');
 }
 function portionPreview(d) {
   if (d.unit !== 'portion' || d.recipe || d.mode !== '100') return '';
@@ -1546,13 +1548,16 @@ function draftToFood(d) {
 
 // ---------- vue Réglages ----------
 ui.setOpen = ui.setOpen || {};
-const ghTok = () => ui.cbk?.cfg?.token || ui.dev?.cfg?.token || ui.sync?.cfg?.token || ui.share?.cfg?.token || '';
+const ghTok = () => ui.tk?.token || ui.cbk?.cfg?.token || ui.dev?.cfg?.token || ui.sync?.cfg?.token || ui.share?.cfg?.token || '';
 
 // champ jeton : si un jeton est déjà enregistré, on n'affiche pas de champ (un seul jeton sert à tout)
-function tokBlock(w, fk, di) {
-  const st = ui[w], f = st.form;
-  if (ghTok() && !f.token && !st.chg) return `<div class="fld"><span class="mini">${w === 'share' ? '2. ' : ''}Jeton GitHub</span><p style="margin-top:2px;margin-bottom:2px"><b>✓ Déjà enregistré dans cette application.</b> <span class="mini">Le même jeton sert à toutes les fonctions (sauvegarde, synchro, partage) : tu n'as rien à faire. </span><button class="btn sm" data-a="tokchg" data-w="${w}">Utiliser un autre jeton</button> <a class="btn sm" href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">Créer un nouveau jeton</a></p></div>`;
-  return `<label class="fld"><span class="mini">${w === 'share' ? '2. ' : ''}Jeton GitHub (commence par ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">le créer</a></span><input type="${st.show ? 'text' : 'password'}" data-i="${di}" data-k="token" data-fk="${fk}" value="${esc(f.token)}" placeholder="ghp_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label><label class="mini" style="display:flex;gap:8px;align-items:center;margin-top:2px;margin-bottom:8px"><input type="checkbox" style="width:auto;flex:none;margin:0" data-a="tokshow" data-w="${w}" ${st.show ? 'checked' : ''}> Afficher le jeton pour le vérifier${f.token ? ` (${f.token.length} caractères, il en faut environ 40)` : ''}</label>`;
+function tokBlock(w) { return tokNote(w); }
+// les cartes (sauvegarde, synchro, partage) ne demandent plus le jeton : il est saisi une seule fois dans la carte « Jeton GitHub »
+function tokNote(w) {
+  const n = w === 'share' ? '2. ' : '';
+  return ghTok()
+    ? `<div class="fld"><span class="mini">${n}Jeton GitHub</span><p style="margin-top:2px;margin-bottom:2px"><b>✓ Enregistré.</b> <span class="mini">Il se gère dans la carte « Jeton GitHub » des Réglages. </span><button class="btn sm" data-a="tkgo">Ouvrir cette carte</button></p></div>`
+    : `<div class="note w"><b>${n}Il manque ton jeton GitHub.</b> Crée-le puis enregistre-le dans la carte « Jeton GitHub » des Réglages (une seule fois, il sert à toutes les fonctions). <button class="btn sm pri" data-a="tkgo">Aller à cette carte</button></div>`;
 }
 const SET_HINT = {
   'Jeton GitHub': 'la clé enregistrée, à remplacer ici si elle est refusée',
@@ -1561,14 +1566,14 @@ const SET_HINT = {
   'Retrouver une version précédente': 'annuler une copie ou une suppression de journée',
   'Synchroniser téléphone et ordinateur': 'modifier sur les deux, tout reste à jour', 'Partager avec une autre personne': 'aliments, stock et courses en commun',
   'Page iPhone en lecture seule': 'ancienne méthode, pour consulter seulement', 'Repartir de zéro': 'effacer ton suivi, ou tout' };
-const TOKEN_HELP = `<li><b>Créer le jeton GitHub</b> (une seule fois, il sert à tout) : connecte-toi sur <a href="https://github.com" target="_blank" rel="noopener">github.com</a> (compte gratuit si tu n'en as pas), puis ouvre <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">cette page</a> : la case « gist » est déjà cochée.</li><li>Choisis la durée « No expiration » (sans date de fin), puis clique sur « Generate token » en bas de la page.</li><li>Copie le code qui commence par <code>ghp_</code> : GitHub ne le montre qu'une fois. Colle-le dans le champ « Jeton ». C'est un mot de passe limité aux « gists » (petits fichiers privés) : ne le donne à personne.</li>`;
+const TOKEN_HELP = `<li><b>Créer le jeton GitHub</b> (une seule fois, il sert à tout) : connecte-toi sur <a href="https://github.com" target="_blank" rel="noopener">github.com</a> (compte gratuit si tu n'en as pas), puis ouvre <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">cette page</a> : la case « gist » est déjà cochée.</li><li>Choisis la durée « No expiration » (sans date de fin), puis clique sur « Generate token » en bas de la page.</li><li>Copie le code qui commence par <code>ghp_</code> : GitHub ne le montre qu'une fois. Colle-le dans la carte « Jeton GitHub » des Réglages (une seule fois par appareil), puis clique sur « Enregistrer le jeton ». C'est un mot de passe limité aux « gists » (petits fichiers privés) : ne le donne à personne.</li>`;
 const SET_HELP = {
   'Objectifs du programme': `<ol><li><b>Ton programme actuel</b> = les semaines <b>cochées</b>, dans l'ordre du tableau. Le cycle les parcourt l'une après l'autre, puis recommence. Une semaine décochée est « hors programme » : tu peux la garder pour la choisir ponctuellement dans l'onglet Journée, sans décaler le cycle.</li><li><b>Changer l'ordre</b> : attrape la poignée ⠿ à gauche de la ligne et glisse-la où tu veux. Ça marche à la souris et au doigt.</li><li><b>Nouvelle semaine</b> : « Créer une nouvelle semaine », donne-lui un nom et choisis si elle entre dans ton programme.</li><li>Modifie les objectifs <b>par jour</b> directement dans les cases (virgule acceptée).</li><li>Rassure-toi : quand tu changes le cycle, les semaines déjà passées gardent leur semaine d'origine ; seule la suite change.</li></ol>`,
   'Apparence': `<ol><li>Clique sur une palette pour changer les couleurs.</li><li>« Auto » suit le réglage de ton appareil (clair le jour, sombre la nuit) ; « Clair » et « Sombre » forcent un mode.</li><li>Ce choix ne concerne que cet appareil : le téléphone a le sien.</li></ol>`,
   'Sauvegarde sur fichier': `<p><b>Pourquoi ?</b> Tes données vivent dans ce navigateur. Si tu effaces les données de Chrome ou changes d'ordinateur, elles disparaissent. Un fichier de sauvegarde permet de tout retrouver.</p><ol><li>Clique sur « Enregistrer une sauvegarde » : un fichier se télécharge. Range-le dans un endroit sûr (OneDrive, clé USB…).</li><li>Pour tout retrouver : « Restaurer une sauvegarde », puis choisis le fichier. <b>Attention : cela remplace tout</b> ce qui est dans l'application.</li><li>Pour ne plus y penser (Chrome ou Edge sur ordinateur) : « Choisir le dossier… » sous « Sauvegarde automatique ». Une copie par jour y est écrite toute seule quand l'application est ouverte.</li></ol>`,
   'Sauvegarde en ligne (GitHub)': `<p><b>Pourquoi ?</b> Une copie complète de toutes tes données, gardée en ligne et protégée même si ton ordinateur tombe en panne. Elle se met à jour toute seule.</p><ol>${TOKEN_HELP}<li>Clique sur « Activer la sauvegarde GitHub ». La première copie part tout de suite.</li><li>Pour retrouver tes données un jour : « Restaurer la dernière copie ».</li></ol><p><b>Suspendre</b> arrête les envois mais garde la copie en ligne. <b>Supprimer la copie GitHub</b> l'efface en ligne (tes données sur cet appareil restent intactes).</p>`,
   'Retrouver une version précédente': `<ol><li>Tu as copié une journée par-dessus une autre, ou vidé une journée par erreur ? Rien n'est perdu.</li><li>« Retrouver une version précédente… » ouvre la liste des états d'avant : choisis celui que tu veux récupérer.</li><li>Plus bas, « Journées remplacées » liste les journées écrasées : « Restaurer » les remet à leur place.</li><li>Tu t'es trompé en restaurant une sauvegarde ou en reliant un appareil ? « Données d'avant la dernière restauration » te rend tes données d'avant.</li><li>Pour une erreur toute récente, le bouton « Annuler » (ou Ctrl+Z) suffit.</li></ol>`,
-  'Synchroniser téléphone et ordinateur': `<p><b>Pourquoi ?</b> Tu modifies sur le téléphone, c'est aussi sur l'ordinateur, et inversement. Pratique si tu n'as pas ton ordinateur pendant quelques jours.</p><p><b>1. Sur l'ordinateur</b></p><ol>${TOKEN_HELP}<li>Écris un nom d'appareil (par exemple « Ordinateur »), puis clique sur « Créer le groupe ».</li><li>Un code apparaît : clique sur « Copier le code » et envoie-le-toi (message, mail…).</li></ol><p><b>2. Sur le téléphone</b></p><ol><li>Ouvre l'application sur le téléphone (l'adresse de ton application sur GitHub Pages, dans Safari), puis « Partager » → « Sur l'écran d'accueil » pour l'installer.</li><li>Va dans Réglages → cette section. Écris un nom (« iPhone »), colle le même jeton et le code, puis clique sur « Relier cet appareil ». Les données du téléphone sont remplacées par celles de l'ordinateur.</li></ol><p><b>3. Ensuite</b>, tout est automatique : les modifications partent après quelques secondes et chaque appareil relit les autres toutes les 45 secondes. Si tu as modifié la même journée sur les deux, la version la plus récente est gardée et la section « Conflits » te permet de récupérer l'autre.</p>`,
+  'Synchroniser téléphone et ordinateur': `<p><b>Pourquoi ?</b> Tu modifies sur le téléphone, c'est aussi sur l'ordinateur, et inversement. Pratique si tu n'as pas ton ordinateur pendant quelques jours.</p><p><b>1. Sur l'ordinateur</b></p><ol>${TOKEN_HELP}<li>Écris un nom d'appareil (par exemple « Ordinateur »), puis clique sur « Créer le groupe ».</li><li>Un code apparaît : clique sur « Copier le code » et envoie-le-toi (message, mail…).</li></ol><p><b>2. Sur le téléphone</b></p><ol><li>Ouvre l'application sur le téléphone (l'adresse de ton application sur GitHub Pages, dans Safari), puis « Partager » → « Sur l'écran d'accueil » pour l'installer.</li><li>Va dans Réglages → cette section. Enregistre d'abord le même jeton dans la carte « Jeton GitHub ». Ici, écris un nom (« iPhone »), colle le code, puis clique sur « Relier cet appareil ». Les données du téléphone sont remplacées par celles de l'ordinateur.</li></ol><p><b>3. Ensuite</b>, tout est automatique : les modifications partent après quelques secondes et chaque appareil relit les autres toutes les 45 secondes. Si tu as modifié la même journée sur les deux, la version la plus récente est gardée et la section « Conflits » te permet de récupérer l'autre.</p>`,
   'Partager avec une autre personne': `<p><b>Pourquoi ?</b> Partager aliments, recettes, stock et courses (par exemple avec ton conjoint). Vos journées restent séparées.</p><p><b>Le point important :</b> chacun a <b>son compte GitHub et son jeton</b> (une clé personnelle qu'on ne donne jamais). Vous ne vous échangez que le <b>code de partage</b>, qui apparaît après l'activation.</p><p><b>Toi, sur ton application :</b></p><ol><li>Écris ton prénom.</li><li>Jeton GitHub : si tu as déjà activé une sauvegarde ou une synchro, il est déjà enregistré et il n'y a rien à faire. Sinon, crée-le (voir l'aide « Sauvegarde en ligne »).</li><li>Clique sur « Activer le partage » : ton code de partage apparaît. Envoie-le à l'autre personne.</li><li>Quand l'autre personne t'envoie le sien, colle-le dans « Colle ici le code… » puis clique sur « Relier ».</li></ol><p><b>L'autre personne, sur son application :</b> elle fait exactement la même chose avec <b>son</b> compte et <b>son</b> jeton (si elle n'a pas de compte GitHub, elle en crée un gratuit). L'application qu'elle reçoit ne contient aucune donnée personnelle (ni journées, ni poids) : elle part des mêmes aliments, recettes et repas types de départ. Si vos aliments diffèrent (par exemple un aliment que tu avais corrigé avant d'activer le partage), l'application garde automatiquement la version modifiée et la même des deux côtés : rien à choisir. Elle t'envoie son code, et colle le tien.</p><p>Il faut que chacun colle le code de l'autre : un seul côté ne suffit pas. « Arrêter le partage » coupe l'échange, sans rien supprimer de tes données.</p>`,
   'Page iPhone en lecture seule': `<p>Ancienne méthode : une page simple pour <b>consulter</b> tes repas sur l'iPhone, sans pouvoir les modifier. Si tu utilises « Synchroniser téléphone et ordinateur », tu n'en as plus besoin.</p><ol>${TOKEN_HELP}<li>Écris l'adresse de ta page GitHub Pages, puis « Activer la synchronisation ». Ouvre ensuite le lien donné dans Safari sur l'iPhone et ajoute-le à l'écran d'accueil.</li></ol>`,
   'Repartir de zéro': `<p>Un seul bouton, puis tu choisis ce qui est effacé :</p><ul><li><b>Vider mon suivi</b> : journées, semaines, poids, versions précédentes et journées remplacées. Tu gardes tes aliments, recettes, repas types, objectifs, stock et courses.</li><li><b>Tout vider</b> : en plus, les aliments, recettes, repas types, stock, courses et objectifs. L'application est entièrement vide (indisponible si le partage est actif, car il supprimerait aussi les aliments de l'autre personne).</li></ul><p>Dans les deux cas, une copie de sécurité est gardée : « Retrouver une version précédente » → « Données d'avant la dernière restauration ».</p>`,
@@ -1655,7 +1660,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 20/10/2026 à 23:55 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 07:59 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -1758,7 +1763,8 @@ const actions = {
   foodok: el => { mut(s => { const f = s.foods.find(x => x.id === el.dataset.id); if (f) f.chk = foodSig(f); }); toast('Plus de signalement pour cet aliment', [{ a: 'gundo', l: 'Annuler' }], 4000); render(); },
   foodunok: el => { mut(s => { const f = s.foods.find(x => x.id === el.dataset.id); if (f) delete f.chk; }); render(); },
   bulkok: () => { const ids = new Set(ui.picked || []); mut(s => { for (const f of s.foods) if (ids.has(f.id)) f.chk = foodSig(f); }); ui.picked = new Set(); toast(`${ids.size} aliment${ids.size > 1 ? 's' : ''} marqué${ids.size > 1 ? 's' : ''} comme vérifié${ids.size > 1 ? 's' : ''}`, [{ a: 'gundo', l: 'Annuler' }], 4000); render(); },
-  bulknd: () => { const ids = new Set(ui.picked || []); mut(s => { for (const f of s.foods) if (ids.has(f.id)) f.nd = dupKey(f); }); ui.picked = new Set(); toast('Ces aliments ne sont plus signalés comme doublons', [{ a: 'gundo', l: 'Annuler' }], 4000); render(); },
+  bulknd: () => { const ids = [...(ui.picked || [])]; mut(s => { for (const f of s.foods) if (ids.includes(f.id)) f.diff = [...new Set([...(f.diff || []), ...ids.filter(x => x !== f.id)])]; }); ui.picked = new Set(); toast('Ces aliments ne sont plus signalés comme doublons', [{ a: 'gundo', l: 'Annuler' }], 4000); render(); },
+  notdup: el => { const cid = ui.form?.id, ids = String(el.dataset.ids || '').split(',').filter(Boolean); if (!cid) return; mut(s => { const all = [cid, ...ids]; for (const f of s.foods) if (all.includes(f.id)) f.diff = [...new Set([...(f.diff || []), ...all.filter(x => x !== f.id)])]; }); toast('C\'est noté : ces aliments sont différents', [{ a: 'gundo', l: 'Annuler' }], 4000); refreshForm(); render(); },
   bulkmerge: () => { const [a, b] = [...ui.picked].map(id => foodMap.get(id)); if (!a || !b) return; if (a.recipe || b.recipe) { toast('Les recettes ne se fusionnent pas ici'); return; } if (a.unit !== b.unit) { toast('Ces deux aliments n\'ont pas la même unité (g, ml ou part) : on ne peut pas les fusionner'); return; } openModal({ type: 'mergepair', a: a.id, b: b.id }); },
   mergekeep: el => { const keep = foodMap.get(el.dataset.keep), drop = foodMap.get(el.dataset.drop); if (!keep || !drop) return; closeModal(); mergeFoods(drop.id, keep.id); if (ui.form?.id === drop.id) ui.form = null; ui.picked = new Set(); toast(`« ${drop.name} » fusionné dans « ${keep.name} »`, [{ a: 'gundo', l: 'Annuler' }], 9000); render(); },
   bulkclear: () => { ui.picked = new Set(); render(); },
@@ -2465,21 +2471,20 @@ function syncCard() {
   const head = `<h2>Page iPhone en lecture seule</h2><p>Pour consulter tes repas sur l'iPhone (lecture seule, avec calcul de quantités), l'application envoie une copie de tes 6 semaines autour d'aujourd'hui sur ton compte GitHub (un « gist » secret). La page installée sur l'iPhone la relit à chaque ouverture : tu installes une seule fois, ensuite tout se met à jour tout seul. Tes poids et ton historique complet ne sont pas envoyés.</p>`;
   if (!c) return `<section class="card">${head}
     <label class="fld"><span class="mini">Adresse de ta page GitHub (ex. https://ton-nom.github.io/meal-tracker/)</span><input type="url" data-i="syfield" data-k="page" data-fk="sy-page" value="${esc(f.page)}" placeholder="https://…github.io/meal-tracker/" autocomplete="off"></label>
-    <label class="fld"><span class="mini">Jeton GitHub (commence par ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">le créer</a></span><input type="password" data-i="syfield" data-k="token" data-fk="sy-token" value="${esc(f.token)}" placeholder="ghp_…" autocomplete="off"></label>
+    ${tokNote('sync')}
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
     <div class="row"><button class="btn pri" data-a="syncon" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Activation…' : 'Activer la synchronisation'}</button></div></section>`;
   return `<section class="card">${head}
     <p class="mini" id="syncinfo">${syncInfo()}</p>
     <label class="fld"><span class="mini">Lien à ouvrir une fois sur l'iPhone (Safari) puis « Sur l'écran d'accueil »</span><input type="text" readonly value="${esc(syncLink())}" onclick="this.select()"></label>
-    <div class="row"><button class="btn pri" data-a="synccopy">Copier le lien</button><a class="btn" href="https://gist.github.com/${esc(s.cfg.gistId)}" target="_blank" rel="noopener">Voir sur GitHub</a><button class="btn" data-a="syncnow">Synchroniser maintenant</button><button class="btn" data-a="synctok">Changer de jeton</button><a class="btn" href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">Créer un nouveau jeton</a><button class="btn" data-a="syncstop">Arrêter</button></div>
-    ${s.tokOpen ? `<div class="fld" style="margin-top:10px"><input type="password" data-i="syfield" data-k="token" data-fk="sy-token" value="${esc(f.token)}" placeholder="Nouveau jeton ghp_…" autocomplete="off"><div class="row" style="margin-top:6px"><button class="btn pri" data-a="syncsavetok">Enregistrer le jeton</button></div></div>` : ''}</section>`;
+    <div class="row"><button class="btn pri" data-a="synccopy">Copier le lien</button><a class="btn" href="https://gist.github.com/${esc(s.cfg.gistId)}" target="_blank" rel="noopener">Voir sur GitHub</a><button class="btn" data-a="syncnow">Synchroniser maintenant</button><button class="btn" data-a="syncstop">Arrêter</button></div></section>`;
 }
 const phoneCard = syncCard;
 const syncActions = {
   syncon: async () => {
-    const s = ui.sync, token = s.form.token.trim(), page = normPage(s.form.page);
+    const s = ui.sync, token = ghTok(), page = normPage(s.form.page);
     if (!page) { s.err = 'Colle l\'adresse de ta page (https://ton-nom.github.io/meal-tracker/).'; return render(); }
-    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Le jeton doit commencer par ghp_ (ou github_pat_). Copie-le en entier.'; return render(); }
+    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Enregistre d\'abord ton jeton dans la carte « Jeton GitHub » (en haut des Réglages).'; return render(); }
     s.err = ''; s.busy = true; render();
     try {
       const { text, hash } = syncPayload();
@@ -2974,7 +2979,7 @@ function cbkCard() {
   const s = ui.cbk, c = s.cfg;
   const head = `<h2>Sauvegarde en ligne (GitHub)</h2><p>Une copie <b>complète</b> de tes données (journées, poids, repas types, objectifs, aliments, stock…) est envoyée dans un gist privé sur ton compte GitHub. GitHub garde l'historique des versions : tu peux revenir en arrière. Elle te protège si ton ordinateur ou ton navigateur perd ses données.</p>`;
   if (!c) return `<section class="card">${head}
-    ${s.tok ? '<p class="mini">Le jeton déjà enregistré sera utilisé. <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">Créer un nouveau jeton</a></p>' : `<label class="fld"><span class="mini">Jeton GitHub avec le droit « gist » (ghp_…) · <a href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">le créer</a></span><input type="password" data-i="cbkfield" data-fk="cbk-token" value="${esc(s.form.token)}" placeholder="ghp_…" autocomplete="off"></label>`}
+    ${tokNote('cbk')}
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
     <div class="row"><button class="btn pri" data-a="cbkon" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Activation…' : 'Activer la sauvegarde GitHub'}</button></div></section>`;
   return `<section class="card">${head}<p class="mini" id="cbkinfo">${cbkInfo()}</p>
@@ -3008,8 +3013,8 @@ Object.assign(actions, {
   cbkon: async () => {
     const s = ui.cbk; s.err = ''; s.busy = true; render();
     try {
-      const token = (s.form.token || '').trim() || await cbkTokenAvail();
-      if (!/^(ghp_|github_pat_)\w+/.test(token)) throw new Error('Le jeton doit commencer par ghp_ (ou github_pat_).');
+      const token = ghTok() || await cbkTokenAvail();
+      if (!/^(ghp_|github_pat_)\w+/.test(token)) throw new Error('Enregistre d\'abord ton jeton dans la carte « Jeton GitHub » (en haut des Réglages).');
       const text = exportJSON(), hash = fnv(text);
       const g = await ghFetch(token, '/gists', 'POST', { description: 'Meal Tracker : sauvegarde complète' + (S.meta?.share?.me?.name ? ' de ' + S.meta.share.me.name : '') + ' (ne pas supprimer)', public: false, files: { [CBK_FILE]: { content: text } } });
       const c = { token, gistId: g.id, hash, last: Date.now() };
@@ -3261,7 +3266,7 @@ function shareCard() {
     return `<section class="card">${head}
     <h3 class="subh">À faire sur ton application (puis l'autre personne fait la même chose sur la sienne)</h3>
     <label class="fld"><span class="mini">1. Ton prénom</span><input type="text" data-i="shfield" data-k="name" data-fk="sh-name" value="${esc(f.name)}" placeholder="ex. Camille" autocomplete="off"></label>
-    ${tokBlock('share', 'sh-token', 'shfield')}
+    ${tokNote('share')}
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
     <div class="fld"><span class="mini">3. Clique ici : ton code de partage apparaît ensuite</span></div>
     <div class="row"><button class="btn pri" data-a="shareon" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Activation…' : 'Activer le partage'}</button></div></section>`;
@@ -3276,7 +3281,7 @@ Object.assign(actions, {
   shareon: async () => {
     const s = ui.share, f = s.form, name = f.name.trim(), token = (f.token || ghTok()).trim();
     if (!name) { s.err = 'Indique ton prénom.'; render(); return; }
-    if (!token) { s.err = 'Colle ton jeton GitHub.'; render(); return; }
+    if (!token) { s.err = 'Enregistre d\'abord ton jeton dans la carte « Jeton GitHub » (en haut des Réglages).'; render(); return; }
     s.busy = true; s.err = ''; render();
     try {
       await ghFetch(token, '/gists?per_page=1');
@@ -3569,7 +3574,7 @@ function devCard() {
   const head = `<h2>Synchroniser téléphone et ordinateur</h2><p>Garde ton ordinateur et ton téléphone à jour <b>dans les deux sens</b> : journées, semaines, poids, repas types, aliments, stock, courses… Tout ce que tu modifies sur l'un apparaît sur l'autre. Les données passent par un gist privé de ton compte GitHub, sans serveur de plus.</p>`;
   if (!c) return `<section class="card">${head}
     <label class="fld"><span class="mini">Nom de cet appareil (ex. Ordinateur, iPhone)</span><input type="text" data-i="devfield" data-k="name" data-fk="dv-name" value="${esc(f.name)}" placeholder="Ordinateur" autocomplete="off"></label>
-    ${tokBlock('dev', 'dv-token', 'devfield')}
+    ${tokNote('dev')}
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
     <div class="fld" style="margin-top:6px"><b>Sur l'appareil principal (ordinateur)</b><p class="mini">Crée le groupe d'appareils. Il te donne un code à saisir sur le téléphone.</p><div class="row"><button class="btn pri" data-a="devcreate" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Création…' : 'Créer le groupe'}</button></div></div>
     <div class="fld" style="margin-top:10px"><b>Sur un autre appareil (téléphone)</b><p class="mini">Colle le code donné par l'ordinateur. Les données de cet appareil seront remplacées par celles de l'ordinateur.</p>
@@ -3591,7 +3596,7 @@ Object.assign(actions, {
   tokshow: el => { ui[el.dataset.w].show = !ui[el.dataset.w].show; render(); },
   devcreate: async () => {
     const s = ui.dev, f = s.form, name = (f.name || '').trim() || 'Ordinateur', token = cleanTok(f.token || ghTok());
-    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Colle ton jeton GitHub (ghp_…).'; return render(); }
+    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Enregistre d\'abord ton jeton dans la carte « Jeton GitHub » (en haut des Réglages).'; return render(); }
     s.busy = true; s.err = ''; render();
     try {
       const me = { id: uid('dv'), name };
@@ -3607,7 +3612,7 @@ Object.assign(actions, {
   devjoin: async () => {
     const s = ui.dev, f = s.form, name = (f.name || '').trim() || 'Téléphone', token = cleanTok(f.token || ghTok()), gist = (f.code || '').match(/[0-9a-f]{20,}/i)?.[0]?.toLowerCase();
     if (!gist) { s.err = 'Colle le code du groupe.'; return render(); }
-    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Colle ton jeton GitHub (ghp_…).'; return render(); }
+    if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Enregistre d\'abord ton jeton dans la carte « Jeton GitHub » (en haut des Réglages).'; return render(); }
     if (!window.confirm('Remplacer TOUTES les données de cet appareil par celles du groupe ?')) return;
     s.busy = true; s.err = ''; render();
     try {
@@ -3668,32 +3673,37 @@ async function devInit() {
 }
 devInit();
 
-// ---------- jeton GitHub : un seul endroit pour le remplacer partout ----------
-ui.tk = { v: '', err: '', busy: false };
+// ---------- jeton GitHub : un seul endroit pour le créer, l'enregistrer et le remplacer ----------
+ui.tk = { v: '', err: '', busy: false, token: '' };
 function tokCard() {
-  if (!ghTok()) return '';
-  const s = ui.tk;
-  return `<section class="card"><h2>Jeton GitHub</h2><p>✓ Un jeton est enregistré dans cette application. Il sert à la sauvegarde en ligne, à la synchronisation et au partage. Si GitHub le refuse (expiré, supprimé ou mal copié), crée-en un nouveau puis remplace-le ici : il est changé partout d'un coup.</p>
-    <div class="row"><a class="btn" href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">Créer un nouveau jeton</a></div>
-    <label class="fld"><span class="mini">Coller le nouveau jeton (commence par ghp_…)</span><input type="password" data-i="tkfield" data-fk="tk-token" value="${esc(s.v)}" placeholder="ghp_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+  const s = ui.tk, has = !!ghTok();
+  return `<section class="card"><h2>Jeton GitHub</h2>
+    <p>${has ? '✓ Un jeton est enregistré dans cette application.' : 'Le jeton est la clé qui relie l\'application à ton compte GitHub.'} Il sert à la sauvegarde en ligne, à la synchronisation et au partage : tu ne le saisis qu'ici, une seule fois par appareil. ${has ? 'Si GitHub le refuse (expiré, supprimé ou mal copié), crée-en un nouveau puis remplace-le ici : il est changé partout d\'un coup.' : ''}</p>
+    <div class="note"><b>Créer un jeton :</b> clique sur le bouton ci-dessous, connecte-toi à GitHub si besoin, choisis la durée « No expiration », laisse cochée la case « gist », puis clique sur « Generate token » en bas de la page GitHub. Copie le jeton affiché (il commence par ghp_) : GitHub ne le montre qu'une fois.</div>
+    <div class="row"><a class="btn" href="https://github.com/settings/tokens/new?scopes=gist&description=Meal%20Tracker" target="_blank" rel="noopener">Créer un nouveau jeton sur GitHub</a></div>
+    <label class="fld"><span class="mini">${has ? 'Coller le nouveau jeton' : 'Coller ton jeton'} (commence par ghp_…)</span><input type="${s.show ? 'text' : 'password'}" data-i="tkfield" data-fk="tk-token" value="${esc(s.v)}" placeholder="ghp_…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <label class="mini" style="display:flex;gap:8px;align-items:center;margin-top:2px;margin-bottom:8px"><input type="checkbox" style="width:auto;flex:none;margin:0" data-a="tokshow" data-w="tk" ${s.show ? 'checked' : ''}> Afficher le jeton pour le vérifier${s.v ? ` (${s.v.length} caractères, il en faut environ 40)` : ''}</label>
     ${s.err ? `<p class="warn">${esc(s.err)}</p>` : ''}
-    <div class="row"><button class="btn pri" data-a="tkreplace" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Vérification…' : 'Remplacer le jeton'}</button></div></section>`;
+    <div class="row"><button class="btn pri" data-a="tkreplace" ${s.busy ? 'disabled' : ''}>${s.busy ? 'Vérification…' : has ? 'Remplacer le jeton' : 'Enregistrer le jeton'}</button></div></section>`;
 }
 Object.assign(actions, {
+  tkgo: () => { ui.setOpen['Jeton GitHub'] = true; render(); setTimeout(() => document.querySelector('details[data-sec="Jeton GitHub"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50); },
   tkreplace: async () => {
     const s = ui.tk, token = cleanTok(s.v);
     if (!/^(ghp_|github_pat_)\w+/.test(token)) { s.err = 'Colle ton jeton GitHub (il commence par ghp_).'; return render(); }
     s.busy = true; s.err = ''; render();
     try {
       await ghFetch(token, '/gists?per_page=1');
+      s.token = token; await idbSet('tok', { token });
       for (const [k, c] of [['cbk', ui.cbk?.cfg], ['dev', ui.dev?.cfg], ['sync', ui.sync?.cfg], ['share', ui.share?.cfg], ['cbkpull', ui.cbk?.pull]]) if (c) { c.token = token; await idbSet(k, { ...c }); }
-      s.v = ''; toast('Jeton remplacé partout', [], 3500);
+      s.v = ''; toast('Jeton enregistré', [], 3500);
     } catch (e) { s.err = e.message || String(e); }
     s.busy = false; render();
   },
 });
 const prevExtraInputTk = extraInput;
 extraInput = function (e) { const el = e.target; if (el.dataset?.i === 'tkfield') { ui.tk.v = el.value; return true; } return prevExtraInputTk(e); };
+(async () => { try { const t = await idbGet('tok'); if (t?.token) { ui.tk.token = t.token; render(); } } catch { } })();
 
 // ---- main.js ----
 
