@@ -849,6 +849,37 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .dstrip2.sheetopen .dok{display:inline-flex;order:11;margin-left:auto;min-height:48px;padding:0 28px;align-items:center;justify-content:center;font-size:16px}
   .dstrip2.sheetopen .dok:disabled{opacity:.45}
 }
+
+/* ===== téléphone : onglet Aliments ===== */
+.ftb,.fclose{display:none}
+@media (max-width:640px){
+  .srow .search input{min-height:44px;font-size:16px}
+  .ftb{display:inline-flex;flex:none;width:44px;height:44px;align-items:center;justify-content:center;font-size:18px}.ftb.on{background:var(--accent-soft)}
+  .ftools:not(.open){display:none}
+  .ftools.open{gap:6px 14px}.ftools .lnk{min-height:40px}
+  .fchips{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .fchips::-webkit-scrollbar{display:none}.fchips .chip{flex:none;white-space:nowrap}
+  .ft,.ft tbody{display:block}.ft thead{display:none}
+  .tw{overflow:visible}
+  .ft tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;padding:10px 12px;min-height:60px;border-top:1px solid var(--line);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  .ft tbody tr.sel,.ft tbody tr.picked{background:var(--accent-soft)}
+  .ft tbody tr::after{content:'';order:2;flex:0 0 100%;height:0}
+  .ft td,.ft tbody tr:hover td{padding:0!important;border:0;text-align:left!important;display:block;background:none!important;font-size:12px;color:var(--mute);order:3}
+  .ft td.ck{display:none;order:0;width:28px}.ft.selm td.ck{display:block}
+  .ft td:nth-child(2){order:1;flex:1 1 calc(100% - 100px);min-width:0;font-size:15px;font-weight:600;color:var(--ink);line-height:1.25}
+  .ft.selm td:nth-child(2){flex-basis:calc(100% - 140px)}
+  .ft td:nth-child(9){order:2;flex:0 0 auto;font-size:14px;font-weight:700;color:var(--ink);margin-left:auto}.ft td:nth-child(9)::after{content:' kcal';font-weight:400;font-size:11px;color:var(--mute)}
+  .ft td:nth-child(5)::before{content:'P '}.ft td:nth-child(6)::before{content:'G '}.ft td:nth-child(7)::before{content:'L '}.ft td:nth-child(8)::before{content:'F '}
+  .ft td:nth-child(10){display:none}
+  .ft td:nth-child(4)::before{content:'· '}
+  .bulk{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));z-index:40;flex-wrap:nowrap;overflow-x:auto;align-items:center;gap:8px;padding:8px 12px;margin:0;border-radius:0;box-shadow:0 -6px 18px rgba(0,0,0,.2)}.bulk>*{flex:none;white-space:nowrap}.bulk .btn,.bulk input{min-height:44px}.ft.selm{margin-bottom:76px}
+  .right:has(.fform){position:fixed;left:0;right:0;bottom:0;top:56px;z-index:90;max-height:none;overflow-y:auto;border:0;border-radius:18px 18px 0 0;box-shadow:0 -8px 28px rgba(0,0,0,.3);padding:14px 14px calc(96px + env(safe-area-inset-bottom));background:var(--bg)}
+  .fform h5{display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-top:0}
+  .fclose{display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center}
+  .fform input,.fform select{min-height:44px;font-size:16px}
+  .fform .row{position:fixed;left:0;right:0;bottom:0;z-index:91;display:flex;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+  .fform .row .btn{flex:1;min-height:46px;justify-content:center}
+}
 </style>
 </head>
 <body>
@@ -1574,16 +1605,16 @@ function viewFoods() {
   ui._foodIds = list.slice(0, 400).map(f => f.id); ui.picked ||= new Set();
   const rows = list.slice(0, 400).map(f => {
     const b = basisOf(f), iss = foodIssuesU(f);
-    return `<tr class="${ui.form?.id === f.id ? 'sel' : ''}${f.hidden ? ' hid' : ''}" data-a="editfood" data-id="${f.id}"><td class="ck"><input type="checkbox" data-a="selfood" data-id="${f.id}" ${ui.picked.has(f.id) ? 'checked' : ''} aria-label="Sélectionner ${esc(f.name)}"></td><td>${esc(f.name)}${newsBadge(f.id)}${f.recipe ? ' <span class="tag">recette</span>' : ''}${f.hidden ? ' <span class="tag g">archivé</span>' : ''}${iss.length ? ' <span class="tag w" title="' + esc(iss.join(' · ')) + '">écart ?</span>' : ''}${!foodOk(f) && nameUnitIssue(f.name, f.unit) ? ' <span class="tag w" title="' + esc(nameUnitIssue(f.name, f.unit)) + '">nom ?</span>' : ''}</td><td class="mu">${esc(f.cat)}</td><td class="mu">${b.txt}</td><td>${f1(f.p * b.fac)}</td><td>${f1(f.c * b.fac)}</td><td>${f1(f.l * b.fac)}</td><td>${f1(f.f * b.fac)}</td><td>${f0(f.k * b.fac)}</td><td class="mu">${f.k > 0 ? f0(f.p * 100 / f.k * 10) / 10 : '—'}</td></tr>`;
+    return `<tr class="${ui.form?.id === f.id ? 'sel' : ''}${f.hidden ? ' hid' : ''}${ui.picked.has(f.id) ? ' picked' : ''}" data-a="editfood" data-id="${f.id}"><td class="ck"><input type="checkbox" data-a="selfood" data-id="${f.id}" ${ui.picked.has(f.id) ? 'checked' : ''} aria-label="Sélectionner ${esc(f.name)}"></td><td>${esc(f.name)}${newsBadge(f.id)}${f.recipe ? ' <span class="tag">recette</span>' : ''}${f.hidden ? ' <span class="tag g">archivé</span>' : ''}${iss.length ? ' <span class="tag w" title="' + esc(iss.join(' · ')) + '">écart ?</span>' : ''}${!foodOk(f) && nameUnitIssue(f.name, f.unit) ? ' <span class="tag w" title="' + esc(nameUnitIssue(f.name, f.unit)) + '">nom ?</span>' : ''}</td><td class="mu">${esc(f.cat)}</td><td class="mu">${b.txt}</td><td>${f1(f.p * b.fac)}</td><td>${f1(f.c * b.fac)}</td><td>${f1(f.l * b.fac)}</td><td>${f1(f.f * b.fac)}</td><td>${f0(f.k * b.fac)}</td><td class="mu">${f.k > 0 ? f0(f.p * 100 / f.k * 10) / 10 : '—'}</td></tr>`;
   }).join('');
-  return `<main class="main wide"><div class="dh"><h1>Aliments</h1><span class="mini">${S.foods.filter(f => !f.hidden).length} aliments</span><div class="sp"><button class="btn pri" data-a="newfood">${icon('plus')} Aliment</button></div></div>
-    <div class="search">${icon('search')}<input id="fq" type="search" placeholder="Rechercher un aliment…" value="${esc(ui.foodQ)}" data-i="fq" data-fk="fq"></div>
-    <div class="chips"><button class="chip ${ui.foodCat === 'all' ? 'on' : ''}" data-a="foodcat" data-c="all">Tous</button>${newsCount() ? `<button class="chip ${ui.foodCat === 'news' ? 'on' : ''}" data-a="foodcat" data-c="news" title="Aliments ajoutés ou modifiés par l'autre personne">Nouveautés (${newsCount()})</button>` : ''}${S.foods.some(suspectFood) ? `<button class="chip ${ui.foodCat === 'check' ? 'on' : ''}" data-a="foodcat" data-c="check" title="Aliments à 0 kcal : probablement incomplets">⚠ À vérifier (${S.foods.filter(suspectFood).length})</button>` : ''}${S.foods.some(f => foodIssuesU(f).length) ? `<button class="chip ${ui.foodCat === 'incoh' ? 'on' : ''}" data-a="foodcat" data-c="incoh" title="Calories incohérentes avec les macros, plus de 100 g de macros pour 100 g, fibres supérieures aux glucides">⚖ Écarts possibles (${S.foods.filter(f => foodIssuesU(f).length).length})</button>` : ''}${dups.length ? `<button class="chip ${ui.foodCat === 'dups' ? 'on' : ''}" data-a="foodcat" data-c="dups" title="Aliments dont le nom est identique à la ponctuation ou à l'ordre des mots près">⧉ Doublons possibles (${dups.length})</button>` : ''}${cats.map(c => `<button class="chip ${ui.foodCat === c ? 'on' : ''}" data-a="foodcat" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
-    <div class="ftools"><label class="sw"><input type="checkbox" data-i="per100" ${ui.per100 ? 'checked' : ''}> Afficher les portions pour 100 g</label><span class="sp2"></span><button class="lnk" data-a="catmanage">Gérer les catégories…</button><button class="lnk" data-a="csvexport">Exporter en CSV</button><button class="lnk" data-a="csvpick">Importer un CSV…</button><input type="file" id="csvf" accept=".csv,text/csv,.txt" hidden data-i="csvfile"></div>
+  return `<main class="main wide">${ui.form ? '<div class="fscrim" data-a="cancelfood"></div>' : ''}<div class="dh"><h1>Aliments</h1><span class="mini">${S.foods.filter(f => !f.hidden).length} aliments</span><div class="sp"><button class="btn pri" data-a="newfood">${icon('plus')} Aliment</button></div></div>
+    <div class="srow"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Rechercher un aliment…" value="${esc(ui.foodQ)}" data-i="fq" data-fk="fq"></div><button class="ib ftb${ui.ftOpen ? ' on' : ''}" data-a="ftoolsT" aria-label="Outils" aria-expanded="${!!ui.ftOpen}">⚙</button></div>
+    <div class="chips fchips"><button class="chip ${ui.foodCat === 'all' ? 'on' : ''}" data-a="foodcat" data-c="all">Tous</button>${newsCount() ? `<button class="chip ${ui.foodCat === 'news' ? 'on' : ''}" data-a="foodcat" data-c="news" title="Aliments ajoutés ou modifiés par l'autre personne">Nouveautés (${newsCount()})</button>` : ''}${S.foods.some(suspectFood) ? `<button class="chip ${ui.foodCat === 'check' ? 'on' : ''}" data-a="foodcat" data-c="check" title="Aliments à 0 kcal : probablement incomplets">⚠ À vérifier (${S.foods.filter(suspectFood).length})</button>` : ''}${S.foods.some(f => foodIssuesU(f).length) ? `<button class="chip ${ui.foodCat === 'incoh' ? 'on' : ''}" data-a="foodcat" data-c="incoh" title="Calories incohérentes avec les macros, plus de 100 g de macros pour 100 g, fibres supérieures aux glucides">⚖ Écarts possibles (${S.foods.filter(f => foodIssuesU(f).length).length})</button>` : ''}${dups.length ? `<button class="chip ${ui.foodCat === 'dups' ? 'on' : ''}" data-a="foodcat" data-c="dups" title="Aliments dont le nom est identique à la ponctuation ou à l'ordre des mots près">⧉ Doublons possibles (${dups.length})</button>` : ''}${cats.map(c => `<button class="chip ${ui.foodCat === c ? 'on' : ''}" data-a="foodcat" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="ftools${ui.ftOpen ? ' open' : ''}"><label class="sw"><input type="checkbox" data-i="per100" ${ui.per100 ? 'checked' : ''}> Afficher les portions pour 100 g</label><span class="sp2"></span><button class="lnk" data-a="catmanage">Gérer les catégories…</button><button class="lnk" data-a="csvexport">Exporter en CSV</button><button class="lnk" data-a="csvpick">Importer un CSV…</button><input type="file" id="csvf" accept=".csv,text/csv,.txt" hidden data-i="csvfile"></div>
     ${ui.picked.size ? `<div class="bulk"><b>${ui.picked.size} sélectionné${ui.picked.size > 1 ? 's' : ''}</b><input type="text" list="catlist" placeholder="Nouvelle catégorie" value="${esc(ui.bulkCat || '')}" data-i="bulkcat" data-fk="bulkcat"><datalist id="catlist">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist><button class="btn pri sm" data-a="bulkapply">Appliquer</button><button class="btn sm" data-a="bulkok" title="Retire les étiquettes « écart ? », « nom ? » et « à vérifier » de ces aliments">Marquer comme vérifiés</button>${ui.picked.size === 2 ? '<button class="btn sm" data-a="bulkmerge" title="Remplace l\'un par l\'autre partout">Fusionner ces 2</button>' : ''}${ui.picked.size > 1 && [...ui.picked].every(id => { const f = foodMap.get(id); return f && dups.includes(f); }) ? '<button class="btn sm" data-a="bulknd" title="Ne plus les signaler comme doublons">Pas des doublons</button>' : ''}<button class="btn sm" data-a="bulkclear">Désélectionner</button></div>` : ''}
-    <div class="tw"><table class="ft"><thead><tr><th class="ck"><input type="checkbox" data-a="selall" aria-label="Tout sélectionner" ${list.length && list.slice(0, 400).every(f => ui.picked.has(f.id)) ? 'checked' : ''}></th>${th('name', 'Aliment')}${th('cat', 'Catégorie')}<th>Pour</th>${th('p', 'P')}${th('c', 'G')}${th('l', 'L')}${th('f', 'F')}${th('k', 'kcal')}${th('pd', 'P/100 kcal')}</tr></thead><tbody>${rows || '<tr><td colspan="10" class="mu">Aucun aliment trouvé.</td></tr>'}</tbody></table></div>
+    <div class="tw"><table class="ft${ui.picked.size ? ' selm' : ''}"><thead><tr><th class="ck"><input type="checkbox" data-a="selall" aria-label="Tout sélectionner" ${list.length && list.slice(0, 400).every(f => ui.picked.has(f.id)) ? 'checked' : ''}></th>${th('name', 'Aliment')}${th('cat', 'Catégorie')}<th>Pour</th>${th('p', 'P')}${th('c', 'G')}${th('l', 'L')}${th('f', 'F')}${th('k', 'kcal')}${th('pd', 'P/100 kcal')}</tr></thead><tbody>${rows || '<tr><td colspan="10" class="mu">Aucun aliment trouvé.</td></tr>'}</tbody></table></div>
     <label class="sw"><input type="checkbox" data-i="showhidden" ${ui.showHidden ? 'checked' : ''}> Afficher les aliments archivés</label></main>
-    <aside class="right">${ui.form ? foodForm() : '<h5>Aliment</h5><p class="mini">Choisis un aliment dans la liste pour le modifier, ou crée-en un nouveau. Les valeurs se saisissent comme sur l\'étiquette (pour 100 g ou par portion).</p><p class="mini">Astuce : ↑ ↓ pour parcourir la liste, Entrée pour modifier, Échap pour fermer.</p>'}</aside>`;
+    <aside class="right ${ui.form ? 'fopen' : 'fhint'}">${ui.form ? foodForm() : '<h5>Aliment</h5><p class="mini">Choisis un aliment dans la liste pour le modifier, ou crée-en un nouveau. Les valeurs se saisissent comme sur l\'étiquette (pour 100 g ou par portion).</p><p class="mini">Astuce : ↑ ↓ pour parcourir la liste, Entrée pour modifier, Échap pour fermer.</p>'}</aside>`;
 }
 function draftFrom(f) {
   const mode = f && f.unit === 'portion' && !f.recipe && f.pg > 0 ? '100' : 'port';
@@ -1641,7 +1672,7 @@ function foodForm() {
   const tab = d.tab || 'val', npk = getPacks(d).length, f = d.id ? foodMap.get(d.id) : null, used = d.id ? usageCount(d.id) + extraRefs(d.id) : 0;
   const kv = d.auto ? String(Math.round(draftCalc(d))) : d.k;
   const inp = (k, lab) => `<div><label for="ff-${k}">${lab}</label><input id="ff-${k}" type="text" inputmode="decimal" value="${esc(d[k])}" data-i="ff" data-k="${k}" data-fk="ff-${k}"></div>`;
-  return `<h5>${d.id ? 'Modifier l\'aliment' : 'Nouvel aliment'}</h5>
+  return `<div class="fform"><h5>${d.id ? 'Modifier l\'aliment' : 'Nouvel aliment'}<button class="ib fclose" data-a="cancelfood" aria-label="Fermer">✕</button></h5>
     <label for="ff-name">Nom</label><input id="ff-name" type="text" value="${esc(d.name)}" data-i="ff" data-k="name" data-fk="ff-name"><div id="dup">${okHint(d)}${dupHint(d)}</div>
     ${d.recipe ? '' : `<div class="seg ftabs"><button class="${tab === 'val' ? 'on' : ''}" data-a="fftab" data-t="val">Valeurs</button><button class="${tab === 'achat' ? 'on' : ''}" data-a="fftab" data-t="achat">Format d'achat${npk ? ` (${npk})` : ''}</button></div>`}
     ${tab === 'achat' && !d.recipe ? packTab(d) : `    <label for="ff-cat">Catégorie</label><input id="ff-cat" list="catlist" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat"><datalist id="catlist">${categories().map(c => `<option value="${esc(c)}">`).join('')}</datalist>
@@ -1652,7 +1683,7 @@ function foodForm() {
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
     ${d.news ? `<div class="note"><b>${d.news.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(d.news.byName || 'l\'autre personne')}</b>${d.news.diff?.length ? '<br>' + d.news.diff.map(esc).join('<br>') : ''}</div>` : ''}
     ${used ? `<div class="note">Présent ${used} fois dans l'historique, les repas types, les recettes ou le stock.${(() => { const u = foodUsage(d.id); return u.n ? `<br>Utilisé dans ${u.n} journée${u.n > 1 ? 's' : ''} · dernière fois le ${esc(fmtDMY(u.last))}. <button class="lnk" style="margin:0" data-a="foodhist" data-id="${d.id}">Voir dans l'historique</button>` : ''; })()}</div>` : ''}
-    <div class="row"><button class="btn pri" data-a="savefood">Enregistrer</button><button class="btn" data-a="cancelfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div>`;
+    <div class="row"><button class="btn pri" data-a="savefood">Enregistrer</button><button class="btn" data-a="cancelfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
 }
 function draftToFood(d) {
   const m = draftMult(d), r = x => Math.round(num(x) * m * 1e6) / 1e6;
@@ -1782,7 +1813,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 13:57 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 23:14 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -1906,7 +1937,9 @@ const actions = {
   packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); render(); },
   ffcalc: () => { ui.form.calc = !ui.form.calc; render(); },
   mergefood: el => { const src = foodMap.get(el.dataset.id), dst = ui.form?.id && foodMap.get(ui.form.id); if (!src || !dst) return; const bs = perBasis(src), bd = perBasis(dst), same = ['p', 'c', 'l', 'f', 'k'].every(k => Math.abs(src[k] * bs.fac - dst[k] * bd.fac) < 0.05); openModal({ type: 'confirm', title: 'Fusionner ces deux aliments ?', text: `« ${src.name} » sera remplacé par « ${dst.name} » partout (journées, repas types, recettes, stock), puis supprimé. ${same ? 'Les valeurs nutritionnelles sont identiques.' : `Attention : les valeurs diffèrent (${f0(src.k * bs.fac)} kcal contre ${f0(dst.k * bd.fac)} kcal ${bd.txt.startsWith('1') ? 'par part' : 'pour 100 ' + dst.unit}) : celles de « ${dst.name} » seront utilisées.`} Tu pourras annuler juste après avec le bouton Annuler.`, ok: 'Fusionner', onOk: () => { mergeFoods(src.id, dst.id); ui.form = draftFrom(foodMap.get(dst.id)); toast('Aliments fusionnés', [{ a: 'gundo', l: 'Annuler' }], 6000); } }); },
-  editfood: (el, e) => { e.preventDefault(); const id = el.dataset.id; ui.form = draftFrom(foodMap.get(id)); const nw = typeof newsOf === 'function' ? newsOf(id) : null; if (nw) { ui.form.news = nw; shareSeen([id]); } render(); },
+  ftoolsT: () => { ui.ftOpen = !ui.ftOpen; render(); },
+  selclear: () => { ui.picked = new Set(); render(); },
+  editfood: (el, e) => { e.preventDefault(); const id = el.dataset.id; if (ui.lpFired) { ui.lpFired = false; return; } if (matchMedia('(max-width:640px)').matches && ui.picked?.size) { ui.picked.has(id) ? ui.picked.delete(id) : ui.picked.add(id); render(); return; } ui.form = draftFrom(foodMap.get(id)); const nw = typeof newsOf === 'function' ? newsOf(id) : null; if (nw) { ui.form.news = nw; shareSeen([id]); } render(); },
   newfood: () => { ui.form = draftFrom(null); render(); setTimeout(() => $('#ff-name')?.focus(), 0); },
   cancelfood: () => { ui.form = null; render(); },
   savefood: trySaveFood,
@@ -2024,6 +2057,18 @@ function onKey(e) {
 }
 
 
+
+// téléphone : appui long sur un aliment = sélection multiple
+{
+  let t = null; const clr = () => { clearTimeout(t); t = null; }, mob = () => matchMedia('(max-width:640px)').matches;
+  document.addEventListener('touchstart', e => {
+    if (!mob()) return; const tr = e.target.closest?.('.ft tbody tr[data-id]'); if (!tr) return; clr();
+    t = setTimeout(() => { t = null; ui.lpFired = true; ui.picked ||= new Set(); const id = tr.dataset.id; ui.picked.has(id) ? ui.picked.delete(id) : ui.picked.add(id); render(); navigator.vibrate?.(15); }, 450);
+  }, { passive: true });
+  ['touchmove', 'touchcancel'].forEach(ev => document.addEventListener(ev, clr, { passive: true }));
+  document.addEventListener('touchend', () => { clr(); if (ui.lpFired) setTimeout(() => { ui.lpFired = false; }, 400); }, { passive: true });
+  document.addEventListener('contextmenu', e => { if (mob() && e.target.closest?.('.ft tbody tr')) e.preventDefault(); });
+}
 
 // ---- ui2.js ----
 // Étape 2 : copie (jour / moment / semaine), historique, vue Semaine, repas types.
