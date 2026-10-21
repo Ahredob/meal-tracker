@@ -1823,7 +1823,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 23:22 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 21/10/2026 à 23:24 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2925,7 +2925,8 @@ function recCard(f) {
     return `<div class="xr"><span class="xq">${qtxt(q)}${g.unit === 'portion' ? '×' : ' ' + g.unit}</span><span class="xn" title="${esc(g.name)}">${esc(g.name)}</span>${M5.map(k => `<span>${k === 'k' ? f0(em[k]) : nf(em[k], 1)}</span>`).join('')}</div>`;
   }).join('');
   const line = (lbl, v, cls) => `<div class="xr ${cls}"><span class="xq"></span><span class="xn">${lbl}</span>${M5.map(k => `<span>${k === 'k' ? f0(v[k]) : nf(v[k], 1)}</span>`).join('')}</div>`;
-  return `<section class="xb"><button class="xh" data-a="recedit" data-id="${f.id}" title="Modifier la recette">${esc(recBase(f.name))}</button><div class="xti">${r.parts} parts · ${f0(f.k)} kcal par part${newsBadge(f.id)}</div><div class="xsm">Recette entière : ${f0(tot.k)} kcal</div>
+  const op = ui.recOpen === f.id;
+  return `<section class="xb xcol${op ? ' xo' : ''}"><button class="xtog ttog" data-a="rectog" data-id="${f.id}" aria-expanded="${op}"><b>${esc(recBase(f.name))}</b><span class="xtt">${r.parts} parts</span><span class="xtk">${f0(f.k)}</span><i>${op ? '▾' : '▸'}</i></button><button class="xh" data-a="recedit" data-id="${f.id}" title="Modifier la recette">${esc(recBase(f.name))}</button><div class="xti">${r.parts} parts · ${f0(f.k)} kcal par part${newsBadge(f.id)}</div><div class="xsm">Recette entière : ${f0(tot.k)} kcal</div>
     <div class="xr xc"><span class="xq">Qté</span><span class="xn">Ingrédients</span><span class="hp">P</span><span class="hc">G</span><span class="hl">L</span><span class="hf">F</span><span>kcal</span></div>${rows}${line('Recette entière', tot, 'xt')}${line('Pour 1 part', f, 'xa')}
     ${r.notes ? `<div class="rnote">${esc(r.notes).replace(/\n/g, '<br>')}</div>` : ''}<div class="xcp">${f.hidden ? `<button class="btn sm" data-a="recrestore" data-id="${f.id}">Restaurer</button>${usageCount(f.id) || extraRefs(f.id) || shareOn() ? '' : `<button class="btn sm dng" data-a="recpurge" data-id="${f.id}">Supprimer définitivement</button>`}` : `<button class="btn sm" data-a="recedit" data-id="${f.id}">Modifier</button><button class="btn sm dng" data-a="recdel" data-id="${f.id}">Archiver</button>`}</div></section>`;
 }
@@ -2976,6 +2977,7 @@ function recDelete(id) {
 }
 Object.assign(actions, {
   recnew: () => openRecipe(null),
+  rectog: el => { const id = el.dataset.id; ui.recOpen = ui.recOpen === id ? null : id; render(); },
   recedit: el => { shareSeen([el.dataset.id]); openRecipe(foodMap.get(el.dataset.id)); },
   gorecipe: el => { const f = foodMap.get(el.dataset.id); ui.rec.q = f ? recBase(f.name) : ''; ui.view = 'recettes'; render(); window.scrollTo(0, 0); },
   rcdel: el => { ui.modal.items.splice(+el.dataset.idx, 1); renderModal(); },
