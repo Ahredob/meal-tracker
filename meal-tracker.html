@@ -1712,6 +1712,7 @@ function packTab(d) {
     <label for="ff-packnew">Ajouter un format</label><div class="padd"><input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 150'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>
     ${quick.length ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
 }
+const pgRes = d => num(d.ck) > 0 && num(d.cn) > 0 ? `1 portion = <b>${f1(num(d.ck) / num(d.cn))} g</b> <span class="mini">(${f1(num(d.ck))} g ÷ ${f1(num(d.cn))} parts)</span>` : '<span class="mini">Renseigne le poids du paquet et le nombre de parts : le poids d\'une portion est calculé pour toi.</span>';
 function foodForm() {
   const d = ui.form, md = d.unit === 'portion' && !d.recipe ? d.mode : 'port', fac = d.unit === 'portion' ? (md === '100' ? 'pour 100 g' : 'par portion') : `pour 100 ${d.unit}`;
   const tab = d.tab || 'val', npk = getPacks(d).length, f = d.id ? foodMap.get(d.id) : null, used = d.id ? usageCount(d.id) + extraRefs(d.id) : 0;
@@ -1722,7 +1723,7 @@ function foodForm() {
     ${d.recipe ? '' : `<div class="seg ftabs"><button class="${tab === 'val' ? 'on' : ''}" data-a="fftab" data-t="val">Valeurs</button><button class="${tab === 'achat' ? 'on' : ''}" data-a="fftab" data-t="achat">Format d'achat${npk ? ` (${npk})` : ''}</button></div>`}
     ${tab === 'achat' && !d.recipe ? packTab(d) : `    <label for="ff-catsel">Catégorie</label>${(() => { const cats = categories(), isNew = d.catNew || (!!d.cat && !cats.includes(d.cat)); return `<select id="ff-catsel" data-i="ffcatsel">${!d.cat && !isNew ? '<option value="" selected>— Choisir une catégorie —</option>' : ''}${cats.map(c => `<option value="${esc(c)}"${!isNew && c === d.cat ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__new__"${isNew ? ' selected' : ''}>+ Nouvelle catégorie…</option></select>${isNew ? `<input id="ff-cat" type="text" placeholder="Nom de la nouvelle catégorie" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat" style="margin-top:6px">` : ''}`; })()}
     <label for="ff-unit">Unité</label><div class="unitrow"><select id="ff-unit" data-i="ffunit"${d.id ? ' disabled' : ''}><option value="g" ${d.unit === 'g' ? 'selected' : ''}>Grammes</option><option value="ml" ${d.unit === 'ml' ? 'selected' : ''}>Millilitres</option><option value="portion" ${d.unit === 'portion' ? 'selected' : ''}>Portion</option></select>${d.id && !shareOn() ? '<button class="lnk" style="margin:0" data-a="unitconv" data-id="' + d.id + '">Changer l\'unité de comptage…</button>' : ''}</div>
-    ${d.unit === 'portion' && !d.recipe ? `<div class="lbl">Saisie des valeurs</div><div class="seg"><button class="${md === 'port' ? 'on' : ''}" data-a="ffmode" data-m="port" title="Valeurs données par portion">Par portion</button><button class="${md === '100' ? 'on' : ''}" data-a="ffmode" data-m="100" title="Valeurs pour 100 g, avec le poids d'une portion">100 g</button></div>${md === '100' ? `<label for="ff-pg">Poids d'une portion (g)</label><input id="ff-pg" type="text" inputmode="decimal" value="${esc(d.pg)}" data-i="ff" data-k="pg" data-fk="ff-pg"><button class="lnk" style="margin:4px 0 0" data-a="ffcalc">${d.calc ? 'Masquer le calcul' : 'Calculer depuis le paquet'}</button>${d.calc ? `<div class="g2"><div><label for="ff-ck">Poids du paquet (g)</label><input id="ff-ck" type="text" inputmode="decimal" value="${esc(d.ck)}" data-i="ff" data-k="ck" data-fk="ff-ck"></div><div><label for="ff-cn">Nombre de parts</label><input id="ff-cn" type="text" inputmode="decimal" value="${esc(d.cn)}" data-i="ff" data-k="cn" data-fk="ff-cn"></div></div>` : ''}` : ''}` : ''}
+    ${d.unit === 'portion' && !d.recipe ? `<div class="lbl">Saisie des valeurs</div><div class="seg"><button class="${md === 'port' ? 'on' : ''}" data-a="ffmode" data-m="port" title="Valeurs données par portion">Par portion</button><button class="${md === '100' ? 'on' : ''}" data-a="ffmode" data-m="100" title="Valeurs pour 100 g, avec le poids d'une portion">100 g</button></div>${md === '100' ? `<div class="lbl">Poids d'une portion</div><div class="seg"><button class="${d.calc ? '' : 'on'}" data-a="ffcalc" data-v="0">Je le connais</button><button class="${d.calc ? 'on' : ''}" data-a="ffcalc" data-v="1">Depuis le paquet</button></div>${d.calc ? `<div class="g2"><div><label for="ff-ck">Poids du paquet (g)</label><input id="ff-ck" type="text" inputmode="decimal" value="${esc(d.ck)}" data-i="ff" data-k="ck" data-fk="ff-ck"></div><div><label for="ff-cn">Nombre de parts</label><input id="ff-cn" type="text" inputmode="decimal" value="${esc(d.cn)}" data-i="ff" data-k="cn" data-fk="ff-cn"></div></div><div class="note" id="pgres">${pgRes(d)}</div>` : `<label for="ff-pg">Poids d'une portion (g)</label><input id="ff-pg" type="text" inputmode="decimal" value="${esc(d.pg)}" data-i="ff" data-k="pg" data-fk="ff-pg">`}` : ''}` : ''}
     <div class="lbl">Valeurs ${fac}</div><div class="g2">${inp('p', 'Protéines (g)')}${inp('c', 'Glucides (g)')}${inp('l', 'Lipides (g)')}${inp('f', 'Fibres (g)')}</div>
     <label for="ff-k">Calories (kcal)</label><input id="ff-k" type="text" inputmode="decimal" value="${esc(kv)}" ${d.auto ? 'disabled' : ''} data-i="ff" data-k="k" data-fk="ff-k"><label class="sw"><input type="checkbox" data-i="ffauto" ${d.auto ? 'checked' : ''}> Calculer les calories</label><div id="kh">${kcalHint(d)}</div><div id="pv">${portionPreview(d)}</div>
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
@@ -1858,7 +1859,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 23:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 23:51 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -1980,7 +1981,7 @@ const actions = {
   packadd: () => { const d = ui.form, n = num(d.packnew); if (!(n > 0)) { toast('Indique la taille du paquet'); return; } setPacks(d, [...getPacks(d), n]); d.packnew = ''; render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
   packquick: el => { const d = ui.form; setPacks(d, [...getPacks(d), +el.dataset.n]); render(); },
   packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); render(); },
-  ffcalc: () => { ui.form.calc = !ui.form.calc; render(); },
+  ffcalc: el => { ui.form.calc = el?.dataset?.v ? el.dataset.v === '1' : !ui.form.calc; render(); },
   mergefood: el => { const src = foodMap.get(el.dataset.id), dst = ui.form?.id && foodMap.get(ui.form.id); if (!src || !dst) return; const bs = perBasis(src), bd = perBasis(dst), same = ['p', 'c', 'l', 'f', 'k'].every(k => Math.abs(src[k] * bs.fac - dst[k] * bd.fac) < 0.05); openModal({ type: 'confirm', title: 'Fusionner ces deux aliments ?', text: `« ${src.name} » sera remplacé par « ${dst.name} » partout (journées, repas types, recettes, stock), puis supprimé. ${same ? 'Les valeurs nutritionnelles sont identiques.' : `Attention : les valeurs diffèrent (${f0(src.k * bs.fac)} kcal contre ${f0(dst.k * bd.fac)} kcal ${bd.txt.startsWith('1') ? 'par part' : 'pour 100 ' + dst.unit}) : celles de « ${dst.name} » seront utilisées.`} Tu pourras annuler juste après avec le bouton Annuler.`, ok: 'Fusionner', onOk: () => { mergeFoods(src.id, dst.id); ui.form = draftFrom(foodMap.get(dst.id)); toast('Aliments fusionnés', [{ a: 'gundo', l: 'Annuler' }], 6000); } }); },
   ftoolsT: () => { ui.ftOpen = !ui.ftOpen; render(); },
   selclear: () => { ui.picked = new Set(); render(); },
@@ -2010,7 +2011,8 @@ function onInput(e) {
   else if (k === 'ff') { ui.form[el.dataset.k] = el.value; refreshForm(); }
   else if (k === 'tgt') { const t = { ...targetForLabel(el.dataset.l) }; t[el.dataset.k] = num(el.value); setTarget(el.dataset.l, t); }
 }
-function refreshForm() { const d = ui.form; if (!d) return; if (d.mode === '100' && d.calc && num(d.ck) > 0 && num(d.cn) > 0) { d.pg = String(Math.round(num(d.ck) / num(d.cn) * 100) / 100).replace('.', ','); const e = $('#ff-pg'); if (e) e.value = d.pg; } if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
+function refreshForm() { const d = ui.form; if (!d) return; if (d.mode === '100' && d.calc && num(d.ck) > 0 && num(d.cn) > 0) { d.pg = String(Math.round(num(d.ck) / num(d.cn) * 100) / 100).replace('.', ','); const e = $('#ff-pg'); if (e) e.value = d.pg; }
+  if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
 function onChange(e) {
   if (ui.rendering) return;
   if (extraChange(e)) return;
@@ -2116,7 +2118,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 23:42';
+const BUILD_ID = '22/10/2026 à 23:51';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
