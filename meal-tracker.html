@@ -1858,7 +1858,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 23:33 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 23:38 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2116,7 +2116,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 23:33';
+const BUILD_ID = '22/10/2026 à 23:38';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3566,7 +3566,8 @@ async function shareRead() {
 let shareTimer = null;
 const shareSoon = (ms = 3000) => { clearTimeout(shareTimer); shareTimer = setTimeout(() => shareSync(false), ms); };
 async function shareSync(force) {
-  const s = ui.share, c = s.cfg; if (!c || s.busy || !S || !shareOn()) return;
+  const s = ui.share, c = s.cfg; if (!c || !S || !shareOn()) return;
+  if (s.busy) { s.again = true; return; }
   s.busy = true; sharePaint();
   try {
     const p = await shareRead();
@@ -3581,6 +3582,7 @@ async function shareSync(force) {
     c.last = Date.now(); s.err = ''; await idbSet('share', { ...c });
   } catch (e) { s.err = e.message || String(e); if (force) toast(s.err, [], 5000); }
   s.busy = false; sharePaint();
+  if (s.again) { s.again = false; shareSoon(400); }
 }
 function shareInfo() {
   const s = ui.share, c = s.cfg; if (!c) return '';
@@ -3679,9 +3681,15 @@ async function shareInit() {
       shareSoon(2500);
     }
   } catch { }
-  subscribe(() => { if (ui.share.cfg && !ui.share.applying && shareOn()) shareSoon(3000); });
+  subscribe(() => { if (ui.share.cfg && !ui.share.applying && shareOn()) shareSoon(1500); });
   setInterval(() => { if (!document.hidden && ui.share.cfg) shareSync(false); }, 45000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && ui.share.cfg) shareSoon(500); });
+  document.addEventListener('visibilitychange', () => {
+    if (!ui.share.cfg) return;
+    if (document.hidden) { clearTimeout(shareTimer); shareSync(false); } // on quitte l'appli : envoyer tout de suite, les minuteurs sont gelés en arrière-plan
+    else shareSoon(300);
+  });
+  window.addEventListener('pagehide', () => { if (ui.share.cfg) { clearTimeout(shareTimer); shareSync(false); } });
+  window.addEventListener('online', () => { if (ui.share.cfg) shareSoon(500); });
   render();
 }
 shareInit();
