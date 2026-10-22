@@ -925,6 +925,12 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 @media (max-width:640px){.rci:has(.rcsel){flex-wrap:wrap}.rci:has(.rcsel) .rcn{flex:1 1 0;min-width:0}.rci:has(.rcsel) .rcsel{order:5;flex:1 0 100%;max-width:none;margin:2px 0 6px 0}}
 /* l'encart d'aide « Aliment » n'a pas d'intérêt quand la mise en page passe en une colonne */
 @media (max-width:1060px){.right.fhint{display:none!important}}
+
+.sclr{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;border:0;background:var(--soft);color:var(--mute);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.search:has(.sclr) input{padding-right:44px}.srow input::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+.rcs .x[disabled]{opacity:.25;pointer-events:none}.rcs .x{font-size:16px}
+@media (max-width:640px){.sclr{width:36px;height:36px;right:4px}.rcs .x{width:40px;height:40px;opacity:1}}
+.rcs [data-a=rcsmove]:hover{background:var(--soft);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -1653,7 +1659,7 @@ function viewFoods() {
     return `<tr class="${ui.form?.id === f.id ? 'sel' : ''}${f.hidden ? ' hid' : ''}${ui.picked.has(f.id) ? ' picked' : ''}" data-a="editfood" data-id="${f.id}"><td class="ck"><input type="checkbox" data-a="selfood" data-id="${f.id}" ${ui.picked.has(f.id) ? 'checked' : ''} aria-label="Sélectionner ${esc(f.name)}"></td><td>${esc(f.name)}${newsBadge(f.id)}${f.recipe ? ' <span class="tag">recette</span>' : ''}${f.hidden ? ' <span class="tag g">archivé</span>' : ''}${iss.length ? ' <span class="tag w" title="' + esc(iss.join(' · ')) + '">écart ?</span>' : ''}${!foodOk(f) && nameUnitIssue(f.name, f.unit) ? ' <span class="tag w" title="' + esc(nameUnitIssue(f.name, f.unit)) + '">nom ?</span>' : ''}</td><td class="mu">${esc(f.cat)}</td><td class="mu">${b.txt}</td><td>${f1(f.p * b.fac)}</td><td>${f1(f.c * b.fac)}</td><td>${f1(f.l * b.fac)}</td><td>${f1(f.f * b.fac)}</td><td>${f0(f.k * b.fac)}</td><td class="mu">${f.k > 0 ? f0(f.p * 100 / f.k * 10) / 10 : '—'}</td></tr>`;
   }).join('');
   return `<main class="main wide">${ui.form ? '<div class="fscrim" data-a="cancelfood"></div>' : ''}<div class="dh"><h1>Aliments</h1><span class="mini">${S.foods.filter(f => !f.hidden).length} aliments</span><div class="sp"><button class="btn pri" data-a="newfood">${icon('plus')} Aliment</button></div></div>
-    <div class="srow"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Rechercher un aliment…" value="${esc(ui.foodQ)}" data-i="fq" data-fk="fq"></div><button class="ib ftb${ui.ftOpen ? ' on' : ''}" data-a="ftoolsT" aria-label="Outils" aria-expanded="${!!ui.ftOpen}">⚙</button></div>
+    <div class="srow"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Rechercher un aliment…" value="${esc(ui.foodQ)}" data-i="fq" data-fk="fq">${ui.foodQ ? '<button class="sclr" data-a="fqclear" aria-label="Effacer la recherche">✕</button>' : ''}</div><button class="ib ftb${ui.ftOpen ? ' on' : ''}" data-a="ftoolsT" aria-label="Outils" aria-expanded="${!!ui.ftOpen}">⚙</button></div>
     <div class="chips fchips"><button class="chip ${ui.foodCat === 'all' ? 'on' : ''}" data-a="foodcat" data-c="all">Tous</button>${newsCount() ? `<button class="chip ${ui.foodCat === 'news' ? 'on' : ''}" data-a="foodcat" data-c="news" title="Aliments ajoutés ou modifiés par l'autre personne">Nouveautés (${newsCount()})</button>` : ''}${S.foods.some(suspectFood) ? `<button class="chip ${ui.foodCat === 'check' ? 'on' : ''}" data-a="foodcat" data-c="check" title="Aliments à 0 kcal : probablement incomplets">⚠ À vérifier (${S.foods.filter(suspectFood).length})</button>` : ''}${S.foods.some(f => foodIssuesU(f).length) ? `<button class="chip ${ui.foodCat === 'incoh' ? 'on' : ''}" data-a="foodcat" data-c="incoh" title="Calories incohérentes avec les macros, plus de 100 g de macros pour 100 g, fibres supérieures aux glucides">⚖ Écarts possibles (${S.foods.filter(f => foodIssuesU(f).length).length})</button>` : ''}${dups.length ? `<button class="chip ${ui.foodCat === 'dups' ? 'on' : ''}" data-a="foodcat" data-c="dups" title="Aliments dont le nom est identique à la ponctuation ou à l'ordre des mots près">⧉ Doublons possibles (${dups.length})</button>` : ''}${cats.map(c => `<button class="chip ${ui.foodCat === c ? 'on' : ''}" data-a="foodcat" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div class="ftools${ui.ftOpen ? ' open' : ''}"><label class="sw"><input type="checkbox" data-i="per100" ${ui.per100 ? 'checked' : ''}> Afficher les portions pour 100 g</label><span class="sp2"></span><button class="lnk" data-a="catmanage">Gérer les catégories…</button><button class="lnk" data-a="csvexport">Exporter en CSV</button><button class="lnk" data-a="csvpick">Importer un CSV…</button><input type="file" id="csvf" accept=".csv,text/csv,.txt" hidden data-i="csvfile"></div>
     ${ui.picked.size ? `<div class="bulk"><b>${ui.picked.size} sélectionné${ui.picked.size > 1 ? 's' : ''}</b><input type="text" list="catlist" placeholder="Nouvelle catégorie" value="${esc(ui.bulkCat || '')}" data-i="bulkcat" data-fk="bulkcat"><datalist id="catlist">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist><button class="btn pri sm" data-a="bulkapply">Appliquer</button><button class="btn sm" data-a="bulkok" title="Retire les étiquettes « écart ? », « nom ? » et « à vérifier » de ces aliments">Marquer comme vérifiés</button>${ui.picked.size === 2 ? '<button class="btn sm" data-a="bulkmerge" title="Remplace l\'un par l\'autre partout">Fusionner ces 2</button>' : ''}${ui.picked.size > 1 && [...ui.picked].every(id => { const f = foodMap.get(id); return f && dups.includes(f); }) ? '<button class="btn sm" data-a="bulknd" title="Ne plus les signaler comme doublons">Pas des doublons</button>' : ''}<button class="btn sm" data-a="bulkclear">Désélectionner</button></div>` : ''}
@@ -1859,7 +1865,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 23:51 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 23:58 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -1981,6 +1987,7 @@ const actions = {
   packadd: () => { const d = ui.form, n = num(d.packnew); if (!(n > 0)) { toast('Indique la taille du paquet'); return; } setPacks(d, [...getPacks(d), n]); d.packnew = ''; render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
   packquick: el => { const d = ui.form; setPacks(d, [...getPacks(d), +el.dataset.n]); render(); },
   packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); render(); },
+  fqclear: () => { ui.foodQ = ''; ui.scrollReset = true; render(); setTimeout(() => $('#fq')?.focus(), 0); },
   ffcalc: el => { ui.form.calc = el?.dataset?.v ? el.dataset.v === '1' : !ui.form.calc; render(); },
   mergefood: el => { const src = foodMap.get(el.dataset.id), dst = ui.form?.id && foodMap.get(ui.form.id); if (!src || !dst) return; const bs = perBasis(src), bd = perBasis(dst), same = ['p', 'c', 'l', 'f', 'k'].every(k => Math.abs(src[k] * bs.fac - dst[k] * bd.fac) < 0.05); openModal({ type: 'confirm', title: 'Fusionner ces deux aliments ?', text: `« ${src.name} » sera remplacé par « ${dst.name} » partout (journées, repas types, recettes, stock), puis supprimé. ${same ? 'Les valeurs nutritionnelles sont identiques.' : `Attention : les valeurs diffèrent (${f0(src.k * bs.fac)} kcal contre ${f0(dst.k * bd.fac)} kcal ${bd.txt.startsWith('1') ? 'par part' : 'pour 100 ' + dst.unit}) : celles de « ${dst.name} » seront utilisées.`} Tu pourras annuler juste après avec le bouton Annuler.`, ok: 'Fusionner', onOk: () => { mergeFoods(src.id, dst.id); ui.form = draftFrom(foodMap.get(dst.id)); toast('Aliments fusionnés', [{ a: 'gundo', l: 'Annuler' }], 6000); } }); },
   ftoolsT: () => { ui.ftOpen = !ui.ftOpen; render(); },
@@ -2118,7 +2125,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 23:51';
+const BUILD_ID = '22/10/2026 à 23:58';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3034,7 +3041,7 @@ function renderRecipeModal(m, root) {
   const idxs = m.items.map((_, i) => i);
   const rows = !secs.length ? idxs.map(rowH).join('') : (() => {
     const none = idxs.filter(i => !secs.includes(m.items[i][2]));
-    return (none.length ? `<div class="rcs0">Sans section</div>${none.map(rowH).join('')}` : '') + secs.map((n, si) => { const inn = idxs.filter(i => m.items[i][2] === n); return `<div class="rcs"><input class="rcsn" type="text" value="${esc(n)}" data-i="rcsname" data-s="${si}" aria-label="Nom de la section"><button class="x" data-a="rcsdel" data-s="${si}" aria-label="Supprimer la section" title="Supprimer la section (les ingrédients sont conservés)">${icon('x')}</button></div>${inn.map(rowH).join('') || '<p class="mini" style="margin:2px 0 6px">Aucun ingrédient dans cette section.</p>'}`; }).join('');
+    return (none.length ? `<div class="rcs0">Sans section</div>${none.map(rowH).join('')}` : '') + secs.map((n, si) => { const inn = idxs.filter(i => m.items[i][2] === n); return `<div class="rcs"><input class="rcsn" type="text" value="${esc(n)}" data-i="rcsname" data-s="${si}" aria-label="Nom de la section">${secs.length > 1 ? `<button class="x" data-a="rcsmove" data-s="${si}" data-d="-1" aria-label="Monter la section"${si === 0 ? ' disabled' : ''}>↑</button><button class="x" data-a="rcsmove" data-s="${si}" data-d="1" aria-label="Descendre la section"${si === secs.length - 1 ? ' disabled' : ''}>↓</button>` : ''}<button class="x" data-a="rcsdel" data-s="${si}" aria-label="Supprimer la section" title="Supprimer la section (les ingrédients sont conservés)">${icon('x')}</button></div>${inn.map(rowH).join('') || '<p class="mini" style="margin:2px 0 6px">Aucun ingrédient dans cette section.</p>'}`; }).join('');
   })();
   root.innerHTML = shell(m.id ? 'Modifier la recette' : 'Nouvelle recette', `
     <label class="fld"><span class="mini">Nom de la recette</span><input type="text" value="${esc(m.name)}" data-i="rcname" placeholder="Ex. Cookies" autocomplete="off"></label>
@@ -3063,6 +3070,7 @@ Object.assign(actions, {
   recedit: el => { shareSeen([el.dataset.id]); openRecipe(foodMap.get(el.dataset.id)); },
   gorecipe: el => { const f = foodMap.get(el.dataset.id); ui.rec.q = f ? recBase(f.name) : ''; ui.view = 'recettes'; render(); window.scrollTo(0, 0); },
   rcsadd: () => { const m = ui.modal, n = (m.secNew || '').trim(); if (!n) { toast('Donne un nom à la section'); return; } m.secs ||= []; if (m.secs.includes(n)) { toast('Cette section existe déjà'); return; } m.secs.push(n); m.target = n; m.secNew = ''; renderModal(); setTimeout(() => $('#rcq')?.focus(), 0); },
+  rcsmove: el => { const m = ui.modal, i = +el.dataset.s, j = i + +el.dataset.d; if (j < 0 || j >= m.secs.length) return; [m.secs[i], m.secs[j]] = [m.secs[j], m.secs[i]]; renderModal(); },
   rcsdel: el => { const m = ui.modal, n = m.secs[+el.dataset.s]; m.items.forEach(i => { if (i[2] === n) i.length = 2; }); m.secs.splice(+el.dataset.s, 1); if (m.target === n) m.target = ''; renderModal(); },
   rcdel: el => { ui.modal.items.splice(+el.dataset.idx, 1); renderModal(); },
   rcadd: el => { const m = ui.modal, g = foodMap.get(el.dataset.id); if (!g) return; m.items.push(m.target && (m.secs || []).includes(m.target) ? [g.id, g.unit === 'portion' ? 1 : 100, m.target] : [g.id, g.unit === 'portion' ? 1 : 100]); m.q = ''; renderModal(); const q = document.querySelectorAll('.rcqty'); const last = q[q.length - 1]; if (last) { last.focus(); last.select(); } },
