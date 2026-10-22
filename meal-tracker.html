@@ -1706,7 +1706,7 @@ function foodForm() {
   return `<div class="fform"><h5>${d.id ? 'Modifier l\'aliment' : 'Nouvel aliment'}<button class="ib fclose" data-a="cancelfood" aria-label="Fermer">✕</button></h5>
     <label for="ff-name">Nom</label><input id="ff-name" type="text" value="${esc(d.name)}" data-i="ff" data-k="name" data-fk="ff-name"><div id="dup">${okHint(d)}${dupHint(d)}</div>
     ${d.recipe ? '' : `<div class="seg ftabs"><button class="${tab === 'val' ? 'on' : ''}" data-a="fftab" data-t="val">Valeurs</button><button class="${tab === 'achat' ? 'on' : ''}" data-a="fftab" data-t="achat">Format d'achat${npk ? ` (${npk})` : ''}</button></div>`}
-    ${tab === 'achat' && !d.recipe ? packTab(d) : `    <label for="ff-cat">Catégorie</label><input id="ff-cat" list="catlist" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat"><datalist id="catlist">${categories().map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+    ${tab === 'achat' && !d.recipe ? packTab(d) : `    <label for="ff-catsel">Catégorie</label>${(() => { const cats = categories(), isNew = d.catNew || (!!d.cat && !cats.includes(d.cat)); return `<select id="ff-catsel" data-i="ffcatsel">${!d.cat && !isNew ? '<option value="" selected>— Choisir une catégorie —</option>' : ''}${cats.map(c => `<option value="${esc(c)}"${!isNew && c === d.cat ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__new__"${isNew ? ' selected' : ''}>+ Nouvelle catégorie…</option></select>${isNew ? `<input id="ff-cat" type="text" placeholder="Nom de la nouvelle catégorie" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat" style="margin-top:6px">` : ''}`; })()}
     <label for="ff-unit">Unité</label><div class="unitrow"><select id="ff-unit" data-i="ffunit"${d.id ? ' disabled' : ''}><option value="g" ${d.unit === 'g' ? 'selected' : ''}>Grammes</option><option value="ml" ${d.unit === 'ml' ? 'selected' : ''}>Millilitres</option><option value="portion" ${d.unit === 'portion' ? 'selected' : ''}>Portion</option></select>${d.id && !shareOn() ? '<button class="lnk" style="margin:0" data-a="unitconv" data-id="' + d.id + '">Changer l\'unité de comptage…</button>' : ''}</div>
     ${d.unit === 'portion' && !d.recipe ? `<div class="lbl">Saisie des valeurs</div><div class="seg"><button class="${md === 'port' ? 'on' : ''}" data-a="ffmode" data-m="port" title="Valeurs données par portion">Par portion</button><button class="${md === '100' ? 'on' : ''}" data-a="ffmode" data-m="100" title="Valeurs pour 100 g, avec le poids d'une portion">100 g</button></div>${md === '100' ? `<label for="ff-pg">Poids d'une portion (g)</label><input id="ff-pg" type="text" inputmode="decimal" value="${esc(d.pg)}" data-i="ff" data-k="pg" data-fk="ff-pg"><button class="lnk" style="margin:4px 0 0" data-a="ffcalc">${d.calc ? 'Masquer le calcul' : 'Calculer depuis le paquet'}</button>${d.calc ? `<div class="g2"><div><label for="ff-ck">Poids du paquet (g)</label><input id="ff-ck" type="text" inputmode="decimal" value="${esc(d.ck)}" data-i="ff" data-k="ck" data-fk="ff-ck"></div><div><label for="ff-cn">Nombre de parts</label><input id="ff-cn" type="text" inputmode="decimal" value="${esc(d.cn)}" data-i="ff" data-k="cn" data-fk="ff-cn"></div></div>` : ''}` : ''}` : ''}
     <div class="lbl">Valeurs ${fac}</div><div class="g2">${inp('p', 'Protéines (g)')}${inp('c', 'Glucides (g)')}${inp('l', 'Lipides (g)')}${inp('f', 'Fibres (g)')}</div>
@@ -1844,7 +1844,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 13:05 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 13:09 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2102,7 +2102,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 13:05';
+const BUILD_ID = '22/10/2026 à 13:09';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2119,6 +2119,19 @@ actions.chkupd = () => checkUpdate(true);
 setTimeout(checkUpdate, 3000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 window.addEventListener('pageshow', e => { if (e.persisted) checkUpdate(); });
+
+// catégorie d'un aliment : liste des catégories existantes + « Nouvelle catégorie… »
+{
+  const prev = extraChange;
+  extraChange = function (e) {
+    const el = e.target;
+    if (el.dataset?.i === 'ffcatsel' && ui.form) {
+      if (el.value === '__new__') { ui.form.catNew = true; ui.form.cat = ''; } else { ui.form.catNew = false; ui.form.cat = el.value; }
+      render(); if (ui.form.catNew) setTimeout(() => $('#ff-cat')?.focus(), 0); return true;
+    }
+    return prev(e);
+  };
+}
 
 // ---- ui2.js ----
 // Étape 2 : copie (jour / moment / semaine), historique, vue Semaine, repas types.
