@@ -907,6 +907,10 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .wkt-tbl .wkh{padding:8px 10px;font-size:22px}
   .wkt-tbl .wkb .ib{width:40px;height:40px}
 }
+@media (max-width:640px){
+  [data-a=tkgo],[data-a=thmode]{min-height:44px}
+  input[data-a=wkon]{width:28px;height:28px}
+}
 </style>
 </head>
 <body>
@@ -1840,7 +1844,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 21/10/2026 à 23:26 (si elle ne change pas après une mise à jour, recharge la page avec Ctrl + F5).</p></main>`;
+    <p class="mini">Version du 22/10/2026 à 13:05 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2096,6 +2100,25 @@ function onKey(e) {
   document.addEventListener('touchend', () => { clr(); if (ui.lpFired) setTimeout(() => { ui.lpFired = false; }, 400); }, { passive: true });
   document.addEventListener('contextmenu', e => { if (mob() && e.target.closest?.('.ft tbody tr')) e.preventDefault(); });
 }
+
+// ---------- mise à jour de l'application ----------
+const BUILD_ID = '22/10/2026 à 13:05';
+let updAt = 0;
+async function checkUpdate(manual) {
+  if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
+  if (!manual && Date.now() - updAt < 60000) return; updAt = Date.now();
+  try {
+    const r = await fetch(location.pathname + '?chk=' + Date.now(), { cache: 'no-store' });
+    const t = await r.text(), m = t.match(/\d\d\/\d\d\/\d{4} à \d\d:\d\d/);
+    if (m && m[0] !== BUILD_ID) toast('Nouvelle version disponible', [{ a: 'appupdate', l: 'Mettre à jour' }], 30000);
+    else if (manual) toast('Tu as déjà la dernière version');
+  } catch (e) { if (manual) toast('Vérification impossible (pas de connexion ?)'); }
+}
+actions.appupdate = () => { location.replace(location.pathname + '?v=' + Date.now()); };
+actions.chkupd = () => checkUpdate(true);
+setTimeout(checkUpdate, 3000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+window.addEventListener('pageshow', e => { if (e.persisted) checkUpdate(); });
 
 // ---- ui2.js ----
 // Étape 2 : copie (jour / moment / semaine), historique, vue Semaine, repas types.
