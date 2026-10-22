@@ -873,7 +873,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .ft.foodt td:nth-child(10){display:none}
   .ft.foodt td:nth-child(4)::before{content:'· '}
   .bulk{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));z-index:40;flex-wrap:nowrap;overflow-x:auto;align-items:center;gap:8px;padding:8px 12px;margin:0;border-radius:0;box-shadow:0 -6px 18px rgba(0,0,0,.2)}.bulk>*{flex:none;white-space:nowrap}.bulk .btn,.bulk input{min-height:44px}.ft.foodt.selm{margin-bottom:76px}
-  .right:has(.fform){align-self:stretch;height:auto;position:fixed;left:0;right:0;bottom:0;top:56px;z-index:90;max-height:none;overflow-y:auto;border:0;border-radius:18px 18px 0 0;box-shadow:0 -8px 28px rgba(0,0,0,.3);padding:14px 14px calc(96px + env(safe-area-inset-bottom));background:var(--bg)}
+  .right:has(.fform){align-self:stretch;height:auto;position:fixed;left:0;right:0;bottom:0;top:0;z-index:90;max-height:none;overflow-y:auto;border:0;border-radius:0;box-shadow:none;padding:calc(10px + env(safe-area-inset-top)) 14px calc(96px + env(safe-area-inset-bottom));background:var(--bg)}
   .fform h5{display:flex;align-items:center;justify-content:space-between;font-size:13px;margin-top:0}
   .fclose{display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center}
   .fform input,.fform select{min-height:44px;font-size:16px}
@@ -1858,7 +1858,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 22:18 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 23:30 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2116,7 +2116,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 22:18';
+const BUILD_ID = '22/10/2026 à 23:30';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
