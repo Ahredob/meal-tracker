@@ -916,6 +916,13 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stm .stp{font-weight:650;color:var(--accent)}
 .stm .stc em{font-style:normal;opacity:.85}
 .stm .ste{font-weight:650;color:var(--warn)}
+
+.rcs0,.rcs{margin-top:10px}.rcs0{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.rcs{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line);padding-bottom:4px}.rcsn{flex:1;min-width:0;font-weight:700;border:0!important;background:transparent!important;padding:4px 0!important}
+.rcsadd{display:flex;gap:8px;margin:10px 0}.rcsadd input{flex:1;min-width:0}
+.rcsel{max-width:104px;font-size:12px;padding:3px 4px}
+@media (max-width:640px){.rcqty{width:62px}.rcsel{max-width:86px;min-height:40px}.rcsadd .btn{min-height:44px}.rcsadd input{min-height:44px;font-size:16px}}
+@media (max-width:640px){.rci:has(.rcsel){flex-wrap:wrap}.rci:has(.rcsel) .rcn{flex:1 1 0;min-width:0}.rci:has(.rcsel) .rcsel{order:5;flex:1 0 100%;max-width:none;margin:2px 0 6px 0}}
 </style>
 </head>
 <body>
@@ -1849,7 +1856,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 13:21 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 18:13 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2107,7 +2114,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 13:21';
+const BUILD_ID = '22/10/2026 à 18:13';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2978,9 +2985,13 @@ const recBase = n => String(n || '').replace(/\s*\(1 part\)\s*$/i, '');
 const M5 = ['p', 'c', 'l', 'f', 'k'];
 function recCard(f) {
   const r = f.recipe, tot = { p: 0, c: 0, l: 0, f: 0, k: 0 };
-  const rows = r.items.map(([id, q]) => {
+  const secOrder = []; for (const it of r.items) if (it[2] && !secOrder.includes(it[2])) secOrder.push(it[2]);
+  const sorted = secOrder.length ? [...r.items.filter(i => !i[2]), ...secOrder.flatMap(n => r.items.filter(i => i[2] === n))] : r.items;
+  let lastSec = null;
+  const rows = sorted.map(([id, q, sec]) => {
     const g = foodMap.get(id); if (!g) return ''; const em = entryMacros([id, q]); for (const k of M5) tot[k] += em[k];
-    return `<div class="xr"><span class="xq">${qtxt(q)}${g.unit === 'portion' ? '×' : ' ' + g.unit}</span><span class="xn" title="${esc(g.name)}">${esc(g.name)}</span>${M5.map(k => `<span>${k === 'k' ? f0(em[k]) : nf(em[k], 1)}</span>`).join('')}</div>`;
+    const hd = secOrder.length && (sec || '') !== lastSec ? (lastSec = sec || '', `<div class="xs">${esc(sec || 'Autres ingrédients')}</div>`) : '';
+    return hd + `<div class="xr"><span class="xq">${qtxt(q)}${g.unit === 'portion' ? '×' : ' ' + g.unit}</span><span class="xn" title="${esc(g.name)}">${esc(g.name)}</span>${M5.map(k => `<span>${k === 'k' ? f0(em[k]) : nf(em[k], 1)}</span>`).join('')}</div>`;
   }).join('');
   const line = (lbl, v, cls) => `<div class="xr ${cls}"><span class="xq"></span><span class="xn">${lbl}</span>${M5.map(k => `<span>${k === 'k' ? f0(v[k]) : nf(v[k], 1)}</span>`).join('')}</div>`;
   const op = ui.recOpen === f.id;
@@ -3013,12 +3024,21 @@ function recListPaint() {
   el.innerHTML = res.map(f => `<button class="ai" data-a="rcadd" data-id="${f.id}"><span class="an">${esc(f.name)}</span><span class="am">${esc(f.cat)}</span></button>`).join('') || (words.length ? '<p class="mini" style="padding:6px">Aucun aliment trouvé.</p>' : '');
 }
 function renderRecipeModal(m, root) {
-  const rows = m.items.map(([id, q], i) => { const g = foodMap.get(id); return `<div class="rci"><input class="rcqty" type="text" inputmode="decimal" value="${qtxt(q)}" data-i="rcqty" data-idx="${i}" aria-label="Quantité"><span class="u">${g ? (g.unit === 'portion' ? '×' : g.unit) : ''}</span><span class="rcn">${esc(g?.name || 'Aliment supprimé')}</span><button class="x" data-a="rcdel" data-idx="${i}" aria-label="Retirer">${icon('x')}</button></div>`; }).join('');
+  const secs = m.secs ||= [...new Set(m.items.map(i => i[2]).filter(Boolean))];
+  const secOpts = cur => `<option value=""${cur && secs.includes(cur) ? '' : ' selected'}>Sans section</option>` + secs.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  const rowH = i => { const [id, q, sec] = m.items[i], g = foodMap.get(id); return `<div class="rci"><input class="rcqty" type="text" inputmode="decimal" value="${qtxt(q)}" data-i="rcqty" data-idx="${i}" aria-label="Quantité"><span class="u">${g ? (g.unit === 'portion' ? '×' : g.unit) : ''}</span><span class="rcn">${esc(g?.name || 'Aliment supprimé')}</span>${secs.length ? `<select class="rcsel" data-i="rcsel" data-idx="${i}" aria-label="Section">${secOpts(sec)}</select>` : ''}<button class="x" data-a="rcdel" data-idx="${i}" aria-label="Retirer">${icon('x')}</button></div>`; };
+  const idxs = m.items.map((_, i) => i);
+  const rows = !secs.length ? idxs.map(rowH).join('') : (() => {
+    const none = idxs.filter(i => !secs.includes(m.items[i][2]));
+    return (none.length ? `<div class="rcs0">Sans section</div>${none.map(rowH).join('')}` : '') + secs.map((n, si) => { const inn = idxs.filter(i => m.items[i][2] === n); return `<div class="rcs"><input class="rcsn" type="text" value="${esc(n)}" data-i="rcsname" data-s="${si}" aria-label="Nom de la section"><button class="x" data-a="rcsdel" data-s="${si}" aria-label="Supprimer la section" title="Supprimer la section (les ingrédients sont conservés)">${icon('x')}</button></div>${inn.map(rowH).join('') || '<p class="mini" style="margin:2px 0 6px">Aucun ingrédient dans cette section.</p>'}`; }).join('');
+  })();
   root.innerHTML = shell(m.id ? 'Modifier la recette' : 'Nouvelle recette', `
     <label class="fld"><span class="mini">Nom de la recette</span><input type="text" value="${esc(m.name)}" data-i="rcname" placeholder="Ex. Cookies" autocomplete="off"></label>
     <div class="fld"><span class="mini">Catégorie</span><div class="chips" style="margin-top:6px">${[...new Set([...recCats(), ...REC_ORDER])].sort(recSort).map(c => `<button type="button" class="chip ${(m.cat || '').trim() === c ? 'on' : ''}" data-a="rccatset" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div><input type="text" value="${esc(m.cat || '')}" data-i="rccat" placeholder="…ou saisis une nouvelle catégorie" autocomplete="off" style="width:100%"></div>
     <label class="fld"><span class="mini">Nombre de parts de la recette entière</span><input type="text" inputmode="numeric" value="${esc(String(m.parts))}" data-i="rcparts" style="width:100px"></label>
     <div class="lbl">Ingrédients (quantités pour la recette entière)</div><div class="rcl2">${rows || '<p class="mini">Aucun ingrédient pour le moment.</p>'}</div>
+    <div class="rcsadd"><input id="rcsnew" type="text" placeholder="Nouvelle section (ex. Béchamelle)" value="${esc(m.secNew || '')}" data-i="rcsnew" autocomplete="off"><button class="btn sm" data-a="rcsadd">+ Section</button></div>
+    ${secs.length ? `<label class="fld"><span class="mini">Ajouter les ingrédients à</span><select data-i="rctarget"><option value=""${m.target && secs.includes(m.target) ? '' : ' selected'}>Sans section</option>${secs.map(n => `<option value="${esc(n)}"${n === m.target ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>` : ''}
     <div class="search">${icon('search')}<input id="rcq" type="search" placeholder="Ajouter un ingrédient (ex. farine, œuf…)" value="${esc(m.q || '')}" data-i="rcq" autocomplete="off"></div><div id="rclist" class="alist"></div>
     <label class="fld"><span class="mini">Étapes, temps de cuisson, notes</span><textarea rows="5" data-i="rcnotes" style="width:100%">${esc(m.notes || '')}</textarea></label>
     <div id="rctot" class="sugg"></div>`,
@@ -3027,7 +3047,7 @@ function renderRecipeModal(m, root) {
 }
 const prevRM3 = renderModal3;
 renderModal3 = function (m, root) { if (m.type === 'recipe') { renderRecipeModal(m, root); return true; } return prevRM3(m, root); };
-const openRecipe = f => openModal({ type: 'recipe', id: f?.id || null, name: f ? recBase(f.name) : '', parts: f ? f.recipe.parts : 4, items: f ? f.recipe.items.map(i => [i[0], i[1]]) : [], notes: f?.recipe.notes || '', cat: f?.recipe.cat || '', q: '' });
+const openRecipe = f => openModal({ type: 'recipe', id: f?.id || null, name: f ? recBase(f.name) : '', parts: f ? f.recipe.parts : 4, items: f ? f.recipe.items.map(i => i[2] ? [i[0], i[1], i[2]] : [i[0], i[1]]) : [], notes: f?.recipe.notes || '', cat: f?.recipe.cat || '', q: '' });
 function recDelete(id) {
   const f = foodMap.get(id); if (!f) return false;
   if (!window.confirm(`Archiver la recette « ${recBase(f.name)} » ?\n\nElle disparaît de la liste (journées et historique conservés) ; tu peux la restaurer depuis « Archivées ».` + (shareOn() ? '\nL\'autre personne la verra aussi archivée.' : ''))) return false;
@@ -3038,14 +3058,17 @@ Object.assign(actions, {
   rectog: el => { const id = el.dataset.id; ui.recOpen = ui.recOpen === id ? null : id; render(); },
   recedit: el => { shareSeen([el.dataset.id]); openRecipe(foodMap.get(el.dataset.id)); },
   gorecipe: el => { const f = foodMap.get(el.dataset.id); ui.rec.q = f ? recBase(f.name) : ''; ui.view = 'recettes'; render(); window.scrollTo(0, 0); },
+  rcsadd: () => { const m = ui.modal, n = (m.secNew || '').trim(); if (!n) { toast('Donne un nom à la section'); return; } m.secs ||= []; if (m.secs.includes(n)) { toast('Cette section existe déjà'); return; } m.secs.push(n); m.target = n; m.secNew = ''; renderModal(); setTimeout(() => $('#rcq')?.focus(), 0); },
+  rcsdel: el => { const m = ui.modal, n = m.secs[+el.dataset.s]; m.items.forEach(i => { if (i[2] === n) i.length = 2; }); m.secs.splice(+el.dataset.s, 1); if (m.target === n) m.target = ''; renderModal(); },
   rcdel: el => { ui.modal.items.splice(+el.dataset.idx, 1); renderModal(); },
-  rcadd: el => { const m = ui.modal, g = foodMap.get(el.dataset.id); if (!g) return; m.items.push([g.id, g.unit === 'portion' ? 1 : 100]); m.q = ''; renderModal(); const q = document.querySelectorAll('.rcqty'); const last = q[q.length - 1]; if (last) { last.focus(); last.select(); } },
+  rcadd: el => { const m = ui.modal, g = foodMap.get(el.dataset.id); if (!g) return; m.items.push(m.target && (m.secs || []).includes(m.target) ? [g.id, g.unit === 'portion' ? 1 : 100, m.target] : [g.id, g.unit === 'portion' ? 1 : 100]); m.q = ''; renderModal(); const q = document.querySelectorAll('.rcqty'); const last = q[q.length - 1]; if (last) { last.focus(); last.select(); } },
   rcsave: () => {
     const m = ui.modal, name = m.name.trim(), parts = Math.max(1, Math.round(num(m.parts)) || 1);
     if (!name) { toast('Donne un nom à la recette'); return; }
     if (!m.items.length) { toast('Ajoute au moins un ingrédient'); return; }
     mut(s => {
-      const recipe = { parts, items: m.items.map(i => [i[0], i[1]]), notes: (m.notes || '').trim() }; if ((m.cat || '').trim()) recipe.cat = m.cat.trim();
+      const secs = (m.secs || []).filter(n => m.items.some(i => i[2] === n)), ord = secs.length ? [...m.items.filter(i => !secs.includes(i[2])), ...secs.flatMap(n => m.items.filter(i => i[2] === n))] : m.items;
+      const recipe = { parts, items: ord.map(i => secs.includes(i[2]) ? [i[0], i[1], i[2]] : [i[0], i[1]]), notes: (m.notes || '').trim() }; if ((m.cat || '').trim()) recipe.cat = m.cat.trim();
       if (m.id) { const f = s.foods.find(x => x.id === m.id); if (recBase(f.name) !== name) f.name = `${name} (1 part)`; f.recipe = recipe; }
       else s.foods.push({ id: newFoodId(), name: `${name} (1 part)`, cat: 'Recettes', unit: 'portion', p: 0, c: 0, l: 0, f: 0, k: 0, recipe });
     });
@@ -3073,6 +3096,8 @@ extraInput = function (e) {
     if (k === 'rcqty') { m.items[+el.dataset.idx][1] = num(el.value); recTotPaint(); return true; }
     if (k === 'rcq') { m.q = el.value; recListPaint(); return true; }
     if (k === 'rcnotes') { m.notes = el.value; return true; }
+    if (k === 'rcsnew') { m.secNew = el.value; return true; }
+    if (k === 'rcsname') { const si = +el.dataset.s, old = m.secs[si], nn = el.value; if (nn && !m.secs.includes(nn)) { m.items.forEach(i => { if (i[2] === old) i[2] = nn; }); if (m.target === old) m.target = nn; m.secs[si] = nn; } return true; }
   }
   return prevExtraInputRc(e);
 };
@@ -3347,6 +3372,21 @@ renderModal3 = function (m, root) {
   root.innerHTML = shell('Fusionner ces deux aliments', `<p class="mini">Choisis celui que tu gardes : l'autre est remplacé par celui-ci partout (journées, repas types, recettes, stock), puis supprimé. ${same ? 'Les valeurs nutritionnelles sont identiques.' : '<b>Les valeurs diffèrent :</b> celles de l\'aliment gardé seront utilisées partout.'} Tu pourras annuler juste après avec le bouton Annuler.</p><div class="mpair">${card(A, B)}${card(B, A)}</div>`, `<button class="btn" data-a="close">Annuler</button>`);
   return true;
 };
+
+// sections d'une recette : changement de section d'un ingrédient / section cible
+{
+  const prev = extraChange;
+  extraChange = function (e) {
+    const el = e.target, k = el.dataset?.i, m = ui.modal;
+    if (m?.type === 'recipe') {
+      if (k === 'rcsel') { const it = m.items[+el.dataset.idx]; if (el.value) it[2] = el.value; else it.length = 2; renderModal(); return true; }
+      if (k === 'rctarget') { m.target = el.value; return true; }
+      if (k === 'rcsname') { renderModal(); return true; }
+    }
+    return prev(e);
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target?.dataset?.i === 'rcsnew') { e.preventDefault(); actions.rcsadd(); } });
+}
 
 // ---- share.js ----
 // Étape 4 : partage à deux (gists GitHub).
