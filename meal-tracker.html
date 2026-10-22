@@ -1858,7 +1858,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 23:30 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 23:33 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2116,7 +2116,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 23:30';
+const BUILD_ID = '22/10/2026 à 23:33';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3388,6 +3388,35 @@ renderModal3 = function (m, root) {
     return prev(e);
   };
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target?.dataset?.i === 'rcsnew') { e.preventDefault(); actions.rcsadd(); } });
+}
+
+// téléphone : un balayage horizontal change d'onglet (gauche = onglet suivant, droite = précédent)
+{
+  const ORDER = ['jour', 'semaine', 'courses', 'stock', 'modeles', 'recettes', 'aliments', 'reglages'];
+  let st = null;
+  const mob = () => matchMedia('(max-width:640px)').matches;
+  const blocked = t => {
+    if (!t?.closest) return true;
+    if (t.closest('input,textarea,select,[contenteditable],#modal-root,.dstrip2,.fform,.bulk,.chips,.fchips,.vtabs,#toast')) return true;
+    for (let e = t; e && e !== document.body; e = e.parentElement) {
+      const o = getComputedStyle(e).overflowX;
+      if ((o === 'auto' || o === 'scroll') && e.scrollWidth > e.clientWidth + 2) return true;
+    }
+    return false;
+  };
+  document.addEventListener('touchstart', e => {
+    st = null; if (!mob() || e.touches.length !== 1 || ui.modal || ui.form || ui.copyOpen || ui.moreOpen || blocked(e.target)) return;
+    const t = e.touches[0]; st = { x: t.clientX, y: t.clientY, t: Date.now() };
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const s = st; st = null; if (!s || ui.lpFired) return;
+    const t = e.changedTouches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
+    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - s.t > 700) return;
+    if (String(getSelection?.() || '')) return;
+    const i = ORDER.indexOf(ui.view), n = i + (dx < 0 ? 1 : -1);
+    if (i < 0 || n < 0 || n >= ORDER.length) return;
+    actions.nav({ dataset: { v: ORDER[n] } });
+  }, { passive: true });
 }
 
 // ---- share.js ----
