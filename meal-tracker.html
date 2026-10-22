@@ -911,6 +911,11 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   [data-a=tkgo],[data-a=thmode]{min-height:44px}
   input[data-a=wkon]{width:28px;height:28px}
 }
+
+.stk .stn small.stm{display:flex;flex-wrap:wrap;align-items:baseline;gap:1px 10px;font-size:12px;color:var(--mute);margin-top:2px}
+.stm .stp{font-weight:650;color:var(--accent)}
+.stm .stc em{font-style:normal;opacity:.85}
+.stm .ste{font-weight:650;color:var(--warn)}
 </style>
 </head>
 <body>
@@ -1844,7 +1849,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 13:09 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 13:12 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2102,7 +2107,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 13:09';
+const BUILD_ID = '22/10/2026 à 13:12';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3084,8 +3089,8 @@ function viewStock() {
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
-    const f = x.f, pk = packsOf(f), L = pk[pk.length - 1], nP = L ? Math.floor(x.have / L + 1e-9) : 0, rest = L ? x.have - nP * L : 0, note0 = x.ate > 0.5 ? `compté ${haveTxt(f, x.q)} le ${fmtDM(x.asof)}, ${haveTxt(f, x.ate)} mangés depuis` : '', note = [nP >= 1 ? `≈ ${nP} paquet${nP > 1 ? 's' : ''} de ${packSz(f, L)}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}` : '', note0, shareBy('st|' + x.id) ? `mis à jour par ${shareBy('st|' + x.id)}` : ''].filter(Boolean).join(' · ');
-    return `<div class="stk"><div class="stn"><b>${esc(f.name)}</b>${note ? `<small>${esc(note)}</small>` : ''}${pk.length ? `<div class="pkb">${pk.map(n => `<button class="btn sm" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}</div>` : ''}</div>
+    const f = x.f, pk = packsOf(f), L = pk[pk.length - 1], nP = L ? Math.floor(x.have / L + 1e-9) : 0, rest = L ? x.have - nP * L : 0, parts = [nP >= 1 ? `<span class="stp">≈ ${nP} paquet${nP > 1 ? 's' : ''} de ${esc(packSz(f, L))}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span><span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
+    return `<div class="stk"><div class="stn"><b>${esc(f.name)}</b>${note}${pk.length ? `<div class="pkb">${pk.map(n => `<button class="btn sm" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}</div>` : ''}</div>
       <div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>
       <select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button class="x stkx" data-a="stkdel" data-id="${x.id}" aria-label="Retirer du stock" title="Retirer du stock">${icon('x')}</button></div>`;
