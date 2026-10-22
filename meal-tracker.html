@@ -1881,7 +1881,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 23/10/2026 à 00:11 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 23/10/2026 à 00:15 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2140,7 +2140,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '23/10/2026 à 00:11';
+const BUILD_ID = '23/10/2026 à 00:15';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3011,8 +3011,7 @@ const recBase = n => String(n || '').replace(/\s*\(1 part\)\s*$/i, '');
 const M5 = ['p', 'c', 'l', 'f', 'k'];
 function recCard(f) {
   const r = f.recipe, tot = { p: 0, c: 0, l: 0, f: 0, k: 0 };
-  const secOrder = []; for (const it of r.items) if (it[2] && !secOrder.includes(it[2])) secOrder.push(it[2]);
-  const sorted = secOrder.length ? [...r.items.filter(i => !i[2]), ...secOrder.flatMap(n => r.items.filter(i => i[2] === n))] : r.items;
+  const secOrder = r.items.some(i => i[2]) ? [1] : [], sorted = r.items;
   let lastSec = null;
   const rows = sorted.map(([id, q, sec]) => {
     const g = foodMap.get(id); if (!g) return ''; const em = entryMacros([id, q]); for (const k of M5) tot[k] += em[k];
@@ -3049,22 +3048,25 @@ function recListPaint() {
   const res = words.length ? S.foods.filter(f => !f.hidden && !f.recipe && words.every(w => norm(f.name).includes(w))).slice(0, 8) : [];
   el.innerHTML = res.map(f => `<button class="ai" data-a="rcadd" data-id="${f.id}"><span class="an">${esc(f.name)}</span><span class="am">${esc(f.cat)}</span></button>`).join('') || (words.length ? '<p class="mini" style="padding:6px">Aucun aliment trouvé.</p>' : '');
 }
+// ordre des blocs d'une recette : les sections, avec « Sans section » à la position noPos
+const recOrd = m => { const o = [...m.secs]; o.splice(Math.min(m.noPos || 0, o.length), 0, null); return o; };
 function renderRecipeModal(m, root) {
+  const sc0 = root.querySelector('.bd')?.scrollTop;
   const secs = m.secs ||= [...new Set(m.items.map(i => i[2]).filter(Boolean))];
+  if (m.noPos === undefined) { const seen = new Set(); let k = 0; m.noPos = 0; for (const it of m.items) { if (!it[2]) { m.noPos = seen.size; break; } seen.add(it[2]); } }
   const secOk = typeof m.addTo === 'string' && (m.addTo === '' || secs.includes(m.addTo));
   const search = `<div class="search">${icon('search')}<input id="rcq" type="search" placeholder="Ajouter un ingrédient (ex. farine, œuf…)" value="${esc(m.q || '')}" data-i="rcq" autocomplete="off"></div><div id="rclist" class="alist"></div>`;
-  const rowH = i => { const [id, q] = m.items[i], g = foodMap.get(id); return `<div class="rci"><input class="rcqty" type="text" inputmode="decimal" value="${qtxt(q)}" data-i="rcqty" data-idx="${i}" aria-label="Quantité"><span class="u">${g ? (g.unit === 'portion' ? '×' : g.unit) : ''}</span><span class="rcn">${esc(g?.name || 'Aliment supprimé')}</span>${secs.length ? `<button class="x rcmv" data-a="rcrowmenu" data-idx="${i}" aria-label="Déplacer vers une autre section" title="Déplacer vers une autre section">⇄</button>` : ''}<button class="x" data-a="rcdel" data-idx="${i}" aria-label="Retirer">${icon('x')}</button></div>${m.rowMenu === i ? `<div class="rcmenu"><div class="mini">Déplacer vers…</div><button data-a="rcmove" data-idx="${i}" data-s="-1" class="${!secs.includes(m.items[i][2]) ? 'on' : ''}">Sans section</button>${secs.map((n, si) => `<button data-a="rcmove" data-idx="${i}" data-s="${si}" class="${m.items[i][2] === n ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>` : ''}`; };
+  const rowH = i => { const [id, q] = m.items[i], g = foodMap.get(id); return `<div class="rci"><input class="rcqty" type="text" inputmode="decimal" value="${qtxt(q)}" data-i="rcqty" data-idx="${i}" aria-label="Quantité"><span class="u">${g ? (g.unit === 'portion' ? '×' : g.unit) : ''}</span><span class="rcn">${esc(g?.name || 'Aliment supprimé')}</span>${secs.length ? `<button class="x rcmv" data-a="rcrowmenu" data-idx="${i}" aria-label="Déplacer vers une autre section" title="Déplacer vers une autre section">⇄</button>` : ''}<button class="x" data-a="rcdel" data-idx="${i}" aria-label="Retirer">${icon('x')}</button></div>${m.rowMenu === i ? `<div class="rcmenu"><div class="mini">Déplacer vers…</div><button data-a="rcmove" data-idx="${i}" data-s="-1" class="${!secs.includes(m.items[i][2]) ? 'on' : ''}">Sans section</button>${recOrd(m).filter(n => n !== null).map(n => `<button data-a="rcmove" data-idx="${i}" data-s="${secs.indexOf(n)}" class="${m.items[i][2] === n ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>` : ''}`; };
   const idxs = m.items.map((_, i) => i);
-  const block = (si, inn) => {
-    const named = si >= 0, n = named ? secs[si] : '', open = secOk && m.addTo === n;
-    return `<div class="rcb${open ? ' open' : ''}"><div class="rch">${named ? `<input class="rcsn" type="text" value="${esc(n)}" data-i="rcsname" data-s="${si}" aria-label="Nom de la section">` : '<span class="rcsn0">Sans section</span>'}<button class="btn sm rcplus${open ? ' on' : ''}" data-a="rcsopen" data-s="${si}" aria-expanded="${open}">${open ? 'Fermer' : '＋ Ajouter'}</button>${named ? `<button class="x" data-a="rcsmenu" data-s="${si}" aria-label="Options de la section">⋯</button>` : ''}</div>
-      ${named && m.menu === si ? `<div class="rcmenu"><button data-a="rcsmove" data-s="${si}" data-d="-1"${si === 0 ? ' disabled' : ''}>↑ Monter la section</button><button data-a="rcsmove" data-s="${si}" data-d="1"${si === secs.length - 1 ? ' disabled' : ''}>↓ Descendre la section</button><button class="dng" data-a="rcsdel" data-s="${si}">Supprimer la section <span class="mini">(les ingrédients sont conservés)</span></button></div>` : ''}
+  const noneIdx = idxs.filter(i => !secs.includes(m.items[i][2])), noneShown = !!secs.length && (noneIdx.length > 0 || (secOk && m.addTo === ''));
+  const vis = recOrd(m).filter(x => x !== null || noneShown);
+  const block = (n, inn) => {
+    const named = n !== null, si = named ? secs.indexOf(n) : -1, nm = named ? n : '', open = secOk && m.addTo === nm, pos = vis.indexOf(n);
+    return `<div class="rcb${open ? ' open' : ''}"><div class="rch">${named ? `<input class="rcsn" type="text" value="${esc(n)}" data-i="rcsname" data-s="${si}" aria-label="Nom de la section">` : '<span class="rcsn0">Sans section</span>'}<button class="btn sm rcplus${open ? ' on' : ''}" data-a="rcsopen" data-s="${si}" aria-expanded="${open}">${open ? 'Fermer' : '＋ Ajouter'}</button><button class="x" data-a="rcsmenu" data-s="${si}" aria-label="Options de la section">⋯</button></div>
+      ${m.menu === nm ? `<div class="rcmenu"><button data-a="rcsmove" data-s="${si}" data-d="-1"${pos === 0 ? ' disabled' : ''}>↑ Monter la section</button><button data-a="rcsmove" data-s="${si}" data-d="1"${pos === vis.length - 1 ? ' disabled' : ''}>↓ Descendre la section</button>${named ? `<button class="dng" data-a="rcsdel" data-s="${si}">Supprimer la section <span class="mini">(les ingrédients sont conservés)</span></button>` : ''}</div>` : ''}
       ${open ? search : ''}${inn.map(rowH).join('') || (open ? '' : '<p class="mini rcempty">Aucun ingrédient : touche « Ajouter ».</p>')}</div>`;
   };
-  const rows = !secs.length ? idxs.map(rowH).join('') : (() => {
-    const none = idxs.filter(i => !secs.includes(m.items[i][2]));
-    return (none.length || (secOk && m.addTo === '') ? block(-1, none) : '') + secs.map((n, si) => block(si, idxs.filter(i => m.items[i][2] === n))).join('');
-  })();
+  const rows = !secs.length ? idxs.map(rowH).join('') : vis.map(n => block(n, n === null ? noneIdx : idxs.filter(i => m.items[i][2] === n))).join('');
   root.innerHTML = shell(m.id ? 'Modifier la recette' : 'Nouvelle recette', `
     <label class="fld"><span class="mini">Nom de la recette</span><input type="text" value="${esc(m.name)}" data-i="rcname" placeholder="Ex. Cookies" autocomplete="off"></label>
     <div class="fld"><span class="mini">Catégorie</span><div class="chips" style="margin-top:6px">${[...new Set([...recCats(), ...REC_ORDER])].sort(recSort).map(c => `<button type="button" class="chip ${(m.cat || '').trim() === c ? 'on' : ''}" data-a="rccatset" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div><input type="text" value="${esc(m.cat || '')}" data-i="rccat" placeholder="…ou saisis une nouvelle catégorie" autocomplete="off" style="width:100%"></div>
@@ -3076,6 +3078,7 @@ function renderRecipeModal(m, root) {
     <div id="rctot" class="sugg"></div>`,
     `${m.id ? '<button class="btn dng" data-a="rchide">Archiver</button>' : ''}<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="rcsave">Enregistrer</button>`);
   recListPaint(); recTotPaint();
+  if (sc0 !== undefined) { const bd = root.querySelector('.bd'); if (bd) bd.scrollTop = sc0; }
 }
 const prevRM3 = renderModal3;
 renderModal3 = function (m, root) { if (m.type === 'recipe') { renderRecipeModal(m, root); return true; } return prevRM3(m, root); };
@@ -3092,19 +3095,26 @@ Object.assign(actions, {
   gorecipe: el => { const f = foodMap.get(el.dataset.id); ui.rec.q = f ? recBase(f.name) : ''; ui.view = 'recettes'; render(); window.scrollTo(0, 0); },
   rcsadd: () => { const m = ui.modal, n = (m.secNew || '').trim(); if (!n) { toast('Donne un nom à la section'); return; } m.secs ||= []; if (m.secs.includes(n)) { toast('Cette section existe déjà'); return; } m.secs.push(n); m.addTo = n; m.q = ''; m.secNew = ''; m.menu = m.rowMenu = undefined; renderModal(); setTimeout(() => $('#rcq')?.focus(), 0); },
   rcsopen: el => { const m = ui.modal, si = +el.dataset.s, n = si >= 0 ? m.secs[si] : ''; m.addTo = m.addTo === n ? undefined : n; m.q = ''; m.menu = m.rowMenu = undefined; renderModal(); if (m.addTo === n) setTimeout(() => $('#rcq')?.focus(), 0); },
-  rcsmenu: el => { const m = ui.modal, si = +el.dataset.s; m.menu = m.menu === si ? undefined : si; m.rowMenu = undefined; renderModal(); },
+  rcsmenu: el => { const m = ui.modal, si = +el.dataset.s, n = si >= 0 ? m.secs[si] : ''; m.menu = m.menu === n ? undefined : n; m.rowMenu = undefined; renderModal(); },
   rcrowmenu: el => { const m = ui.modal, i = +el.dataset.idx; m.rowMenu = m.rowMenu === i ? undefined : i; m.menu = undefined; renderModal(); },
   rcmove: el => { const m = ui.modal, it = m.items[+el.dataset.idx], si = +el.dataset.s; if (si >= 0) it[2] = m.secs[si]; else it.length = 2; m.rowMenu = undefined; renderModal(); },
-  rcsmove: el => { const m = ui.modal, i = +el.dataset.s, j = i + +el.dataset.d; if (j < 0 || j >= m.secs.length) return; [m.secs[i], m.secs[j]] = [m.secs[j], m.secs[i]]; m.menu = j; renderModal(); },
-  rcsdel: el => { const m = ui.modal, n = m.secs[+el.dataset.s]; m.items.forEach(i => { if (i[2] === n) i.length = 2; }); m.secs.splice(+el.dataset.s, 1); if (m.addTo === n) m.addTo = undefined; m.menu = undefined; renderModal(); },
+  rcsmove: el => {
+    const m = ui.modal, si = +el.dataset.s, n = si >= 0 ? m.secs[si] : null, d = +el.dataset.d;
+    const noneShown = m.items.some(i => !m.secs.includes(i[2])) || m.addTo === '';
+    const o = recOrd(m).filter(x => x !== null || noneShown), i = o.indexOf(n), j = i + d; if (i < 0 || j < 0 || j >= o.length) return;
+    [o[i], o[j]] = [o[j], o[i]];
+    if (noneShown) { m.noPos = o.indexOf(null); m.secs = o.filter(x => x !== null); } else m.secs = o;
+    m.menu = n === null ? '' : n; renderModal();
+  },
+  rcsdel: el => { const m = ui.modal, n = m.secs[+el.dataset.s]; m.items.forEach(i => { if (i[2] === n) i.length = 2; }); const k = +el.dataset.s; if ((m.noPos || 0) > k) m.noPos--; m.secs.splice(k, 1); if (m.addTo === n) m.addTo = undefined; m.menu = undefined; renderModal(); },
   rcdel: el => { ui.modal.items.splice(+el.dataset.idx, 1); renderModal(); },
-  rcadd: el => { const m = ui.modal, g = foodMap.get(el.dataset.id); if (!g) return; m.items.push(m.addTo && (m.secs || []).includes(m.addTo) ? [g.id, g.unit === 'portion' ? 1 : 100, m.addTo] : [g.id, g.unit === 'portion' ? 1 : 100]); m.q = ''; renderModal(); const q = document.querySelectorAll('.rcqty'); const last = q[q.length - 1]; if (last) { last.focus(); last.select(); } },
+  rcadd: el => { const m = ui.modal, g = foodMap.get(el.dataset.id); if (!g) return; m.items.push(m.addTo && (m.secs || []).includes(m.addTo) ? [g.id, g.unit === 'portion' ? 1 : 100, m.addTo] : [g.id, g.unit === 'portion' ? 1 : 100]); m.q = ''; renderModal(); const last = document.querySelector(`.rcqty[data-idx="${m.items.length - 1}"]`); if (last) { last.focus({ preventScroll: false }); last.select(); } },
   rcsave: () => {
     const m = ui.modal, name = m.name.trim(), parts = Math.max(1, Math.round(num(m.parts)) || 1);
     if (!name) { toast('Donne un nom à la recette'); return; }
     if (!m.items.length) { toast('Ajoute au moins un ingrédient'); return; }
     mut(s => {
-      const secs = (m.secs || []).filter(n => m.items.some(i => i[2] === n)), ord = secs.length ? [...m.items.filter(i => !secs.includes(i[2])), ...secs.flatMap(n => m.items.filter(i => i[2] === n))] : m.items;
+      const secs = (m.secs || []).filter(n => m.items.some(i => i[2] === n)), ord = secs.length ? recOrd(m).flatMap(b => b === null ? m.items.filter(i => !secs.includes(i[2])) : m.items.filter(i => i[2] === b && secs.includes(b))) : m.items;
       const recipe = { parts, items: ord.map(i => secs.includes(i[2]) ? [i[0], i[1], i[2]] : [i[0], i[1]]), notes: (m.notes || '').trim() }; if ((m.cat || '').trim()) recipe.cat = m.cat.trim();
       if (m.id) { const f = s.foods.find(x => x.id === m.id); if (recBase(f.name) !== name) f.name = `${name} (1 part)`; f.recipe = recipe; }
       else s.foods.push({ id: newFoodId(), name: `${name} (1 part)`, cat: 'Recettes', unit: 'portion', p: 0, c: 0, l: 0, f: 0, k: 0, recipe });
@@ -3134,7 +3144,7 @@ extraInput = function (e) {
     if (k === 'rcq') { m.q = el.value; recListPaint(); return true; }
     if (k === 'rcnotes') { m.notes = el.value; return true; }
     if (k === 'rcsnew') { m.secNew = el.value; return true; }
-    if (k === 'rcsname') { const si = +el.dataset.s, old = m.secs[si], nn = el.value; if (nn && !m.secs.includes(nn)) { m.items.forEach(i => { if (i[2] === old) i[2] = nn; }); if (m.addTo === old) m.addTo = nn; m.secs[si] = nn; } return true; }
+    if (k === 'rcsname') { const si = +el.dataset.s, old = m.secs[si], nn = el.value; if (nn && !m.secs.includes(nn)) { m.items.forEach(i => { if (i[2] === old) i[2] = nn; }); if (m.addTo === old) m.addTo = nn; if (m.menu === old) m.menu = nn; m.secs[si] = nn; } return true; }
   }
   return prevExtraInputRc(e);
 };
