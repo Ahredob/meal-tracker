@@ -1858,7 +1858,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/10/2026 à 23:38 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/10/2026 à 23:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2116,7 +2116,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/10/2026 à 23:38';
+const BUILD_ID = '22/10/2026 à 23:42';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3390,11 +3390,12 @@ renderModal3 = function (m, root) {
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target?.dataset?.i === 'rcsnew') { e.preventDefault(); actions.rcsadd(); } });
 }
 
-// téléphone : un balayage horizontal change d'onglet (gauche = onglet suivant, droite = précédent)
+// téléphone : un balayage horizontal change d'onglet (gauche = onglet suivant, droite = précédent), la page suit le doigt
 {
   const ORDER = ['jour', 'semaine', 'courses', 'stock', 'modeles', 'recettes', 'aliments', 'reglages'];
   let st = null;
   const mob = () => matchMedia('(max-width:640px)').matches;
+  const pageEl = () => document.querySelector('#app main');
   const blocked = t => {
     if (!t?.closest) return true;
     if (t.closest('input,textarea,select,[contenteditable],#modal-root,.dstrip2,.fform,.bulk,.chips,.fchips,.vtabs,#toast')) return true;
@@ -3404,19 +3405,45 @@ renderModal3 = function (m, root) {
     }
     return false;
   };
+  const target = dx => { const i = ORDER.indexOf(ui.view), n = i + (dx < 0 ? 1 : -1); return i < 0 || n < 0 || n >= ORDER.length ? null : ORDER[n]; };
+  const reset = el => { if (!el) return; el.style.transition = el.style.transform = el.style.willChange = ''; document.documentElement.style.overflowX = ''; };
   document.addEventListener('touchstart', e => {
+    if (st?.busy) return;
     st = null; if (!mob() || e.touches.length !== 1 || ui.modal || ui.form || ui.copyOpen || ui.moreOpen || blocked(e.target)) return;
-    const t = e.touches[0]; st = { x: t.clientX, y: t.clientY, t: Date.now() };
+    const t = e.touches[0]; st = { x: t.clientX, y: t.clientY, t: Date.now(), drag: false, el: null };
   }, { passive: true });
-  document.addEventListener('touchend', e => {
-    const s = st; st = null; if (!s || ui.lpFired) return;
-    const t = e.changedTouches[0], dx = t.clientX - s.x, dy = t.clientY - s.y;
-    if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - s.t > 700) return;
-    if (String(getSelection?.() || '')) return;
-    const i = ORDER.indexOf(ui.view), n = i + (dx < 0 ? 1 : -1);
-    if (i < 0 || n < 0 || n >= ORDER.length) return;
-    actions.nav({ dataset: { v: ORDER[n] } });
-  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!st || st.busy) return;
+    const t = e.touches[0], dx = t.clientX - st.x, dy = t.clientY - st.y;
+    if (!st.drag) {
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { st = null; return; }
+      if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      st.el = pageEl(); if (!st.el) { st = null; return; }
+      st.drag = true; st.el.style.willChange = 'transform'; document.documentElement.style.overflowX = 'hidden';
+    }
+    if (e.cancelable) e.preventDefault();
+    st.el.style.transition = 'none'; st.el.style.transform = `translateX(${target(dx) ? dx : dx * 0.25}px)`;
+  }, { passive: false });
+  const end = e => {
+    const s = st; if (!s || s.busy) return;
+    if (!s.drag) { st = null; return; }
+    const el = s.el, t = e.changedTouches?.[0], dx = t ? t.clientX - s.x : 0, dt = Math.max(1, Date.now() - s.t);
+    const go = e.type === 'touchend' && target(dx) && (Math.abs(dx) > innerWidth * 0.28 || (Math.abs(dx) > 50 && Math.abs(dx) / dt > 0.5));
+    s.busy = true;
+    if (!go) { el.style.transition = 'transform .2s ease'; el.style.transform = 'translateX(0)'; setTimeout(() => { reset(el); st = null; }, 220); return; }
+    const dir = dx < 0 ? -1 : 1, W = innerWidth;
+    el.style.transition = 'transform .16s ease-in'; el.style.transform = `translateX(${dir * W}px)`;
+    setTimeout(() => {
+      reset(el); actions.nav({ dataset: { v: target(dx) } });
+      const nm = pageEl(); if (!nm) { st = null; return; }
+      document.documentElement.style.overflowX = 'hidden';
+      nm.style.transition = 'none'; nm.style.transform = `translateX(${-dir * W}px)`; void nm.offsetWidth;
+      nm.style.transition = 'transform .2s ease-out'; nm.style.transform = 'translateX(0)';
+      setTimeout(() => { reset(nm); st = null; }, 230);
+    }, 160);
+  };
+  document.addEventListener('touchend', end, { passive: true });
+  document.addEventListener('touchcancel', end, { passive: true });
 }
 
 // ---- share.js ----
