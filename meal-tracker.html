@@ -947,6 +947,19 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .rcmv{font-size:15px}
 @media (max-width:640px){.rch .rcplus{min-height:40px}.rch .x,.rcmv{width:40px;height:40px}.rcmenu>button{min-height:44px}.rcb>.rci .rcn{min-width:0}}
 .dlg{min-width:0;max-width:100%}.dlg .bd{min-width:0}
+
+/* téléphone : fenêtres sans double défilement ; la fenêtre de recette prend tout l'écran */
+@media (max-width:640px){
+  .ov{overflow:hidden;overscroll-behavior:contain}
+  .dlg{max-height:calc(100dvh - 6vh - 80px - env(safe-area-inset-bottom))}
+  .dlg .bd{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .ov:has(.rcsadd){padding:0;place-items:stretch}
+  .ov:has(.rcsadd) .dlg{width:100%;max-width:none;height:100dvh;max-height:none;border-radius:0;box-shadow:none}
+  .ov:has(.rcsadd) .dlg .bd{padding-bottom:24px}
+  .ov:has(.rcsadd) .dlg .dh2{padding-top:calc(10px + env(safe-area-inset-top))}
+  .ov:has(.rcsadd) .dlg>.ft2,.ov:has(.rcsadd) .dlg>.foot{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+}
+@media (max-width:640px){.ov:has(.rcsadd){z-index:200}.dlg .bd{min-height:0;flex:1 1 auto}}
 </style>
 </head>
 <body>
@@ -1881,16 +1894,24 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 23/10/2026 à 00:15 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 23/10/2026 à 07:48 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
 // ---------- fenêtres ----------
-function closeModal() { ui.modal = null; $('#modal-root').innerHTML = ''; }
+// téléphone : la page derrière une fenêtre ne doit pas défiler (sinon deux défilements se disputent le geste)
+let lockY = null;
+function modalLock(on) {
+  const b = document.body;
+  if (on && lockY === null && matchMedia('(max-width:640px)').matches) { lockY = window.scrollY; b.style.cssText += `;position:fixed;top:${-lockY}px;left:0;right:0;width:100%`; }
+  else if (!on && lockY !== null) { const y = lockY; lockY = null; b.style.position = b.style.top = b.style.left = b.style.right = b.style.width = ''; window.scrollTo(0, y); }
+}
+function closeModal() { ui.modal = null; $('#modal-root').innerHTML = ''; modalLock(false); }
 function openModal(m) { ui.modal = m; renderModal(); }
 function shell(title, body, foot = '') { return `<div class="ov" data-a="ovclick"><div class="dlg" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="dh2"><h2>${esc(title)}</h2><button class="ib" data-a="close" aria-label="Fermer">${icon('x')}</button></div><div class="bd">${body}</div>${foot ? `<div class="ft2">${foot}</div>` : ''}</div></div>`; }
 function renderModal() {
-  const m = ui.modal, root = $('#modal-root'); if (!m) { root.innerHTML = ''; return; }
+  const m = ui.modal, root = $('#modal-root'); if (!m) { root.innerHTML = ''; modalLock(false); return; }
+  modalLock(true);
   if (renderModal2(m, root) || renderModal3(m, root)) return;
   if (m.type === 'add') {
     root.innerHTML = shell(`Ajouter · ${MEALS.find(x => x.id === m.meal).label}`, m.step === 'qty' ? qtyStep(m) : `<div class="search">${icon('search')}<input id="aq" type="search" placeholder="Rechercher (ex. escalope, pomme, whey…)" value="${esc(m.q)}" data-i="aq" data-fk="aq" autocomplete="off"></div><div class="chips" id="acats"></div><div id="alist" class="alist" role="listbox"></div>`,
@@ -2140,7 +2161,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '23/10/2026 à 00:15';
+const BUILD_ID = '23/10/2026 à 07:48';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
