@@ -989,6 +989,23 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 @media (max-width:640px){.pwgrid .card{max-width:none}}
 
 .pwsvg{max-width:540px;margin:0 auto}
+
+/* Poids sur ordinateur : bandeau de saisie, courbe large, historique en tableau */
+.pwth,.pwdt,.pwnt{display:none}
+@media (min-width:1061px){
+  .pwgrid{display:block}.pwleft{position:static}.pwgrid .card{max-width:none}
+  .pwcard{display:grid;grid-template-columns:auto auto 130px minmax(160px,1fr) auto;align-items:end;gap:10px 22px;padding:14px 18px}
+  .pwcard>*{margin:0}.pwcard .pwnav{grid-column:1;width:300px;margin:0}.pwcard .pwbig{grid-column:2;align-self:center}
+  .pwcard>.fld{margin:0!important}.pwcard>.mini{grid-column:1/-1;grid-row:2}.pwcard>.row{grid-column:5;margin:0}
+  .pwcard .pwt{width:180px}
+  .pwsvg{max-width:none}
+  .pwlist .pwth,.pwlist .pwrow{display:grid;grid-template-columns:110px 110px 170px 100px 1fr 28px;align-items:center;gap:0 12px}
+  .pwlist .pwth{padding:6px 8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+  .pwlist .pwrow{padding:8px;border-radius:0}.pwlist .pwrow .pwl small,.pwlist .pwrow .pwl+.pwdt+.pwd{ }
+  .pwlist .pwrow .pwl{display:block}.pwlist .pwrow .pwl small{display:none}.pwlist .pwrow .pwl b{font-weight:600}
+  .pwlist .pwrow .pwdt,.pwlist .pwrow .pwnt{display:block;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pwlist .pwrow .pwd{text-align:left}.pwlist .pwrow .pwk{min-width:0}.pwlist .pwrow .pwed{color:var(--mute)}
+}
 </style>
 </head>
 <body>
@@ -1924,7 +1941,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 23/10/2026 à 13:50 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 23/10/2026 à 13:57 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2191,7 +2208,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '23/10/2026 à 13:50';
+const BUILD_ID = '23/10/2026 à 13:57';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3603,7 +3620,7 @@ function pwChart(all, mon) {
   const chips = [['3m', '3 mois'], ['6m', '6 mois'], ['prog', 'Programme'], ['all', 'Tout']].map(([k, l]) => `<button class="chip ${rg === k ? 'on' : ''}" data-a="pwrange" data-r="${k}">${l}</button>`).join('');
   const head = `<section class="card pwchart"><h2>Courbe</h2><div class="chips fchips">${chips}</div>`;
   if (n < 2) return head + `<p class="mini">${n ? 'Une seule pesée sur cette période : la courbe apparaît à partir de 2 pesées.' : 'Aucune pesée sur cette période.'}</p></section>`;
-  const W = 340, H = 190, pl = 34, pr = 12, pt = 14, pb = 28, ks = pts.map(x => x.kg);
+  const wide = window.innerWidth > 1060, W = wide ? 960 : 340, H = wide ? 230 : 190, pl = 34, pr = 12, pt = 14, pb = 28, ks = pts.map(x => x.kg);
   let lo = Math.floor(Math.min(...ks) - 0.5), hi = Math.ceil(Math.max(...ks) + 0.5); if (hi - lo < 2) hi = lo + 2;
   const step = hi - lo <= 4 ? 1 : hi - lo <= 10 ? 2 : 5, ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
   const day0 = pts[0].date, span = Math.max(1, diffDays(pts[n - 1].date, day0)), byIdx = rg === 'prog';
@@ -3628,10 +3645,10 @@ function pwHistory(all, mon) {
   const keys = [...groups.keys()], open = ui.pw.openM || new Set([keys[0]]);
   const body = keys.map(k => {
     const a = groups.get(k), avg = a.reduce((t, x) => t + x.kg, 0) / a.length, o = open.has(k);
-    const rows = o ? a.map(x => { const m = mondayOf(x.date), prv = all[all.indexOf(x) - 1], d = prv ? x.kg - prv.kg : null; return `<button class="pwrow${m === mon ? ' on' : ''}" data-a="pwgo" data-m="${m}"><span class="pwk">${fmtKg(x.kg)} kg</span><span class="pwl"><b>${esc(weekName(m))}</b><small>${esc(weekSpan(m))}${x.note ? ' · ' + esc(x.note) : ''}</small></span>${d !== null ? `<span class="pwd">${fmtDeltaKg(d)}</span>` : ''}<span class="pwed">✎</span></button>`; }).join('') : '';
+    const rows = o ? a.map(x => { const m = mondayOf(x.date), prv = all[all.indexOf(x) - 1], d = prv ? x.kg - prv.kg : null; return `<button class="pwrow${m === mon ? ' on' : ''}" data-a="pwgo" data-m="${m}"><span class="pwk">${fmtKg(x.kg)} kg</span><span class="pwl"><b>${esc(weekName(m))}</b><small>${esc(weekSpan(m))}${x.note ? ' · ' + esc(x.note) : ''}</small></span><span class="pwdt">${esc(weekSpan(m))}</span><span class="pwd">${d !== null ? fmtDeltaKg(d) : ''}</span><span class="pwnt">${esc(x.note || '')}</span><span class="pwed">✎</span></button>`; }).join('') : '';
     return `<button class="pwm" data-a="pwmonth" data-k="${k}" aria-expanded="${o}"><i>${o ? '▾' : '▸'}</i><b>${esc(monthName(k))}</b><span>moy. ${fmtKg(avg)} kg · ${a.length} pesée${a.length > 1 ? 's' : ''}</span></button>${rows}`;
   }).join('');
-  return `<section class="card pwlist"><h2>Historique</h2>${body}</section>`;
+  return `<section class="card pwlist"><h2>Historique</h2><div class="pwth"><span>Poids</span><span>Semaine</span><span>Dates</span><span>Variation</span><span>Note</span><span></span></div>${body}</section>`;
 }
 function viewWeightKg() {
   const cur = mondayOf(today()), p = ui.pw; if (!p.week) p.week = cur;
@@ -3671,6 +3688,9 @@ Object.assign(actions, {
   extraInput = function (e) { const k = e.target.dataset?.i; if (k === 'pwkg') { ui.pw.kg = e.target.value; return true; } if (k === 'pwnote') { ui.pw.note = e.target.value; return true; } return prevI(e); };
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.target?.dataset?.i === 'pwkg' || e.target?.dataset?.i === 'pwnote')) { e.preventDefault(); actions.pwsave(); } });
 }
+
+// passage ordinateur <-> téléphone : redessiner la courbe à la bonne échelle
+matchMedia('(max-width:1060px)').addEventListener?.('change', () => { if (ui.view === 'poids') render(); });
 
 // ---- share.js ----
 // Étape 4 : partage à deux (gists GitHub).
