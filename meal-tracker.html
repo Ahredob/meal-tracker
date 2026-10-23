@@ -971,6 +971,15 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .pwlist{max-width:560px}.pwrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 4px;border-top:1px solid var(--line);background:none}.pwrow:first-of-type{border-top:0}.pwrow.on{background:var(--accent-soft);border-radius:10px}
 .pwk{font-weight:800;font-size:17px;min-width:78px}.pwl{flex:1;min-width:0;display:flex;flex-direction:column}.pwl small{color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pwd{font-weight:800;font-size:13px;color:var(--mute)}
 @media (max-width:640px){.pwcard input{min-height:46px;font-size:16px}.pwcard .row .btn{min-height:46px}.pwrow{min-height:56px}}
+
+.pwchart,.pwlist{max-width:560px}.pwsvg{width:100%;height:auto;display:block;margin:4px 0}
+.pwsvg .gl{stroke:var(--line);stroke-width:1}.pwsvg .ax{font-size:10px;fill:var(--mute)}
+.pwsvg .ln{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.pwsvg .pt{fill:var(--surface);stroke:var(--accent);stroke-width:2}.pwsvg .pt.on{fill:var(--accent)}.pwsvg .hit{fill:transparent;cursor:pointer}
+.pwro{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:2px 0 4px}.pwro b{font-size:22px}.pwro span{color:var(--mute);font-size:13px}.pwro small{flex:1 0 100%;color:var(--mute)}
+.pwm{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:12px 4px;border-top:1px solid var(--line);background:none}.pwm i{font-style:normal;width:14px;color:var(--mute)}.pwm b{flex:1}.pwm span{color:var(--mute);font-size:13px}
+.pwlist h2+.pwm{border-top:0}.pwed{color:var(--mute)}
+@media (max-width:640px){.pwm{min-height:48px}}
 </style>
 </head>
 <body>
@@ -1906,7 +1915,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 23/10/2026 à 08:46 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 23/10/2026 à 12:51 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2173,7 +2182,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '23/10/2026 à 08:46';
+const BUILD_ID = '23/10/2026 à 12:51';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3559,12 +3568,62 @@ renderModal3 = function (m, root) {
 }
 
 // ---------- onglet Poids : une pesée par semaine du programme ----------
-ui.pw = { week: null, loaded: null, kg: '', note: '' };
+ui.pw = { week: null, loaded: null, kg: '', note: '', range: 'prog', sel: null, openM: null };
 const weightOf = mon => S.weights.find(w => mondayOf(w.date) === mon) || null;
 const fmtKg = k => nf(k, 1);
 const fmtDeltaKg = d => (d > 0.049 ? '+' : d < -0.049 ? '−' : '±') + nf(Math.abs(d), 1) + ' kg';
 const weekName = mon => { const l = weekLabel(mon).label; return labelName(l); };
 const weekSpan = mon => { const a = parse(mon), b = parse(addDays(mon, 6)), m = d => d.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''); return a.getMonth() === b.getMonth() ? `${a.getDate()} – ${b.getDate()} ${m(b)}` : `${a.getDate()} ${m(a)} – ${b.getDate()} ${m(b)}`; };
+
+const cap1 = t => t.charAt(0).toUpperCase() + t.slice(1);
+const monthName = k => cap1(parse(k + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+function pwSubset(all) {
+  const r = ui.pw.range, t = today();
+  if (r === '3m') return all.filter(x => x.date >= addDays(t, -92));
+  if (r === '6m') return all.filter(x => x.date >= addDays(t, -183));
+  if (r === 'prog') {
+    const fl = progOrder().find(progActive); if (!fl) return all;
+    const out = [];
+    for (let i = all.length - 1; i >= 0; i--) { out.unshift(all[i]); if (weekLabel(mondayOf(all[i].date)).label === fl) return out; }
+    return all;
+  }
+  return all;
+}
+function pwChart(all, mon) {
+  const pts = pwSubset(all), rg = ui.pw.range, n = pts.length;
+  const chips = [['3m', '3 mois'], ['6m', '6 mois'], ['prog', 'Programme'], ['all', 'Tout']].map(([k, l]) => `<button class="chip ${rg === k ? 'on' : ''}" data-a="pwrange" data-r="${k}">${l}</button>`).join('');
+  const head = `<section class="card pwchart"><h2>Courbe</h2><div class="chips fchips">${chips}</div>`;
+  if (n < 2) return head + `<p class="mini">${n ? 'Une seule pesée sur cette période : la courbe apparaît à partir de 2 pesées.' : 'Aucune pesée sur cette période.'}</p></section>`;
+  const W = 340, H = 190, pl = 34, pr = 12, pt = 14, pb = 28, ks = pts.map(x => x.kg);
+  let lo = Math.floor(Math.min(...ks) - 0.5), hi = Math.ceil(Math.max(...ks) + 0.5); if (hi - lo < 2) hi = lo + 2;
+  const step = hi - lo <= 4 ? 1 : hi - lo <= 10 ? 2 : 5, ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
+  const day0 = pts[0].date, span = Math.max(1, diffDays(pts[n - 1].date, day0)), byIdx = rg === 'prog';
+  const X = (x, i) => pl + (W - pl - pr) * (byIdx ? i / (n - 1) : diffDays(x.date, day0) / span), Y = v => pt + (H - pt - pb) * (hi - v) / (hi - lo);
+  const sel = pts.find(x => mondayOf(x.date) === ui.pw.sel) || pts.find(x => mondayOf(x.date) === mon) || pts[n - 1];
+  let svg = `<svg class="pwsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe de poids">`;
+  for (const v of ticks) svg += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${pl - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+  let lastMonth = '', lastX = -99;
+  pts.forEach((x, i) => {
+    const cx = X(x, i);
+    if (byIdx) { if (n <= 9 || i % 2 === 0 || i === n - 1) svg += `<text class="ax" x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(weekLabel(mondayOf(x.date)).label === 'P' ? 'P' : 'S' + weekLabel(mondayOf(x.date)).label)}</text>`; }
+    else { const mk = x.date.slice(0, 7); if (mk !== lastMonth && cx - lastX > 36) { lastMonth = mk; lastX = cx; svg += `<text class="ax" x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : 'middle'}">${esc(parse(x.date).toLocaleDateString('fr-FR', { month: 'short' }).replace('.', ''))}</text>`; } }
+  });
+  svg += `<polyline class="ln" points="${pts.map((x, i) => `${X(x, i).toFixed(1)},${Y(x.kg).toFixed(1)}`).join(' ')}"/>`;
+  pts.forEach((x, i) => { const m = mondayOf(x.date), on = x === sel; svg += `<circle class="pt${on ? ' on' : ''}" cx="${X(x, i).toFixed(1)}" cy="${Y(x.kg).toFixed(1)}" r="${on ? 6 : 3.4}"/><circle class="hit" data-a="pwpt" data-m="${m}" cx="${X(x, i).toFixed(1)}" cy="${Y(x.kg).toFixed(1)}" r="15"/>`; });
+  svg += '</svg>';
+  const m = mondayOf(sel.date), d = pts[n - 1].kg - pts[0].kg;
+  return head + `<div class="pwro"><b>${fmtKg(sel.kg)} kg</b><span>${esc(weekName(m))} · ${esc(weekSpan(m))}</span>${sel.note ? `<small>${esc(sel.note)}</small>` : ''}</div>${svg}<div class="mini">${n} pesées · ${fmtDeltaKg(d)} sur la période${byIdx ? ' (cycle du programme en cours)' : ''}</div></section>`;
+}
+function pwHistory(all, mon) {
+  const groups = new Map(); for (const x of [...all].reverse()) { const k = x.date.slice(0, 7); (groups.get(k) || groups.set(k, []).get(k)).push(x); }
+  const keys = [...groups.keys()], open = ui.pw.openM || new Set([keys[0]]);
+  const body = keys.map(k => {
+    const a = groups.get(k), avg = a.reduce((t, x) => t + x.kg, 0) / a.length, o = open.has(k);
+    const rows = o ? a.map(x => { const m = mondayOf(x.date), prv = all[all.indexOf(x) - 1], d = prv ? x.kg - prv.kg : null; return `<button class="pwrow${m === mon ? ' on' : ''}" data-a="pwgo" data-m="${m}"><span class="pwk">${fmtKg(x.kg)} kg</span><span class="pwl"><b>${esc(weekName(m))}</b><small>${esc(weekSpan(m))}${x.note ? ' · ' + esc(x.note) : ''}</small></span>${d !== null ? `<span class="pwd">${fmtDeltaKg(d)}</span>` : ''}<span class="pwed">✎</span></button>`; }).join('') : '';
+    return `<button class="pwm" data-a="pwmonth" data-k="${k}" aria-expanded="${o}"><i>${o ? '▾' : '▸'}</i><b>${esc(monthName(k))}</b><span>moy. ${fmtKg(avg)} kg · ${a.length} pesée${a.length > 1 ? 's' : ''}</span></button>${rows}`;
+  }).join('');
+  return `<section class="card pwlist"><h2>Historique</h2>${body}</section>`;
+}
 function viewWeightKg() {
   const cur = mondayOf(today()), p = ui.pw; if (!p.week) p.week = cur;
   const mon = p.week, w = weightOf(mon);
@@ -3572,10 +3631,6 @@ function viewWeightKg() {
   const all = [...S.weights].sort((a, b) => a.date.localeCompare(b.date));
   const before = [...all].reverse().find(x => mondayOf(x.date) < mon), first = all[0];
   const delta = w && before ? w.kg - before.kg : null, total = w && first && mondayOf(first.date) !== mon ? w.kg - first.kg : null;
-  const rows = [...all].reverse().slice(0, 12).map((x, i, arr) => {
-    const m = mondayOf(x.date), prv = all[all.indexOf(x) - 1], d = prv ? x.kg - prv.kg : null;
-    return `<button class="pwrow${m === mon ? ' on' : ''}" data-a="pwgo" data-m="${m}"><span class="pwk">${fmtKg(x.kg)} kg</span><span class="pwl"><b>${esc(weekName(m))}</b><small>${esc(weekSpan(m))}${x.note ? ' · ' + esc(x.note) : ''}</small></span>${d !== null ? `<span class="pwd">${fmtDeltaKg(d)}</span>` : ''}</button>`;
-  }).join('');
   return `<main class="main wide2"><div class="dh"><h1>Poids</h1><span class="mini">${all.length} pesée${all.length > 1 ? 's' : ''}</span></div>
     <section class="card pwcard"><div class="pwnav"><button class="ib" data-a="pwprev" aria-label="Semaine précédente">‹</button><div class="pwt"><b>${esc(weekSpan(mon))}</b><span>${esc(weekName(mon))} du programme${mon === cur ? ' · cette semaine' : ''}</span></div><button class="ib" data-a="pwnext" aria-label="Semaine suivante" ${mon >= cur ? 'disabled' : ''}>›</button></div>
       <div class="pwbig">${w ? `<b>${fmtKg(w.kg)}</b><span class="u">kg</span>${delta !== null ? `<span class="pwchip">${fmtDeltaKg(delta)}</span>` : ''}` : '<b class="mu">—</b><span class="u">pas encore pesée</span>'}</div>
@@ -3583,11 +3638,14 @@ function viewWeightKg() {
       <label class="fld" style="margin-top:10px"><span class="mini">Poids de la semaine (kg)</span><input type="text" inputmode="decimal" id="pwkg" value="${esc(p.kg)}" placeholder="ex. 63,4" data-i="pwkg" autocomplete="off"></label>
       <label class="fld"><span class="mini">Note (facultatif)</span><input type="text" id="pwnote" value="${esc(p.note)}" placeholder="ex. après un week-end chargé, le matin à jeun…" data-i="pwnote" autocomplete="off"></label>
       <div class="row"><button class="btn pri" data-a="pwsave">${w ? 'Mettre à jour' : 'Enregistrer'}</button>${w ? '<button class="btn dng" data-a="pwdel">Supprimer</button>' : ''}${mon !== cur ? '<button class="btn" data-a="pwnow">Cette semaine</button>' : ''}</div></section>
-    ${rows ? `<section class="card pwlist"><h2>Dernières pesées</h2>${rows}</section>` : '<p class="mu">Aucune pesée pour le moment. Saisis la première ci-dessus.</p>'}</main>`;
+    ${all.length ? pwChart(all, mon) + pwHistory(all, mon) : '<p class="mu">Aucune pesée pour le moment. Saisis la première ci-dessus.</p>'}</main>`;
 }
 Object.assign(actions, {
   pwprev: () => { ui.pw.week = addDays(ui.pw.week, -7); render(); },
   pwnext: () => { if (ui.pw.week < mondayOf(today())) { ui.pw.week = addDays(ui.pw.week, 7); render(); } },
+  pwrange: el => { ui.pw.range = el.dataset.r; ui.pw.sel = null; render(); },
+  pwpt: el => { ui.pw.sel = el.dataset.m; render(); },
+  pwmonth: el => { const p = ui.pw; if (!p.openM) { const f = [...S.weights].sort((a, b) => b.date.localeCompare(a.date))[0]; p.openM = new Set(f ? [f.date.slice(0, 7)] : []); } const k = el.dataset.k; p.openM.has(k) ? p.openM.delete(k) : p.openM.add(k); render(); },
   pwnow: () => { ui.pw.week = mondayOf(today()); render(); },
   pwgo: el => { ui.pw.week = el.dataset.m; render(); window.scrollTo(0, 0); },
   pwsave: () => {
