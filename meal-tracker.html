@@ -960,6 +960,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .ov:has(.rcsadd) .dlg>.ft2,.ov:has(.rcsadd) .dlg>.foot{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
 }
 @media (max-width:640px){.ov:has(.rcsadd){z-index:200}.dlg .bd{min-height:0;flex:1 1 auto}}
+
+.recsw{max-width:420px;margin:6px 0 10px}.recsw button{flex:1}
+@media (max-width:640px){.recsw{max-width:none}.recsw button{min-height:44px;font-weight:700}}
 </style>
 </head>
 <body>
@@ -1567,9 +1570,9 @@ function nameUnitIssue(name, unit) {
 
 // ---------- rendu général ----------
 const NAV = [['Au quotidien', [['jour', 'Journée', 'jour'], ['semaine', 'Semaine', 'week'], ['courses', 'Courses', 'cart'], ['stock', 'Stock', 'box']]],
-  ['Bibliothèque', [['modeles', 'Repas types', 'tpl'], ['recettes', 'Recettes', 'rec'], ['aliments', 'Aliments', 'foods']]],
+  ['Bibliothèque', [['recettes', 'Recettes', 'rec'], ['aliments', 'Aliments', 'foods']]],
   ['', [['reglages', 'Réglages', 'set']]]];
-const navBtn = ([k, l, i]) => `<button class="${ui.view === k ? 'on' : ''}" data-a="nav" data-v="${k}">${icon(i)}<span>${l}</span>${(k === 'aliments' && newsCount()) || (k === 'recettes' && newsCount(true)) ? '<i class="ndot"></i>' : ''}</button>`;
+const navBtn = ([k, l, i]) => `<button class="${ui.view === k || (k === 'recettes' && ui.view === 'modeles') ? 'on' : ''}" data-a="nav" data-v="${k}">${icon(i)}<span>${l}</span>${(k === 'aliments' && newsCount()) || (k === 'recettes' && newsCount(true)) ? '<i class="ndot"></i>' : ''}</button>`;
 const SECOND = ['modeles', 'recettes', 'aliments', 'reglages'];
 const navHtml = () => NAV.map(([g, items], gi) => {
   const inner = (g ? `<div class="ng">${g}</div>` : '<div class="nsep"></div>') + items.map(navBtn).join('');
@@ -1599,7 +1602,7 @@ function render() {
   $('#app').innerHTML = `<aside class="side ${ui.moreOpen ? 'mopen' : ''}"><div class="brand">Meal Tracker</div>${navHtml().replace('<!--MORE-->', moreBtn() + '<div class="nsheet">') }${undoHtml()}</div></aside><div class="nscrim" data-a="navmore"></div>${views[ui.view]()}`;
   ui.rendering = false;
   if (sc) document.querySelectorAll('.tw').forEach((e, i) => { if (sc[i] != null) e.scrollTop = sc[i]; });
-  ui._v = ui.view; ui.scrollReset = false;
+  ui._v = ui.view; ui.scrollReset = false; if (ui.view === 'modeles' || ui.view === 'recettes') ui.lastRec = ui.view;
   if (fk) { const el = document.querySelector(`[data-fk="${fk}"]`); if (el) { if (keepVal !== null && el.dataset.i === 'qty') el.value = keepVal; el.focus(); try { el.setSelectionRange(selS, selE); } catch { } } }
   document.title = ui.view === 'jour' ? `Meal Tracker · ${fmtShort(ui.date)}` : 'Meal Tracker';
 }
@@ -1894,7 +1897,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 23/10/2026 à 07:50 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 23/10/2026 à 08:41 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -1984,7 +1987,7 @@ function trySaveFood() {
 }
 const actions = {
   navmore: () => { ui.moreOpen = !ui.moreOpen; render(); },
-  nav: el => { ui.moreOpen = false; if (el.dataset.v === 'semaine' && ui.view !== 'semaine') ui.wdate = ui.date; ui.view = el.dataset.v; render(); window.scrollTo(0, 0); },
+  nav: el => { ui.moreOpen = false; if (el.dataset.v === 'recettes' && ui.view !== 'recettes' && ui.view !== 'modeles' && ui.lastRec === 'modeles') el = { dataset: { v: 'modeles' } }; if (el.dataset.v === 'semaine' && ui.view !== 'semaine') ui.wdate = ui.date; ui.view = el.dataset.v; render(); window.scrollTo(0, 0); },
   day: el => { ui.date = addDays(ui.date, +el.dataset.n); render(); },
   today: () => { ui.date = today(); render(); },
   weeklabel: () => openModal({ type: 'label' }),
@@ -2161,7 +2164,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '23/10/2026 à 07:50';
+const BUILD_ID = '23/10/2026 à 08:41';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2365,6 +2368,7 @@ function tplBlock(fam) {
   return `<section class="xb xcol${op ? ' xo' : ''}"><button class="xtog ttog" data-a="tpltog" data-k="${esc(fam.key)}" aria-expanded="${op}"><b>${esc(x.name)}</b><span class="xtt">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} var.` : ''}</span><span class="xtk">${f0(xx.tot.k)}</span><i>${op ? '▾' : '▸'}</i></button><button class="xh" data-a="tplopen" data-id="${x.id}" title="Copier ce repas type vers un jour">${esc(x.name)}</button><div class="xti">${esc(OWNERS[x.owner] || x.owner)}${items.length > 1 ? ` · ${items.length} variantes` : ''}</div><div class="xsm">${g ? gName(g) : esc(x.group || '')} · ${f0(xx.tot.k)} kcal${diff.length ? ` · diffère de la variante 1 : ${diff.join(', ')}` : ''}</div>${tabs}
     ${xBody(xx, null, false, false, true)}<div class="xcp"><button class="btn sm" data-a="tplopen" data-id="${x.id}">Copier vers…</button>${x.hidden ? `<button class="btn sm mob" data-a="tplrestore" data-id="${x.id}">Restaurer</button><button class="btn sm dng mob" data-a="tplpurge" data-id="${x.id}">Supprimer</button>` : `<button class="btn sm mob" data-a="copytpl2" data-id="${x.id}">Copier vers…</button><button class="btn sm dng mob" data-a="tpldel" data-id="${x.id}">Archiver</button>`}</div></section>`;
 }
+const recSwitch = cur => `<div class="seg recsw"><button class="${cur === 'modeles' ? 'on' : ''}" data-a="nav" data-v="modeles">Repas types</button><button class="${cur === 'recettes' ? 'on' : ''}" data-a="nav" data-v="recettes">Recettes</button></div>`;
 function viewTpl() {
   const t = ui.tpl, words = qwords(t.q), tables = t.mode === 'tables';
   const base = S.templates.filter(x => (t.owner === 'arch' ? !!x.hidden : !x.hidden && (t.owner === 'all' || x.owner === t.owner)) && words.every(w => norm(x.name + ' ' + x.group + ' ' + tplFoods(x)).includes(w)));
@@ -2377,7 +2381,8 @@ function viewTpl() {
   const body = order.filter(g => vg[g]).map(g => tables
     ? `<div class="gh">${esc(g)}</div><div class="xgrid xg-t">${vg[g].map(tplBlock).join('')}</div>`
     : `<div class="gh">${esc(g)}</div><div class="card list">${vg[g].map(x => { const tot = templateTotals(x); return `<button class="li" data-a="tplopen" data-id="${x.id}"><div class="b"><b>${esc(x.name)}</b><span>${esc(OWNERS[x.owner] || x.owner)}${variantOf(x).n > 1 ? ` · variante ${variantOf(x).i + 1}/${variantOf(x).n}` : ''}</span></div><div class="r">${f0(tot.k)} kcal · P ${f0(tot.p)}</div></button>`; }).join('')}</div>`).join('');
-  return `<main class="main wide2">${ui.copyOpen && ui.copyTpl ? destStrip() : ''}<div class="dh"><h1>Repas types</h1><span class="mini">${tables ? `${flat.length} repas · ${list.length} variantes` : `${list.length} sur ${S.templates.length} repas`}</span></div>
+  return `<main class="main wide2">${ui.copyOpen && ui.copyTpl ? destStrip() : ''}<div class="dh"><h1>Recettes</h1><span class="mini">${tables ? `${flat.length} repas · ${list.length} variantes` : `${list.length} sur ${S.templates.length} repas`}</span></div>
+    ${recSwitch('modeles')}
     <div class="seg wseg"><button class="${tables ? 'on' : ''}" data-a="tplmode" data-m="tables">Tableaux</button><button class="${!tables ? 'on' : ''}" data-a="tplmode" data-m="list">Liste</button></div>
     <div class="chips fchips" style="margin-bottom:8px">${[['all', 'Tous'], ...Object.entries(OWNERS), ...(S.templates.some(x => x.hidden) || t.owner === 'arch' ? [['arch', `Archivés (${S.templates.filter(x => x.hidden).length})`]] : [])].map(([k, l]) => `<button class="chip ${t.owner === k ? 'on' : ''}" data-a="tplowner" data-o="${k}">${l}</button>`).join('')}</div>
     <div class="chips fchips" style="margin-bottom:8px">${wchips}</div>
@@ -3049,6 +3054,7 @@ function viewRecipes() {
   const words = qwords(ui.rec.q);
   const nArch = S.foods.filter(f => f.recipe && f.hidden).length, list = S.foods.filter(f => f.recipe && (ui.rec.arch ? f.hidden : !f.hidden) && (ui.rec.cat === 'all' || (ui.rec.cat === '_none' ? !f.recipe.cat : f.recipe.cat === ui.rec.cat)) && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   return `<main class="main wide2"><div class="dh"><h1>Recettes</h1><span class="mini">${list.length} recette${list.length > 1 ? 's' : ''}</span><div class="sp"><button class="btn pri" data-a="recnew">Nouvelle recette</button></div></div>
+    ${recSwitch('recettes')}
     <p class="mini">Tu prépares la recette entière, mais tu ne notes que tes parts dans la Journée (ex. « Cookies (1 part) » × 1) : les calories et macros sont celles d'une part. Dans Courses, les ingrédients de la recette entière sont ajoutés automatiquement.</p>
     ${nArch || ui.rec.arch ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.arch ? '' : 'on'}" data-a="recarch" data-v="0">Actives</button><button class="chip ${ui.rec.arch ? 'on' : ''}" data-a="recarch" data-v="1">Archivées (${nArch})</button></div>` : ''}${recCats().length ? `<div class="chips" style="margin-bottom:8px">${[['all', 'Toutes'], ...recCats().map(c => [c, c]), ['_none', 'Sans catégorie']].map(([k, l]) => `<button class="chip ${ui.rec.cat === k ? 'on' : ''}" data-a="reccat" data-k="${esc(k)}">${esc(l)}</button>`).join('')}</div>` : ''}<div class="search">${icon('search')}<input type="search" placeholder="Rechercher une recette…" value="${esc(ui.rec.q)}" data-i="rq" data-fk="rq"></div>
     <div class="xgrid xg-t">${list.map(recCard).join('') || '<p class="mu">Aucune recette.</p>'}</div></main>`;
@@ -3456,7 +3462,7 @@ renderModal3 = function (m, root) {
 
 // téléphone : un balayage horizontal change d'onglet (gauche = onglet suivant, droite = précédent), la page suit le doigt
 {
-  const ORDER = ['jour', 'semaine', 'courses', 'stock', 'modeles', 'recettes', 'aliments', 'reglages'];
+  const ORDER = ['jour', 'semaine', 'courses', 'stock', 'recettes', 'aliments', 'reglages'], tabOf = v => v === 'modeles' ? 'recettes' : v;
   let st = null;
   const mob = () => matchMedia('(max-width:640px)').matches;
   const pageEl = () => document.querySelector('#app main');
@@ -3469,7 +3475,7 @@ renderModal3 = function (m, root) {
     }
     return false;
   };
-  const target = dx => { const i = ORDER.indexOf(ui.view), n = i + (dx < 0 ? 1 : -1); return i < 0 || n < 0 || n >= ORDER.length ? null : ORDER[n]; };
+  const target = dx => { const i = ORDER.indexOf(tabOf(ui.view)), n = i + (dx < 0 ? 1 : -1); return i < 0 || n < 0 || n >= ORDER.length ? null : ORDER[n]; };
   const reset = el => { if (!el) return; el.style.transition = el.style.transform = el.style.willChange = ''; document.documentElement.style.overflowX = ''; };
   document.addEventListener('touchstart', e => {
     if (st?.busy) return;
