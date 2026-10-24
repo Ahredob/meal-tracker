@@ -1013,6 +1013,21 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 
 .pwcard .fld .mini{white-space:nowrap}
 @media (min-width:1061px){.pwcard{grid-template-columns:auto auto 120px minmax(160px,1fr) auto}.pwbig b.mu{font-size:30px}}
+
+/* cycles */
+.pwcn{display:flex;align-items:center;gap:8px;margin:6px 0 8px}.pwcn .ib{width:44px;height:44px;font-size:24px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.pwcn .ib[disabled]{opacity:.3}
+.pwcs{display:flex;gap:6px;margin-bottom:6px}.pwcs span{flex:1;min-width:0;background:var(--soft);border-radius:10px;padding:7px 8px;display:flex;flex-direction:column}.pwcs small{font-size:10.5px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em;font-weight:700}.pwcs b{font-size:15px;white-space:nowrap}
+.pwcmp{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13.5px;color:var(--mute)}.pwcmp input{width:20px;height:20px}.pwleg{color:var(--mute);margin-left:6px}
+.ln.prev{stroke:var(--mute);stroke-dasharray:4 4;opacity:.7;stroke-width:1.8}
+.cyth{display:none}.cyrow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"n v" "d f" "a p";gap:2px 10px;width:100%;text-align:left;padding:11px 6px;border-top:1px solid var(--line);background:none}.cyrow:first-of-type{border-top:0}.cyrow.on{background:var(--accent-soft);border-radius:10px}
+.cyn{grid-area:n;display:flex;align-items:center;gap:6px}.cyd{grid-area:d;color:var(--mute);font-size:13px}.cyf{grid-area:f;text-align:right;font-size:13px;color:var(--mute)}.cyv{grid-area:v;text-align:right;font-weight:800;font-size:17px}.cya{grid-area:a;color:var(--mute);font-size:13px}.cyp{grid-area:p;text-align:right;color:var(--mute);font-size:13px}
+@media (min-width:1061px){
+  .pwcyc .cyth,.pwcyc .cyrow{display:grid;grid-template-columns:150px 150px 170px 110px 120px 1fr;grid-template-areas:none;align-items:center;gap:0 12px}
+  .pwcyc .cyth{padding:6px 8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+  .pwcyc .cyrow{padding:9px 8px;border-radius:0}.pwcyc .cyrow>*{grid-area:auto!important;text-align:left!important;font-size:14px}.pwcyc .cyv{font-weight:800}
+  .pwcn{max-width:420px}
+}
+@media (max-width:640px){.pwcs{flex-wrap:wrap}.pwcs span{flex:1 1 30%}.pwcyc .cyrow{min-height:62px}}
 </style>
 </head>
 <body>
@@ -1948,7 +1963,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 09:01 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 09:25 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2215,7 +2230,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 09:01';
+const BUILD_ID = '24/10/2026 à 09:25';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3601,7 +3616,7 @@ renderModal3 = function (m, root) {
 }
 
 // ---------- onglet Poids : une pesée par semaine du programme ----------
-ui.pw = { week: null, loaded: null, kg: '', note: '', range: 'prog', sel: null, openM: null };
+ui.pw = { week: null, loaded: null, kg: '', note: '', range: 'cycle', cyc: null, cmp: true, sel: null, openM: null };
 const weightOf = mon => S.weights.find(w => mondayOf(w.date) === mon) || null;
 const fmtKg = k => Number(+k || 0).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const fmtDeltaKg = d => (d > 0.049 ? '+' : d < -0.049 ? '−' : '±') + nf(Math.abs(d), 1) + ' kg';
@@ -3622,9 +3637,68 @@ function pwSubset(all) {
   }
   return all;
 }
+// ---- cycles : un cycle = les semaines du programme de la première (« Semaine 1 ») à la pause ----
+function pwCycles() {
+  const ord = progOrder().filter(progActive), fl = ord[0]; if (!fl) return [];
+  const cur = mondayOf(today()), n = ord.length;
+  const dates = [...S.weights.map(w => w.date), ...Object.keys(S.days), ...Object.keys(S.weeks)];
+  let first = dates.length ? mondayOf(dates.reduce((a, b) => (a < b ? a : b))) : cur;
+  for (let i = 0; i < 20 && weekLabel(first).label !== fl; i++) first = addDays(first, -7);
+  const out = [], free = !Object.keys(S.weeks).length; let c = null, k = 0;   // sans programme saisi : cycles découpés tous les n semaines
+  for (let m = first; m <= cur; m = addDays(m, 7), k++) { if (!c || (free ? k % n === 0 : weekLabel(m).label === fl)) { c = { start: m, weeks: [] }; out.push(c); } c.weeks.push(m); }
+  const last = out[out.length - 1]; while (last.weeks.length < n) last.weeks.push(addDays(last.weeks[last.weeks.length - 1], 7));
+  const byWeek = new Map(S.weights.map(w => [mondayOf(w.date), w]));
+  const base = S.program?.cycleN || out.length;
+  out.forEach((c, i) => {
+    c.i = i; c.num = base - (out.length - 1 - i); c.cur = i === out.length - 1;
+    c.pts = c.weeks.map(m => byWeek.get(m) || null);
+    const got = c.pts.filter(Boolean); c.n = got.length;
+    c.first = got[0] || null; c.lastW = got[got.length - 1] || null;
+    c.delta = got.length > 1 ? c.lastW.kg - c.first.kg : null;
+    c.avg = got.length ? got.reduce((t, x) => t + x.kg, 0) / got.length : null;
+    c.end = addDays(c.weeks[c.weeks.length - 1], 6);
+    c.labs = c.weeks.map((m, k) => free ? ord[k] : weekLabel(m).label);
+  });
+  return out;
+}
+const cycSpan = c => { const f = d => parse(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', ''); return `${f(c.start)} → ${f(c.end)}`; };
+function pwCycleChart(all, mon) {
+  const cyc = pwCycles(), p = ui.pw;
+  let i = p.cyc !== null && p.cyc < cyc.length ? p.cyc : cyc.findIndex(c => c.weeks.includes(mon)); if (i < 0) i = cyc.length - 1;
+  const c = cyc[i], pv = i > 0 ? cyc[i - 1] : null, cmp = p.cmp && pv && pv.n > 0;
+  const chips = [['cycle', 'Cycle'], ['3m', '3 mois'], ['6m', '6 mois'], ['all', 'Tout']].map(([k, l]) => `<button class="chip ${p.range === k ? 'on' : ''}" data-a="pwrange" data-r="${k}">${l}</button>`).join('');
+  const nav = `<div class="pwcn"><button class="ib" data-a="pwcyc" data-d="-1" aria-label="Cycle précédent" ${i === 0 ? 'disabled' : ''}>‹</button><div class="pwt"><b>Cycle ${c.num}${c.cur ? '<em class="pwnowtag">en cours</em>' : ''}</b><span>${esc(cycSpan(c))}</span></div><button class="ib" data-a="pwcyc" data-d="1" aria-label="Cycle suivant" ${i === cyc.length - 1 ? 'disabled' : ''}>›</button></div>`;
+  const stat = c.n ? `<div class="pwcs"><span><small>Début</small><b>${fmtKg(c.first.kg)}</b></span><span><small>${c.cur ? 'Dernière' : 'Fin'}</small><b>${fmtKg(c.lastW.kg)}</b></span><span><small>Variation</small><b>${c.delta === null ? '—' : fmtDeltaKg(c.delta)}</b></span><span><small>Moyenne</small><b>${fmtKg(c.avg)}</b></span><span><small>Pesées</small><b>${c.n}/${c.weeks.length}</b></span></div>` : '<p class="mini">Aucune pesée dans ce cycle.</p>';
+  const vals = [...c.pts, ...(cmp ? pv.pts : [])].filter(Boolean).map(x => x.kg);
+  const head = `<section class="card pwchart"><h2>Courbe</h2><div class="chips fchips">${chips}</div>${nav}${stat}`;
+  if (!vals.length) return head + '</section>';
+  const wide = window.innerWidth > 1060, W = wide ? 960 : 340, H = wide ? 230 : 190, pl = 34, pr = 14, pt = 14, pb = 28, N = c.weeks.length;
+  let lo = Math.floor(Math.min(...vals) - 0.5), hi = Math.ceil(Math.max(...vals) + 0.5); if (hi - lo < 2) hi = lo + 2;
+  const step = hi - lo <= 4 ? 1 : hi - lo <= 10 ? 2 : 5, ticks = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(v);
+  const X = k => pl + (W - pl - pr) * (N === 1 ? 0.5 : k / (N - 1)), Y = v => pt + (H - pt - pb) * (hi - v) / (hi - lo);
+  const path = (pts, cls) => { let d = '', pen = false; pts.forEach((x, k) => { if (!x) { pen = false; return; } d += `${pen ? 'L' : 'M'}${X(k).toFixed(1)},${Y(x.kg).toFixed(1)}`; pen = true; }); return d ? `<path class="${cls}" d="${d}"/>` : ''; };
+  let svg = `<svg class="pwsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe du cycle ${c.num}">`;
+  for (const v of ticks) svg += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${pl - 6}" y="${Y(v) + 4}" text-anchor="end">${v}</text>`;
+  c.weeks.forEach((m, k) => { const l = c.labs[k]; svg += `<text class="ax" x="${X(k).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(l === 'P' ? 'P' : 'S' + l)}</text>`; });
+  if (cmp) svg += path(pv.pts, 'ln prev');
+  svg += path(c.pts, 'ln');
+  c.pts.forEach((x, k) => { if (!x) return; const on = c.weeks[k] === (p.sel || mon); svg += `<circle class="pt${on ? ' on' : ''}" cx="${X(k).toFixed(1)}" cy="${Y(x.kg).toFixed(1)}" r="${on ? 6 : 3.4}"/><circle class="hit" data-a="pwpt" data-m="${c.weeks[k]}" cx="${X(k).toFixed(1)}" cy="${Y(x.kg).toFixed(1)}" r="15"/>`; });
+  svg += '</svg>';
+  const sel = c.pts[c.weeks.indexOf(p.sel || mon)], m = p.sel || mon;
+  const ro = sel ? `<div class="pwro"><b>${fmtKg(sel.kg)} kg</b><span>${esc(weekName(m))} · ${esc(weekSpan(m))}</span>${sel.note ? `<small>${esc(sel.note)}</small>` : ''}</div>` : '';
+  const leg = pv && pv.n > 0 ? `<label class="pwcmp"><input type="checkbox" data-a="pwcmp" ${p.cmp ? 'checked' : ''}> Comparer au cycle ${pv.num}${p.cmp ? ' <span class="pwleg"><i></i>pointillés</span>' : ''}</label>` : '';
+  return head + ro + svg + leg + '</section>';
+}
+function pwCyclesTable() {
+  const cyc = pwCycles(); if (cyc.length < 1 || !S.weights.length) return '';
+  const rows = [...cyc].reverse().map(c => `<button class="cyrow${ui.pw.range === 'cycle' && c.i === (ui.pw.cyc ?? cyc.length - 1) ? ' on' : ''}" data-a="pwcycgo" data-i="${c.i}"><span class="cyn"><b>Cycle ${c.num}</b>${c.cur ? '<em class="pwnowtag">en cours</em>' : ''}</span><span class="cyd">${esc(cycSpan(c))}</span><span class="cyf">${c.n ? `${fmtKg(c.first.kg)} → ${fmtKg(c.lastW.kg)}` : '—'}</span><span class="cyv">${c.delta !== null ? fmtDeltaKg(c.delta) : '—'}</span><span class="cya">${c.avg !== null ? 'moy. ' + fmtKg(c.avg) : ''}</span><span class="cyp">${c.n}/${c.weeks.length}</span></button>`).join('');
+  const done = cyc.filter(c => !c.cur && c.delta !== null), tot = done.reduce((t, c) => t + c.delta, 0);
+  return `<section class="card pwcyc"><h2>Cycles</h2><div class="cyth"><span>Cycle</span><span>Dates</span><span>Premier → dernier</span><span>Variation</span><span>Moyenne</span><span>Pesées</span></div>${rows}${done.length ? `<p class="mini" style="margin-top:8px">Cycles terminés : ${done.length} · variation cumulée ${fmtDeltaKg(tot)} · moyenne ${fmtDeltaKg(tot / done.length)} par cycle. <button class="lnk" style="margin:0" data-a="pwcycnum">Cycle en cours = n° ${cyc[cyc.length - 1].num} (modifier)</button></p>` : `<p class="mini"><button class="lnk" style="margin:0" data-a="pwcycnum">Cycle en cours = n° ${cyc[cyc.length - 1].num} (modifier)</button></p>`}</section>`;
+}
 function pwChart(all, mon) {
-  const pts = pwSubset(all), rg = ui.pw.range, n = pts.length;
-  const chips = [['3m', '3 mois'], ['6m', '6 mois'], ['prog', 'Programme'], ['all', 'Tout']].map(([k, l]) => `<button class="chip ${rg === k ? 'on' : ''}" data-a="pwrange" data-r="${k}">${l}</button>`).join('');
+  if (ui.pw.range === 'cycle' && pwCycles().length) return pwCycleChart(all, mon);
+  const pts = pwSubset(all), rg = ui.pw.range === 'cycle' ? 'all' : ui.pw.range, n = pts.length;
+  const chips = [['cycle', 'Cycle'], ['3m', '3 mois'], ['6m', '6 mois'], ['all', 'Tout']].map(([k, l]) => `<button class="chip ${rg === k ? 'on' : ''}" data-a="pwrange" data-r="${k}">${l}</button>`).join('');
   const head = `<section class="card pwchart"><h2>Courbe</h2><div class="chips fchips">${chips}</div>`;
   if (n < 2) return head + `<p class="mini">${n ? 'Une seule pesée sur cette période : la courbe apparaît à partir de 2 pesées.' : 'Aucune pesée sur cette période.'}</p></section>`;
   const wide = window.innerWidth > 1060, W = wide ? 960 : 340, H = wide ? 230 : 190, pl = 34, pr = 12, pt = 14, pb = 28, ks = pts.map(x => x.kg);
@@ -3671,12 +3745,16 @@ function viewWeightKg() {
       <label class="fld" style="margin-top:10px"><span class="mini">Poids (kg)</span><input type="text" inputmode="decimal" id="pwkg" value="${esc(p.kg)}" placeholder="ex. 63,4" data-i="pwkg" autocomplete="off"></label>
       <label class="fld"><span class="mini">Note (facultatif)</span><input type="text" id="pwnote" value="${esc(p.note)}" placeholder="ex. après un week-end chargé, le matin à jeun…" data-i="pwnote" autocomplete="off"></label>
       <div class="row"><button class="btn pri" data-a="pwsave">${w ? 'Mettre à jour' : 'Enregistrer'}</button>${w ? '<button class="btn dng" data-a="pwdel">Supprimer</button>' : ''}${mon !== cur ? '<button class="btn" data-a="pwnow">Cette semaine</button>' : ''}</div></section></div>
-    <div class="pwright">${all.length ? pwChart(all, mon) + pwHistory(all, mon) : '<p class="mu">Aucune pesée pour le moment. Saisis la première à gauche.</p>'}</div></div></main>`;
+    <div class="pwright">${all.length ? pwChart(all, mon) + pwCyclesTable() + pwHistory(all, mon) : '<p class="mu">Aucune pesée pour le moment. Saisis la première à gauche.</p>'}</div></div></main>`;
 }
 Object.assign(actions, {
   pwprev: () => { ui.pw.week = addDays(ui.pw.week, -7); render(); },
   pwnext: () => { if (ui.pw.week < mondayOf(today())) { ui.pw.week = addDays(ui.pw.week, 7); render(); } },
   pwrange: el => { ui.pw.range = el.dataset.r; ui.pw.sel = null; render(); },
+  pwcyc: el => { const cyc = pwCycles(), i = ui.pw.cyc ?? cyc.length - 1, j = Math.max(0, Math.min(cyc.length - 1, i + +el.dataset.d)); ui.pw.cyc = j; ui.pw.sel = null; render(); },
+  pwcycgo: el => { ui.pw.range = 'cycle'; ui.pw.cyc = +el.dataset.i; ui.pw.sel = null; render(); const c = document.querySelector('.pwchart'); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); },
+  pwcmp: el => { ui.pw.cmp = !!el.checked; render(); },
+  pwcycnum: () => { const cyc = pwCycles(), v = window.prompt('Numéro de ton cycle en cours ?', String(cyc[cyc.length - 1].num)); if (v === null) return; const n = Math.round(num(v)); if (n >= 1 && n <= 999) mut(s => { s.program.cycleN = n; }); },
   pwpt: el => { ui.pw.sel = el.dataset.m; render(); },
   pwmonth: el => { const p = ui.pw; if (!p.openM) { const f = [...S.weights].sort((a, b) => b.date.localeCompare(a.date))[0]; p.openM = new Set(f ? [f.date.slice(0, 7)] : []); } const k = el.dataset.k; p.openM.has(k) ? p.openM.delete(k) : p.openM.add(k); render(); },
   pwnow: () => { ui.pw.week = mondayOf(today()); render(); },
