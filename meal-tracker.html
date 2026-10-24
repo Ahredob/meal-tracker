@@ -1434,21 +1434,21 @@ function stockMap() {
   stockCache = map; if (!ids.length) return map;
   const minAsof = ids.reduce((m, id) => items[id].asof < m ? items[id].asof : m, t);
   const use = [];
-  const dayList = Object.keys(S.days).map(d => [d, S.days[d]]);
-  if (remote?.days) for (const d of Object.keys(remote.days)) dayList.push([d, remote.days[d]]);
-  for (const [d, day] of dayList) {
+  const dayList = Object.keys(S.days).map(d => [d, S.days[d], 0]);
+  if (remote?.days) for (const d of Object.keys(remote.days)) dayList.push([d, remote.days[d], 1]);
+  for (const [d, day, src] of dayList) {
     if (d < minAsof || d >= t) continue;
     const u = new Map(), add = (id, q) => u.set(id, (u.get(id) || 0) + q);
     for (const m of MEALS) for (const [id, q] of day.meals[m.id] || []) {
       const f = foodMap.get(id);
       if (f?.recipe && !items[id]) { for (const [iid, iq] of f.recipe.items) add(iid, iq / f.recipe.parts * q); } else add(id, q);
     }
-    use.push([d, u]);
+    use.push([d, u, src]);
   }
   for (const id of ids) {
-    const it = items[id]; let ate = 0;
-    for (const [d, u] of use) if (d >= it.asof) ate += u.get(id) || 0;
-    map.set(id, { q: it.q, asof: it.asof, ate, have: Math.max(0, it.q - ate), loc: it.loc });
+    const it = items[id]; let ate = 0, ateO = 0;
+    for (const [d, u, src] of use) if (d >= it.asof) { const v = u.get(id) || 0; ate += v; if (src) ateO += v; }
+    map.set(id, { q: it.q, asof: it.asof, ate, ateO, have: Math.max(0, it.q - ate), loc: it.loc });
   }
   return map;
 }
@@ -1991,7 +1991,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 20:03 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 21:04 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2263,7 +2263,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 20:03';
+const BUILD_ID = '24/10/2026 à 21:04';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3339,7 +3339,7 @@ function viewStock() {
   const row = x => {
     const f = x.f, pk = packsOf(f); let rem = x.have; const pcs = [];
     for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(`${c} paquet${c > 1 ? 's' : ''} de ${esc(packSz(f, L))}`); rem -= c * L; } }
-    const rest = rem, nP = pcs.length, parts = [nP >= 1 ? `<span class="stp">≈ ${pcs.join(' + ')}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span><span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
+    const rest = rem, nP = pcs.length, parts = [nP >= 1 ? `<span class="stp">≈ ${pcs.join(' + ')}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span><span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` <em>(${x.ate - x.ateO > 0.05 ? esc(haveTxt(f, x.ate - x.ateO)) + ' toi, ' : ''}${esc(haveTxt(f, x.ateO))} ${esc(remote?.name || 'l\'autre')})</em>` : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
     return `<div class="stk"><div class="stn"><b>${esc(f.name)}</b>${note}${pk.length ? `<div class="pkb">${pk.map(n => `<button class="btn sm" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}</div>` : ''}</div>
       <div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>
       <select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select>
