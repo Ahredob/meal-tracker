@@ -1056,6 +1056,13 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stkbn b{display:block}.stkbn small{display:block;color:var(--mute);font-size:12.5px}
 .stkbbar{position:sticky;bottom:12px;z-index:5;padding:6px 0}.stkbbar .btn{width:100%;padding:14px;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.18)}.stkbbar .btn[disabled]{background:var(--soft);color:var(--mute);box-shadow:none}
 @media (max-width:640px){.stkbbar{bottom:calc(76px + env(safe-area-inset-bottom))}.stkb{grid-template-columns:auto 1fr}.stkb .qc{grid-column:2}}
+
+/* recettes : avec mon stock */
+.rsh3{margin:16px 0 8px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.rsc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px}.rsh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.rsh b{font-size:15.5px}
+.rok,.rno{display:inline-block;font-weight:800;font-size:12px;padding:3px 9px;border-radius:99px}.rok{background:var(--accent-soft);color:var(--accent)}.rno{background:#FBE9DF;color:var(--warn,#b5532f)}
+.rmiss{color:var(--warn,#b5532f);font-size:12.5px;font-weight:600;margin-top:4px}.rsb{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.rsg{gap:10px}
 </style>
 </head>
 <body>
@@ -2002,7 +2009,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 21:45 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 21:52 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2274,7 +2281,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 21:45';
+const BUILD_ID = '24/10/2026 à 21:52';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3094,6 +3101,14 @@ function seedDay(date) {
 }
 const fmtT = t => { const d = new Date(t); return `${fmtShort(iso(d))} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 function renderModal3(m, root) {
+  if (m.type === 'recplan') {
+    const f = foodMap.get(m.id);
+    root.innerHTML = shell('Planifier la recette', `<p><b>${esc(recBase(f?.name || ''))}</b> <span class="mini">· ${f ? f0(f.k) : ''} kcal par part</span></p>
+      <label for="rpdate">Jour</label><input id="rpdate" type="date" value="${addDays(today(), 1)}">
+      <label for="rpmeal">Repas</label><select id="rpmeal">${MEALS.map(x => `<option value="${x.id}" ${x.id === 'midi' ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>
+      <label for="rpq">Nombre de parts</label><input id="rpq" type="text" inputmode="decimal" value="1">`, `<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="recplanok">Planifier</button>`);
+    return true;
+  }
   if (m.type === 'fguard') {
     root.innerHTML = shell('Modifications non enregistrées', `<p class="fgd">Tu as modifié « ${esc(ui.form?.name || 'cet aliment')} » sans l'enregistrer.</p>`, `<button class="btn" data-a="fgstay">Continuer</button><button class="btn dng" data-a="fgdrop">Abandonner</button><button class="btn pri" data-a="fgsave">Enregistrer</button>`);
     return true;
@@ -3210,14 +3225,38 @@ function recCard(f) {
     <div class="xr xc"><span class="xq">Qté</span><span class="xn">Ingrédients</span><span class="hp">P</span><span class="hc">G</span><span class="hl">L</span><span class="hf">F</span><span>kcal</span></div>${rows}${line('Recette entière', tot, 'xt')}${line('Pour 1 part', f, 'xa')}
     ${r.notes ? `<div class="rnote">${esc(r.notes).replace(/\n/g, '<br>')}</div>` : ''}<div class="xcp">${f.hidden ? `<button class="btn sm" data-a="recrestore" data-id="${f.id}">Restaurer</button>${usageCount(f.id) || extraRefs(f.id) || shareOn() ? '' : `<button class="btn sm dng" data-a="recpurge" data-id="${f.id}">Supprimer définitivement</button>`}` : `<button class="btn sm" data-a="recedit" data-id="${f.id}">Modifier</button><button class="btn sm dng" data-a="recdel" data-id="${f.id}">Archiver</button>`}</div></section>`;
 }
+// ---- « Avec mon stock » : quelles recettes peut-on faire avec ce qu'il y a au stock ? ----
+function recNeeds(f, mult = 1, depth = 0, out = new Map()) {
+  for (const [id, q] of f.recipe.items) {
+    const g = foodMap.get(id); if (!g) continue; const need = q * mult;
+    if (!stockMap().get(id) && g.recipe && depth < 3) recNeeds(g, need / g.recipe.parts, depth + 1, out); else out.set(id, (out.get(id) || 0) + need);
+  }
+  return out;
+}
+function recStock(f) {
+  const miss = []; for (const [id, need] of recNeeds(f)) { const have = stockMap().get(id)?.have || 0; if (have < need - 0.01) miss.push({ id, short: Math.round((need - have) * 100) / 100 }); }
+  return miss;
+}
+function recStockHtml(list) {
+  const rows = list.map(f => ({ f, miss: recStock(f) })), ok = rows.filter(r => !r.miss.length), by = n => rows.filter(r => r.miss.length === n), card = r => {
+    const f = r.f, m = r.miss;
+    return `<div class="rsc"><div class="rsh"><b>${esc(recBase(f.name))}</b>${m.length ? `<span class="rno">${m.length} manque${m.length > 1 ? 'nt' : ''}</span>` : '<span class="rok">✓ tout en stock</span>'}</div>
+      <div class="mini">${f.recipe.parts} part${f.recipe.parts > 1 ? 's' : ''} · ${f0(f.k)} kcal par part</div>
+      ${m.length ? `<div class="rmiss">Manque : ${m.map(x => `${esc(foodMap.get(x.id)?.name || '')} (${esc(haveTxt(foodMap.get(x.id), x.short))})`).join(', ')}</div>` : ''}
+      <div class="rsb"><button class="btn sm pri" data-a="recplan" data-id="${f.id}">Planifier</button>${m.length ? `<button class="btn sm" data-a="recmisscart" data-id="${f.id}">+ Courses</button>` : ''}<button class="btn sm" data-a="recedit" data-id="${f.id}">Voir la recette</button></div></div>`;
+  }, sec = (t, a) => a.length ? `<h3 class="rsh3">${t}</h3><div class="xgrid xg-t rsg">${a.map(card).join('')}</div>` : '';
+  const out = sec('Faisable avec ton stock', ok) + sec('Il manque 1 ingrédient', by(1)) + sec('Il manque 2 ingrédients', by(2)) + sec('Il manque 3 ingrédients', by(3));
+  return out || '<p class="mu">Aucune recette réalisable avec ton stock (ou il manque plus de 3 ingrédients). Renseigne ton stock dans l\'onglet Stock.</p>';
+}
+const recOkCount = () => S.foods.filter(f => f.recipe && !f.hidden && !recStock(f).length).length;
 function viewRecipes() {
   const words = qwords(ui.rec.q);
   const nArch = S.foods.filter(f => f.recipe && f.hidden).length, list = S.foods.filter(f => f.recipe && (ui.rec.arch ? f.hidden : !f.hidden) && (ui.rec.cat === 'all' || (ui.rec.cat === '_none' ? !f.recipe.cat : f.recipe.cat === ui.rec.cat)) && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   return `<main class="main wide2"><div class="dh"><h1>Recettes</h1><span class="mini">${list.length} recette${list.length > 1 ? 's' : ''}</span><div class="sp"><button class="btn pri" data-a="recnew">Nouvelle recette</button></div></div>
     ${recSwitch('recettes')}
     <p class="mini">Tu prépares la recette entière, mais tu ne notes que tes parts dans la Journée (ex. « Cookies (1 part) » × 1) : les calories et macros sont celles d'une part. Dans Courses, les ingrédients de la recette entière sont ajoutés automatiquement.</p>
-    ${nArch || ui.rec.arch ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.arch ? '' : 'on'}" data-a="recarch" data-v="0">Actives</button><button class="chip ${ui.rec.arch ? 'on' : ''}" data-a="recarch" data-v="1">Archivées (${nArch})</button></div>` : ''}${recCats().length ? `<div class="chips" style="margin-bottom:8px">${[['all', 'Toutes'], ...recCats().map(c => [c, c]), ['_none', 'Sans catégorie']].map(([k, l]) => `<button class="chip ${ui.rec.cat === k ? 'on' : ''}" data-a="reccat" data-k="${esc(k)}">${esc(l)}</button>`).join('')}</div>` : ''}<div class="search">${icon('search')}<input type="search" placeholder="Rechercher une recette…" value="${esc(ui.rec.q)}" data-i="rq" data-fk="rq"></div>
-    <div class="xgrid xg-t">${list.map(recCard).join('') || '<p class="mu">Aucune recette.</p>'}</div></main>`;
+    ${nArch || ui.rec.arch ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.arch ? '' : 'on'}" data-a="recarch" data-v="0">Actives</button><button class="chip ${ui.rec.arch ? 'on' : ''}" data-a="recarch" data-v="1">Archivées (${nArch})</button></div>` : ''}${recCats().length ? `<div class="chips" style="margin-bottom:8px">${[['all', 'Toutes'], ...recCats().map(c => [c, c]), ['_none', 'Sans catégorie']].map(([k, l]) => `<button class="chip ${ui.rec.cat === k ? 'on' : ''}" data-a="reccat" data-k="${esc(k)}">${esc(l)}</button>`).join('')}</div>` : ''}<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.stock ? '' : 'on'}" data-a="recstk" data-v="0">Toutes les recettes</button><button class="chip ${ui.rec.stock ? 'on' : ''}" data-a="recstk" data-v="1">Avec mon stock <small>${recOkCount()}</small></button></div><div class="search">${icon('search')}<input type="search" placeholder="Rechercher une recette…" value="${esc(ui.rec.q)}" data-i="rq" data-fk="rq"></div>
+    ${ui.rec.stock ? recStockHtml(list) : `<div class="xgrid xg-t">${list.map(recCard).join('') || '<p class="mu">Aucune recette.</p>'}</div>`}</main>`;
 }
 function recTotals(m) {
   const t = { p: 0, c: 0, l: 0, f: 0, k: 0 };
@@ -3310,6 +3349,12 @@ Object.assign(actions, {
   },
   rccatset: el => { const m = ui.modal; m.cat = (m.cat || '').trim() === el.dataset.k ? '' : el.dataset.k; renderModal(); },
   reccat: el => { ui.rec.cat = el.dataset.k; render(); },
+  recstk: el => { ui.rec.stock = el.dataset.v === '1'; render(); },
+  recmisscart: el => { const f = foodMap.get(el.dataset.id); if (!f) return; const ms = recStock(f).filter(x => !inCart(x.id)); if (!ms.length) { toast('Déjà dans les courses'); return; }
+    mut(s => { for (const x of ms) { const g = foodMap.get(x.id); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: g.name, fid: x.id, q: x.short }); } });
+    if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ms.length} ingrédient${ms.length > 1 ? 's' : ''} ajouté${ms.length > 1 ? 's' : ''} aux courses`); },
+  recplan: el => { const f = foodMap.get(el.dataset.id); if (f) openModal({ type: 'recplan', id: f.id }); },
+  recplanok: () => { const m = ui.modal, f = foodMap.get(m.id), d = $('#rpdate').value, meal = $('#rpmeal').value, q = num($('#rpq').value); if (!f || !d) return; if (!(q > 0)) { toast('Indique un nombre de parts'); return; } addEntry(d, meal, f.id, q); closeModal(); toast(`${recBase(f.name)} ajouté au ${fmtShort(d)}`); },
   recarch: el => { ui.rec.arch = el.dataset.v === '1'; render(); },
   recrestore: el => { mut(s => { delete s.foods.find(x => x.id === el.dataset.id).hidden; }); if (!S.foods.some(f => f.recipe && f.hidden)) ui.rec.arch = false; toast('Recette restaurée'); },
   recpurge: el => { const f = foodMap.get(el.dataset.id); if (!f || !window.confirm(`Supprimer définitivement « ${recBase(f.name)} » ?`)) return; deleteOrHideFood(f.id); if (!S.foods.some(x => x.recipe && x.hidden)) ui.rec.arch = false; toast('Recette supprimée', [{ a: 'gundo', l: 'Annuler' }], 6000); },
