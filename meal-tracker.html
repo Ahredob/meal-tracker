@@ -1043,6 +1043,10 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform input.owarn{border-color:var(--warn,#b5532f)!important;background:#FBE9DF}.fform .wl{display:block;text-align:left;background:none;border:0;padding:3px 0 0;color:var(--warn,#b5532f);font-size:12px;font-weight:700}.fform .wl u{font-weight:600}
 .fform .note.ocrok{background:var(--accent-soft)}
 .ocrimg{width:100%;border-radius:10px;margin:8px 0;border:1px solid var(--line)}
+.fform .note.hist{background:var(--soft);color:var(--mute);font-size:12.5px}.fform .note.hist b{color:var(--ink)}
+.fform .hbox{background:var(--soft);border-radius:10px;margin:10px 0;overflow:hidden}.fform .hbtn{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 12px;background:none;border:0;font-weight:700;font-size:13.5px;color:var(--ink);text-align:left}
+.fform .hent{padding:9px 12px;border-top:1px solid var(--line)}.fform .hh{display:flex;flex-direction:column;gap:1px}.fform .hh b{font-size:13px}.fform .hdt{font-size:11.5px;color:var(--mute);font-style:italic}
+.fform .hent ul{margin:6px 0 0;padding:0;list-style:none}.fform .hent li{font-size:13px;padding:3px 0 3px 10px;border-left:3px solid var(--accent);margin-top:4px;background:var(--surface);border-radius:0 6px 6px 0}
 </style>
 </head>
 <body>
@@ -1854,6 +1858,7 @@ function foodForm() {
     <div class="lbl">Valeurs ${fac}</div><div class="g2">${inp('p', 'Protéines (g)')}${inp('c', 'Glucides (g)')}${inp('l', 'Lipides (g)')}${inp('f', 'Fibres (g)')}</div>
     <label for="ff-k">Calories (kcal)</label><input id="ff-k" type="text" inputmode="decimal" value="${esc(kv)}" class="${ow('k') ? 'owarn' : ''}" ${d.auto ? 'disabled' : ''} data-i="ff" data-k="k" data-fk="ff-k">${owHtml('k')}<label class="sw"><input type="checkbox" data-i="ffauto" ${d.auto ? 'checked' : ''}> Calculer les calories</label><div id="kh">${kcalHint(d)}</div><div id="pv">${portionPreview(d)}</div>
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
+    ${!d.news && d.id && S.meta.share?.hist?.[d.id] ? (hs => `<div class="hbox"><button class="hbtn" data-a="histtoggle" aria-expanded="${!!ui.histOpen}"><span>${ui.histOpen ? 'Masquer' : 'Afficher'} les modifications (${hs.length})</span><i>${ui.histOpen ? '▴' : '▾'}</i></button>${ui.histOpen ? hs.map(h => `<div class="hent"><div class="hh"><b>${h.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(h.byName || 'l\'autre personne')}</b><span class="hdt">${esc(fmtT(h.u))}</span></div>${h.diff?.length ? `<ul>${h.diff.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('') : ''}</div>`)([].concat(S.meta.share.hist[d.id])) : ''}
     ${d.news ? `<div class="note"><b>${d.news.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(d.news.byName || 'l\'autre personne')}</b>${d.news.diff?.length ? '<br>' + d.news.diff.map(esc).join('<br>') : ''}</div>` : ''}
     ${used ? `<div class="note">Présent ${used} fois dans l'historique, les repas types, les recettes ou le stock.${(() => { const u = foodUsage(d.id); return u.n ? `<br>Utilisé dans ${u.n} journée${u.n > 1 ? 's' : ''} · dernière fois le ${esc(fmtDMY(u.last))}. <button class="lnk" style="margin:0" data-a="foodhist" data-id="${d.id}">Voir dans l'historique</button>` : ''; })()}</div>` : ''}
     <div class="row"><button class="btn pri" data-a="savefood"${fdirty(d) ? '' : ' disabled'}>Enregistrer</button><button class="btn" data-a="discardfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
@@ -1986,7 +1991,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 18:07 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 20:03 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2123,6 +2128,7 @@ const actions = {
   editfood: (el, e) => { e.preventDefault(); const id = el.dataset.id; if (ui.lpFired) { ui.lpFired = false; return; } if (matchMedia('(max-width:640px)').matches && ui.picked?.size) { ui.picked.has(id) ? ui.picked.delete(id) : ui.picked.add(id); render(); return; } ui.form = draftFrom(foodMap.get(id)); const nw = typeof newsOf === 'function' ? newsOf(id) : null; if (nw) { ui.form.news = nw; shareSeen([id]); } render(); },
   newfood: () => { ui.form = draftFrom(null); render(); setTimeout(() => $('#ff-name')?.focus(), 0); },
   cancelfood: () => { ui.form = null; render(); },
+  histtoggle: () => { ui.histOpen = !ui.histOpen; render(); },
   discardfood: () => { ui.form = null; render(); },
   savefood: trySaveFood,
   scopeAll: () => { const food = ui.modal.food; saveFood(food); closeModal(); ui.form = draftFrom(food); render(); toast('Appliqué à tout l\'historique'); },
@@ -2257,7 +2263,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 18:07';
+const BUILD_ID = '24/10/2026 à 20:03';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3985,7 +3991,7 @@ function foodDiff(a, b) {
   if (a.name !== b.name) out.push(`nom : « ${a.name} » → « ${b.name} »`);
   if (a.cat !== b.cat) out.push(`catégorie : ${a.cat} → ${b.cat}`);
   if (a.unit !== b.unit) out.push(`unité : ${a.unit} → ${b.unit}`);
-  if (!a.recipe && !b.recipe) for (const [k, l] of [['k', 'kcal'], ['p', 'P'], ['c', 'G'], ['l', 'L'], ['f', 'F']]) if (Math.abs(((a[k] || 0) - (b[k] || 0)) * mul) > 0.05) out.push(`${l} ${q((a[k] || 0) * mul)} → ${q((b[k] || 0) * mul)}`);
+  if (!a.recipe && !b.recipe) for (const [k, l] of [['k', 'Calories'], ['p', 'Protéines'], ['c', 'Glucides'], ['l', 'Lipides'], ['f', 'Fibres']]) if (Math.abs(((a[k] || 0) - (b[k] || 0)) * mul) > 0.05) out.push(`${l} : ${q((a[k] || 0) * mul)} → ${q((b[k] || 0) * mul)} ${k === 'k' ? 'kcal' : 'g'}`);
   if (stab(a.packs || []) !== stab(b.packs || [])) out.push(`formats d'achat : ${(a.packs || []).join(', ') || 'aucun'} → ${(b.packs || []).join(', ') || 'aucun'}`);
   if (!!a.hidden !== !!b.hidden) out.push(b.hidden ? 'archivé' : 'réactivé');
   if (a.recipe && b.recipe && stab(a.recipe) !== stab(b.recipe)) out.push('recette modifiée');
@@ -4001,6 +4007,7 @@ function shareNews(sh, id, r, who, old, val) {
   const e = { id, by: r.by, byName: who.name || '', t: base ? 'mod' : 'new', u: r.u, name: val.name, diff };
   if (prev) { if (prev.t === 'new') { e.t = 'new'; e.diff = []; } else e.diff = [...diff, ...prev.diff.filter(x => !diff.includes(x))].slice(0, 6); list.splice(i, 1); }
   list.unshift(e); if (list.length > 60) list.length = 60;
+  shareHist(sh, { id, byName: e.byName, u: r.u, t: e.t, diff });
 }
 // égalité de date (aliments modifiés avant le partage) : on reprend la version qui n'est pas celle de départ ; si les deux ont été modifiées, la même version gagne des deux côtés (identifiant le plus petit)
 let _seedCore = null;
@@ -4039,9 +4046,16 @@ const shareBy = key => { const r = S.meta.share?.recs?.[key]; return r && r.h !=
 const newsOf = id => (S.meta.share?.news || []).find(n => n.id === id);
 const newsCount = rec => (S.meta.share?.news || []).filter(n => !rec || foodMap.get(n.id)?.recipe).length;
 const newsBadge = id => { const n = newsOf(id); return n ? ` <span class="tag n" title="${esc((n.t === 'new' ? 'Ajouté par ' : 'Modifié par ') + n.byName)}">${n.t === 'new' ? 'Nouveau' : 'Modifié'}${n.byName ? ' · ' + esc(n.byName) : ''}</span>` : ''; };
+function shareHist(sh, e) {   // jusqu'à 5 modifications par aliment, la plus récente d'abord
+  const h = (sh.hist ||= {}); let a = h[e.id]; a = Array.isArray(a) ? a : a ? [a] : [];
+  a = a.filter(x => x.u !== e.u); a.unshift({ byName: e.byName, u: e.u, t: e.t, diff: e.diff || [] }); a.sort((x, y) => (y.u || 0) - (x.u || 0)); h[e.id] = a.slice(0, 5);
+  const ks = Object.keys(h); if (ks.length > 300) for (const k of ks.sort((x, y) => (h[x][0]?.u || 0) - (h[y][0]?.u || 0)).slice(0, ks.length - 300)) delete h[k];
+}
 function shareSeen(ids) {
   const sh = S.meta.share; if (!sh?.news?.length) return;
-  const set = ids ? new Set(ids) : null; sh.news = sh.news.filter(n => set && !set.has(n.id));
+  const set = ids ? new Set(ids) : null;
+  for (const n of sh.news) if ((!set || set.has(n.id)) && !sh.hist?.[n.id]) shareHist(sh, n);   // filet de sécurité : garde la trace
+  sh.news = sh.news.filter(n => set && !set.has(n.id));
   scheduleSave(); emit();
 }
 
