@@ -1039,6 +1039,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .ocrst{margin:0 0 10px}.ocrbar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin-bottom:4px}.ocrbar i{display:block;height:100%;background:var(--accent);transition:width .2s}
 .ocrtxt{margin:0 0 10px;font-size:13px}.ocrtxt pre{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:10px;font-size:12.5px;max-height:220px;overflow:auto}.ocrerr{color:var(--warn,#b5532f)}
 @media (max-width:640px){.fform .ocrbtn{display:flex}}
+
+.fform input.owarn{border-color:var(--warn,#b5532f)!important;background:#FBE9DF}.fform .wl{display:block;text-align:left;background:none;border:0;padding:3px 0 0;color:var(--warn,#b5532f);font-size:12px;font-weight:700}.fform .wl u{font-weight:600}
+.fform .note.ocrok{background:var(--accent-soft)}
 </style>
 </head>
 <body>
@@ -1838,7 +1841,9 @@ function foodForm() {
   const d = ui.form, md = d.unit === 'portion' && !d.recipe ? d.mode : 'port', fac = d.unit === 'portion' ? (md === '100' ? 'pour 100 g' : 'par portion') : `pour 100 ${d.unit}`;
   const tab = d.tab || 'val', npk = getPacks(d).length, f = d.id ? foodMap.get(d.id) : null, used = d.id ? usageCount(d.id) + extraRefs(d.id) : 0;
   const kv = d.auto ? String(Math.round(draftCalc(d))) : d.k;
-  const inp = (k, lab) => `<div><label for="ff-${k}">${lab}</label><input id="ff-${k}" type="text" inputmode="decimal" value="${esc(d[k])}" data-i="ff" data-k="${k}" data-fk="ff-${k}"></div>`;
+  const ow = k => { const w = ui.ocr?.res?.warn?.[k]; return w && String(d[k]).replace(',', '.') === String(w.read) ? w : null; };
+  const owHtml = k => { const w = ow(k); return w ? (w.sug != null ? `<button class="wl" data-a="ocrfix" data-k="${k}">⚠ ${esc(w.msg)} <u>Corriger</u></button>` : `<div class="wl">⚠ ${esc(w.msg)}</div>`) : ''; };
+  const inp = (k, lab) => `<div><label for="ff-${k}">${lab}</label><input id="ff-${k}" type="text" inputmode="decimal" value="${esc(d[k])}" class="${ow(k) ? 'owarn' : ''}" data-i="ff" data-k="${k}" data-fk="ff-${k}">${owHtml(k)}</div>`;
   return `<div class="fform"><h5>${d.id ? 'Modifier l\'aliment' : 'Nouvel aliment'}<button class="ib fclose" data-a="cancelfood" aria-label="Fermer">✕</button></h5>
     <label for="ff-name">Nom</label><input id="ff-name" type="text" value="${esc(d.name)}" data-i="ff" data-k="name" data-fk="ff-name"><div id="dup">${okHint(d)}${dupHint(d)}</div>
     ${d.recipe ? '' : `<div class="seg ftabs"><button class="${tab === 'val' ? 'on' : ''}" data-a="fftab" data-t="val">Valeurs</button><button class="${tab === 'achat' ? 'on' : ''}" data-a="fftab" data-t="achat">Format d'achat${npk ? ` (${npk})` : ''}</button></div>`}
@@ -1846,7 +1851,7 @@ function foodForm() {
     <label for="ff-unit">Unité</label><div class="unitrow"><select id="ff-unit" data-i="ffunit"${d.id ? ' disabled' : ''}><option value="g" ${d.unit === 'g' ? 'selected' : ''}>Grammes</option><option value="ml" ${d.unit === 'ml' ? 'selected' : ''}>Millilitres</option><option value="portion" ${d.unit === 'portion' ? 'selected' : ''}>Portion</option></select>${d.id && !shareOn() ? '<button class="lnk" style="margin:0" data-a="unitconv" data-id="' + d.id + '">Changer l\'unité de comptage…</button>' : ''}</div>
     ${d.unit === 'portion' && !d.recipe ? `<div class="lbl">Saisie des valeurs</div><div class="seg"><button class="${md === 'port' ? 'on' : ''}" data-a="ffmode" data-m="port" title="Valeurs données par portion">Par portion</button><button class="${md === '100' ? 'on' : ''}" data-a="ffmode" data-m="100" title="Valeurs pour 100 g, avec le poids d'une portion">100 g</button></div>${md === '100' ? `<div class="lbl">Poids d'une portion</div><div class="seg"><button class="${d.calc ? '' : 'on'}" data-a="ffcalc" data-v="0">Je le connais</button><button class="${d.calc ? 'on' : ''}" data-a="ffcalc" data-v="1">Depuis le paquet</button></div>${d.calc ? `<div class="g2"><div><label for="ff-ck">Poids du paquet (g)</label><input id="ff-ck" type="text" inputmode="decimal" value="${esc(d.ck)}" data-i="ff" data-k="ck" data-fk="ff-ck"></div><div><label for="ff-cn">Nombre de parts</label><input id="ff-cn" type="text" inputmode="decimal" value="${esc(d.cn)}" data-i="ff" data-k="cn" data-fk="ff-cn"></div></div><div class="note" id="pgres">${pgRes(d)}</div>` : `<label for="ff-pg">Poids d'une portion (g)</label><input id="ff-pg" type="text" inputmode="decimal" value="${esc(d.pg)}" data-i="ff" data-k="pg" data-fk="ff-pg">`}` : ''}` : ''}
     <div class="lbl">Valeurs ${fac}</div><div class="g2">${inp('p', 'Protéines (g)')}${inp('c', 'Glucides (g)')}${inp('l', 'Lipides (g)')}${inp('f', 'Fibres (g)')}</div>
-    <label for="ff-k">Calories (kcal)</label><input id="ff-k" type="text" inputmode="decimal" value="${esc(kv)}" ${d.auto ? 'disabled' : ''} data-i="ff" data-k="k" data-fk="ff-k"><label class="sw"><input type="checkbox" data-i="ffauto" ${d.auto ? 'checked' : ''}> Calculer les calories</label><div id="kh">${kcalHint(d)}</div><div id="pv">${portionPreview(d)}</div>
+    <label for="ff-k">Calories (kcal)</label><input id="ff-k" type="text" inputmode="decimal" value="${esc(kv)}" class="${ow('k') ? 'owarn' : ''}" ${d.auto ? 'disabled' : ''} data-i="ff" data-k="k" data-fk="ff-k">${owHtml('k')}<label class="sw"><input type="checkbox" data-i="ffauto" ${d.auto ? 'checked' : ''}> Calculer les calories</label><div id="kh">${kcalHint(d)}</div><div id="pv">${portionPreview(d)}</div>
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
     ${d.news ? `<div class="note"><b>${d.news.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(d.news.byName || 'l\'autre personne')}</b>${d.news.diff?.length ? '<br>' + d.news.diff.map(esc).join('<br>') : ''}</div>` : ''}
     ${used ? `<div class="note">Présent ${used} fois dans l'historique, les repas types, les recettes ou le stock.${(() => { const u = foodUsage(d.id); return u.n ? `<br>Utilisé dans ${u.n} journée${u.n > 1 ? 's' : ''} · dernière fois le ${esc(fmtDMY(u.last))}. <button class="lnk" style="margin:0" data-a="foodhist" data-id="${d.id}">Voir dans l'historique</button>` : ''; })()}</div>` : ''}
@@ -1980,7 +1985,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 17:00 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 17:02 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2251,7 +2256,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 17:00';
+const BUILD_ID = '24/10/2026 à 17:02';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2965,8 +2970,18 @@ function ocrBox() {
   const o = ui.ocr, btn = `<label class="ocrbtn${o?.busy ? ' off' : ''}"><input type="file" accept="image/*" capture="environment" data-i="ocrfile" hidden ${o?.busy ? 'disabled' : ''}><span class="ocri">📷</span><span><b>Photographier l'étiquette</b><small>Remplit les valeurs nutritionnelles pour toi</small></span></label>`;
   if (o?.busy) return btn + `<div class="ocrst"><div class="ocrbar"><i style="width:${Math.round((o.pct || 0) * 100)}%"></i></div><span class="mini">${esc(o.msg)}</span></div>`;
   if (o?.err) return btn + `<div class="note ocrerr">${esc(o.err)}</div>`;
+  if (o?.res) { const r = o.res, n = ['p', 'c', 'l', 'f', 'k'].filter(k => r.vals[k] != null).length, w = Object.keys(r.warn).length + (r.notes.length ? 1 : 0);
+    const head = n === 0 ? `<div class="note ocrerr"><b>Je n'ai pas repéré le tableau.</b> Reprends la photo bien à plat, de près et bien éclairée, en cadrant seulement « Valeurs nutritionnelles ».</div>` : `<div class="note ${w ? '' : 'ocrok'}">✓ ${n} valeur${n > 1 ? 's' : ''} lue${n > 1 ? 's' : ''} sur 5. <b>Vérifie avant d'enregistrer</b>${w ? ' : les cases en orange sont à contrôler.' : '.'}${r.notes.map(x => `<br>• ${esc(x)}`).join('')}</div>`;
+    return btn + head + `<details class="ocrtxt"><summary>Texte lu sur la photo</summary><pre>${esc(o.text.trim() || '(aucun texte reconnu)')}</pre></details>`; }
   if (o?.text !== undefined) return btn + `<details class="ocrtxt"><summary>Texte lu sur la photo</summary><pre>${esc(o.text.trim() || '(aucun texte reconnu)')}</pre></details>`;
   return btn;
+}
+const kfmt = v => String(Math.round(v * 100) / 100).replace('.', ',');
+function ocrApply(d, r) {
+  for (const k of ['p', 'c', 'l', 'f']) if (r.vals[k] != null) d[k] = kfmt(r.vals[k]);
+  if (r.vals.k != null) { d.auto = false; d.k = kfmt(r.vals.k); }
+  if (r.vals.p != null || r.vals.c != null || r.vals.l != null) { if (d.unit === 'portion' && !d.recipe) d.mode = '100'; }
+  for (const w of Object.values(r.warn)) w.read = String(w.read);
 }
 async function ocrRun(file) {
   const d = ui.form, upd = (m, p) => { if (ui.form !== d) return; const had = ui.ocr?.busy; ui.ocr = { busy: true, msg: m, pct: p }; const st = document.querySelector('.ocrst'); if (had && st) { st.querySelector('i').style.width = Math.round(p * 100) + '%'; st.querySelector('.mini').textContent = m; } else render(); };
@@ -2977,7 +2992,7 @@ async function ocrRun(file) {
     await loadTess();
     const w = await Tesseract.createWorker('fra', 1, { logger: m => { if (m.status === 'recognizing text') upd('Lecture de l\'étiquette…', 0.3 + 0.7 * m.progress); else if (/loading/.test(m.status)) upd('Téléchargement de l\'outil de lecture (première fois seulement)…', 0.05 + 0.25 * (m.progress || 0)); } });
     const { data } = await w.recognize(img); await w.terminate();
-    if (ui.form === d) { ui.ocr = { text: data.text || '' }; render(); }
+    if (ui.form === d) { const res = parseLabel(data.text || ''); ocrApply(d, res); ui.ocr = { text: data.text || '', res }; render(); }
   } catch (e) { if (ui.form === d) { ui.ocr = { err: 'Lecture impossible : ' + (e.message || e) }; render(); } }
 }
 const prevExtraChange = extraChange;
@@ -3806,6 +3821,7 @@ function viewWeightKg() {
 Object.assign(actions, {
   pwprev: () => { ui.pw.week = addDays(ui.pw.week, -7); render(); },
   pwnext: () => { if (ui.pw.week < mondayOf(today())) { ui.pw.week = addDays(ui.pw.week, 7); render(); } },
+  ocrfix: el => { const k = el.dataset.k, w = ui.ocr?.res?.warn?.[k]; if (w?.sug != null && ui.form) { ui.form[k] = kfmt(w.sug); render(); } },
   fgstay: () => closeModal(),
   fgdrop: () => { const fn = ui.modal?.fn; closeModal(); ui.form = null; fn && fn(); },
   fgsave: () => { const fn = ui.modal?.fn; closeModal(); trySaveFood(); if (!ui.modal && ui.form && !fdirty(ui.form)) fn && fn(); },
@@ -3835,6 +3851,61 @@ Object.assign(actions, {
 
 // passage ordinateur <-> téléphone : redessiner la courbe à la bonne échelle
 matchMedia('(max-width:1060px)').addEventListener?.('change', () => { if (ui.view === 'poids') render(); });
+
+// ---- ocr.js ----
+// Lecture d'une étiquette nutritionnelle : transforme le texte reconnu (souvent imparfait) en valeurs pour 100 g.
+function parseLabel(raw) {
+  const warn = {}, notes = [], vals = {};
+  let t = String(raw || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[|]/g, '1');
+  // lettres prises pour des chiffres, uniquement dans un mot qui contient déjà un chiffre
+  t = t.replace(/[0-9oil][0-9oil.,]*/g, w => /\d/.test(w) ? w.replace(/o/g, '0').replace(/[il]/g, '1') : w);
+  t = t.replace(/(\d)[ \u00a0](\d{3})(?=\s*(kj|kcal))/g, '$1$2');
+  t = t.replace(/(\d)\s*[,.]\s*(\d)/g, '$1.$2');
+  const lines = t.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const nums = (s, units) => { const out = []; const re = /(<\s*)?(\d+(?:\.\d+)?)\s*(kcal|kj|mg|g|%)?(?![a-z0-9])/g; let m; while ((m = re.exec(s))) { const u = m[3] || ''; if (u === '%') continue; if (units && u && !units.includes(u)) continue; out.push({ v: m[1] ? 0 : +m[2], u }); } return out; };
+  // quelle colonne = « pour 100 g » ?
+  const i100 = t.search(/100\s*(g|ml)/), iP = t.search(/portion|par\s+\d+\s*(g|ml)\b|ration/);
+  let col = 0, basis = '100';
+  if (i100 < 0 && iP >= 0) basis = 'portion'; else if (i100 >= 0 && iP >= 0 && iP < i100) col = 1;
+  const pick = a => a.length ? (a[col] || a[0]) : null;
+  const defs = { p: /proteine|protein/, c: /glucide|hydrate.{0,4}carbone|carbohydrat/, l: /matiere.{0,3}grasse|lipide|graisse/, f: /fibre|fiber/ };
+  for (const [k, re] of Object.entries(defs)) {
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i]; const m = re.exec(ln); if (!m) continue;
+      if (k === 'l' && /satur|mono|poly|trans/.test(ln.slice(0, m.index + 14)) && !/matiere|lipide/.test(ln)) continue;
+      if (k === 'l' && /^dont/.test(ln)) continue;
+      let rest = ln.slice(m.index + m[0].length).replace(/\bdont\b.*$/, '').replace(/sucres.*$/, '');
+      let a = nums(rest, ['g', 'mg']); if (!a.length && lines[i + 1] && !/[a-z]{4}/.test(lines[i + 1].replace(/kcal|kj/g, ''))) a = nums(lines[i + 1], ['g', 'mg']);
+      a = a.map(x => x.u === 'mg' ? { v: x.v / 1000 } : x);
+      const x = pick(a); if (x) { vals[k] = x.v; break; }
+    }
+  }
+  // énergie : kcal et/ou kJ, parfois sur deux lignes
+  const ei = lines.findIndex(l => /energ|valeur\s*energ|calor/.test(l));
+  if (ei >= 0) {
+    const blob = lines.slice(ei, ei + 2).join(' '), kc = [], kjs = []; let m; const re = /(\d+(?:\.\d+)?)\s*(kcal|kj)\b/g;
+    while ((m = re.exec(blob))) (m[2] === 'kcal' ? kc : kjs).push(+m[1]);
+    const kcal = kc[col] ?? kc[0], kj = kjs[col] ?? kjs[0];
+    if (kcal != null) vals.k = kcal; else if (kj != null) { vals.k = Math.round(kj / 4.184); notes.push(`Calories calculées depuis les ${kj} kJ de l'étiquette.`); }
+    if (kcal != null && kj != null && Math.abs(kj / 4.184 - kcal) > 0.04 * kcal + 3) warn.k = { read: String(kcal), msg: `${kj} kJ ≈ ${Math.round(kj / 4.184)} kcal, pas ${kcal} : à vérifier` };
+  }
+  for (const k of ['p', 'c', 'l', 'f']) if (vals[k] > 100) warn[k] = { read: vals[k], msg: 'Plus de 100 g pour 100 g : à vérifier' };
+  // cohérence avec les calories (4 / 4 / 9 / 2)
+  const has = ['p', 'c', 'l'].every(k => vals[k] != null);
+  const est = v => 4 * (v.p || 0) + 4 * (v.c || 0) + 9 * (v.l || 0) + 2 * (v.f || 0);
+  if (has && vals.k > 0 && Math.abs(est(vals) - vals.k) > 0.12 * vals.k + 8) {
+    let best = null;
+    for (const k of ['p', 'c', 'l', 'f']) {
+      if (vals[k] == null || warn[k]) continue;
+      for (const f of [0.1, 10]) { const v2 = Math.round(vals[k] * f * 100) / 100; if (v2 > 100 || (f === 10 && vals[k] % 1)) continue; const e = Math.abs(est({ ...vals, [k]: v2 }) - vals.k); if (e <= 0.15 * vals.k + 8 && (!best || e < best.e)) best = { k, v2, e }; }
+    }
+    if (best) warn[best.k] = { read: vals[best.k], sug: best.v2, msg: `lu « ${vals[best.k]} » : ${String(best.v2).replace('.', ',')} ?` };
+    else notes.push(`Les valeurs lues ne correspondent pas aux ${vals.k} kcal (≈ ${Math.round(est(vals))} kcal calculées) : vérifie chaque case.`);
+  }
+  if (basis === 'portion') notes.push('Je n\'ai vu que des valeurs « par portion » : vérifie la base (pour 100 g ou par portion).');
+  else if (i100 >= 0 && iP >= 0) notes.push(`Deux colonnes détectées : j'ai pris celle « pour 100 g ».`);
+  return { vals, warn, notes, basis, found: Object.keys(vals).length };
+}
 
 // ---- share.js ----
 // Étape 4 : partage à deux (gists GitHub).
