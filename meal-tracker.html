@@ -1010,6 +1010,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .pwt{min-width:0}.pwt b{display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}.pwt span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pwnowtag{font-style:normal;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
 .pwnav{min-height:48px}
+
+.pwcard .fld .mini{white-space:nowrap}
+@media (min-width:1061px){.pwcard{grid-template-columns:auto auto 120px minmax(160px,1fr) auto}.pwbig b.mu{font-size:30px}}
 </style>
 </head>
 <body>
@@ -1945,7 +1948,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 23/10/2026 à 14:00 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 09:01 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2212,7 +2215,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '23/10/2026 à 14:00';
+const BUILD_ID = '24/10/2026 à 09:01';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3665,7 +3668,7 @@ function viewWeightKg() {
     <div class="pwgrid"><div class="pwleft"><section class="card pwcard"><div class="pwnav"><button class="ib" data-a="pwprev" aria-label="Semaine précédente">‹</button><div class="pwt"><b>${esc(weekSpan(mon))}${mon === cur ? '<em class="pwnowtag">cette semaine</em>' : ''}</b><span>${esc(weekName(mon))} du programme</span></div><button class="ib" data-a="pwnext" aria-label="Semaine suivante" ${mon >= cur ? 'disabled' : ''}>›</button></div>
       <div class="pwbig">${w ? `<b>${fmtKg(w.kg)}</b><span class="u">kg</span>${delta !== null ? `<span class="pwchip">${fmtDeltaKg(delta)}</span>` : ''}` : '<b class="mu">—</b><span class="u">pas encore pesée</span>'}</div>
       ${w && (before || total !== null) ? `<div class="mini">${before ? `Semaine précédente : ${fmtKg(before.kg)} kg` : ''}${before && total !== null ? ' · ' : ''}${total !== null ? `depuis la première pesée : ${fmtDeltaKg(total)}` : ''}</div>` : ''}
-      <label class="fld" style="margin-top:10px"><span class="mini">Poids de la semaine (kg)</span><input type="text" inputmode="decimal" id="pwkg" value="${esc(p.kg)}" placeholder="ex. 63,4" data-i="pwkg" autocomplete="off"></label>
+      <label class="fld" style="margin-top:10px"><span class="mini">Poids (kg)</span><input type="text" inputmode="decimal" id="pwkg" value="${esc(p.kg)}" placeholder="ex. 63,4" data-i="pwkg" autocomplete="off"></label>
       <label class="fld"><span class="mini">Note (facultatif)</span><input type="text" id="pwnote" value="${esc(p.note)}" placeholder="ex. après un week-end chargé, le matin à jeun…" data-i="pwnote" autocomplete="off"></label>
       <div class="row"><button class="btn pri" data-a="pwsave">${w ? 'Mettre à jour' : 'Enregistrer'}</button>${w ? '<button class="btn dng" data-a="pwdel">Supprimer</button>' : ''}${mon !== cur ? '<button class="btn" data-a="pwnow">Cette semaine</button>' : ''}</div></section></div>
     <div class="pwright">${all.length ? pwChart(all, mon) + pwHistory(all, mon) : '<p class="mu">Aucune pesée pour le moment. Saisis la première à gauche.</p>'}</div></div></main>`;
