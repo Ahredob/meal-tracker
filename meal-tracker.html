@@ -1774,7 +1774,7 @@ const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news') ? u
 const fdirty = d => !!d && d._s !== fsnap(d);
 function draftFrom(f) { const o = draftFrom0(f); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
 function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
-function fsyncBtn() { const b = document.querySelector('[data-a=savefood]'); if (b && ui.form) { const d = fdirty(ui.form); b.disabled = !d; const t = document.querySelector('.fform .fdirty'); if (t) t.hidden = !d; } }
+function fsyncBtn() { const b = document.querySelector('[data-a=savefood]'); if (b && ui.form) { const d = fdirty(ui.form); b.disabled = !d; } }
 function draftFrom0(f) {
   const mode = f && f.unit === 'portion' && !f.recipe && f.pg > 0 ? '100' : 'port';
   const b = f ? (mode === '100' ? { fac: 100 / f.pg } : perBasis(f)) : { fac: 100 };
@@ -1843,7 +1843,7 @@ function foodForm() {
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
     ${d.news ? `<div class="note"><b>${d.news.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(d.news.byName || 'l\'autre personne')}</b>${d.news.diff?.length ? '<br>' + d.news.diff.map(esc).join('<br>') : ''}</div>` : ''}
     ${used ? `<div class="note">Présent ${used} fois dans l'historique, les repas types, les recettes ou le stock.${(() => { const u = foodUsage(d.id); return u.n ? `<br>Utilisé dans ${u.n} journée${u.n > 1 ? 's' : ''} · dernière fois le ${esc(fmtDMY(u.last))}. <button class="lnk" style="margin:0" data-a="foodhist" data-id="${d.id}">Voir dans l'historique</button>` : ''; })()}</div>` : ''}
-    <div class="row"><button class="btn pri" data-a="savefood"${fdirty(d) ? '' : ' disabled'}>Enregistrer</button><span class="mini fdirty"${fdirty(d) ? '' : ' hidden'}>Modifications non enregistrées</span><button class="btn" data-a="cancelfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
+    <div class="row"><button class="btn pri" data-a="savefood"${fdirty(d) ? '' : ' disabled'}>Enregistrer</button><button class="btn" data-a="cancelfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
 }
 function draftToFood(d) {
   const m = draftMult(d), r = x => Math.round(num(x) * m * 1e6) / 1e6;
@@ -1973,7 +1973,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 10:06 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 10:09 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2243,7 +2243,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 10:06';
+const BUILD_ID = '24/10/2026 à 10:09';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
