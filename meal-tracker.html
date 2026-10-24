@@ -1048,6 +1048,14 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .hent{padding:9px 12px;border-top:1px solid var(--line)}.fform .hh{display:flex;flex-direction:column;gap:1px}.fform .hh b{font-size:13px}.fform .hdt{font-size:11.5px;color:var(--mute);font-style:italic}
 .fform .hent ul{margin:6px 0 0;padding:0;list-style:none}.fform .hent li{font-size:13px;padding:3px 0 3px 10px;border-left:3px solid var(--accent);margin-top:4px;background:var(--surface);border-radius:0 6px 6px 0}
 @media (max-width:640px){.stk .stn small.stm .stp{flex-basis:100%}}
+
+/* stock : à racheter */
+.stkbuy .stkbh{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 4px}.stkbuy .stkbh b{font-size:17px}
+.stkb{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:11px 14px;border-top:1px solid var(--line)}.stkb.inc{opacity:.55}
+.stkbc{display:grid;place-items:center;width:32px;height:32px;cursor:pointer}.stkbc input{position:absolute;opacity:0;width:32px;height:32px;margin:0}.stkbc .cbx{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;color:#fff;font-weight:800;font-size:15px}.stkbc input:checked+.cbx{background:var(--accent);border-color:var(--accent)}.stkbc input:checked+.cbx:after{content:"✓"}
+.stkbn b{display:block}.stkbn small{display:block;color:var(--mute);font-size:12.5px}
+.stkbbar{position:sticky;bottom:12px;z-index:5;padding:6px 0}.stkbbar .btn{width:100%;padding:14px;font-size:16px;box-shadow:0 4px 14px rgba(0,0,0,.18)}.stkbbar .btn[disabled]{background:var(--soft);color:var(--mute);box-shadow:none}
+@media (max-width:640px){.stkbbar{bottom:calc(76px + env(safe-area-inset-bottom))}.stkb{grid-template-columns:auto 1fr}.stkb .qc{grid-column:2}}
 </style>
 </head>
 <body>
@@ -1992,7 +2000,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 21:26 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 21:37 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2264,7 +2272,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 21:26';
+const BUILD_ID = '24/10/2026 à 21:37';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3334,7 +3342,7 @@ const stkStep = f => f.unit === 'portion' ? 1 : 50;
 function viewStock() {
   const st = ui.stock, map = stockMap(), words = qwords(st.q);
   const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
-  const eatenF = x => x.ate > 0.05, cnt = loc => all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : x.loc === loc)).length;
+  const eatenF = x => x.ate > 0.05, zeroF = x => x.have <= 0.05, cnt = loc => all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'buy' ? zeroF(x) : x.loc === loc)).length;
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
@@ -3346,13 +3354,30 @@ function viewStock() {
       <select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button class="x stkx" data-a="stkdel" data-id="${x.id}" aria-label="Retirer du stock" title="Retirer du stock">${icon('x')}</button></div>`;
   };
+  if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt);
   const flt = st.loc === 'eaten', locs = st.loc === 'all' || flt ? LOCS : [st.loc];
   const body = locs.map(l => { const xs = all.filter(x => x.loc === l && (!flt || eatenF(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span></div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
-    <div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>
+    <div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>
     ${body || (flt && all.length ? `<section class="card"><p style="padding:14px">Rien n'a été mangé depuis tes derniers comptages.</p></section>` : `<section class="card"><p style="padding:14px">Ton stock est vide. Cherche un produit ci-dessus pour l'ajouter, avec sa quantité.</p></section>`)}</main>`;
+}
+// ---- vue « À racheter » : produits à 0, on coche ce qu'on veut ajouter à la liste de courses ----
+const inCart = id => (S.meta.shopx || []).some(x => x.fid === id);
+const buySug = x => { const f = x.f, pk = packsOf(f); return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
+function stockBuyView(all, st, resHtml, cnt) {
+  const xs = all.filter(x => x.have <= 0.05); st.sel ||= {}; st.rq ||= {};
+  const chips = `<div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>`;
+  const n = xs.filter(x => st.sel[x.id] && !inCart(x.id)).length;
+  const row = x => { const f = x.f, inc = inCart(x.id), q = st.rq[x.id] ?? buySug(x);
+    return `<div class="stkb ${inc ? 'inc' : ''}"><label class="stkbc"><input type="checkbox" data-i="stkbsel" data-id="${x.id}" ${st.sel[x.id] && !inc ? 'checked' : ''} ${inc ? 'disabled' : ''}><span class="cbx"></span></label>
+      <div class="stkbn"><b>${esc(f.name)}</b><small>${inc ? 'déjà dans les courses' : x.ate > 0.05 ? `plus en stock · ${esc(haveTxt(f, x.q))} comptés le ${esc(fmtDM(x.asof))}` : 'plus en stock'}</small></div>
+      <div class="qc"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(q * 100) / 100)}" data-i="stkbq" data-id="${x.id}" aria-label="Quantité à racheter"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${f.unit === 'portion' ? 'part' : esc(f.unit)}</span></div></div>`; };
+  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span></div>
+    <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}${chips}
+    ${xs.length ? `<section class="card stkbuy"><div class="stkbh"><b>Plus en stock</b><button class="lnk" data-a="stkball">${xs.every(x => st.sel[x.id] || inCart(x.id)) ? 'Tout décocher' : 'Tout cocher'}</button></div><p class="mini" style="padding:0 14px 6px">Coche ce que tu veux ajouter à la liste de courses.</p>${xs.map(row).join('')}</section>
+    <div class="stkbbar"><button class="btn pri" data-a="stkbadd" ${n ? '' : 'disabled'}>Ajouter aux courses${n ? ` (${n})` : ''}</button></div>` : `<section class="card"><p style="padding:14px">Aucun produit à 0 : rien à racheter pour le moment.</p></section>`}</main>`;
 }
 function rangeStock(ov, clearX) {
   const bought = Object.entries(ov).filter(([, v]) => v > 0).map(([id, buy]) => ({ id, have: stockHave(id), buy }));
@@ -3408,6 +3433,13 @@ Object.assign(actions, {
   rgx: () => { ui.modal.clearX = !ui.modal.clearX; renderModal(); },
   rgstep: el => { const r = ui.modal.rows[+el.dataset.r], n = el.dataset.s; r.counts[n] = Math.max(0, (r.counts[n] || 0) + +el.dataset.d); renderModal(); },
   rgdo: () => { const m = ui.modal, ov = {}; for (const r of m.rows) if (r.on) ov[r.id] = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy; const cx = m.clearX; closeModal(); rangeStock(ov, cx); },
+  stkbstep: el => { const id = el.dataset.id, x = stockMap().get(id), f = foodMap.get(id); if (!f) return; const st = ui.stock; st.rq ||= {}; const cur = st.rq[id] ?? buySug({ ...x, f }); st.rq[id] = Math.max(stkStep(f) / (f.unit === 'portion' ? 1 : 1), Math.round((cur + stkStep(f) * +el.dataset.dir) * 100) / 100); render(); },
+  stkball: () => { const st = ui.stock; st.sel ||= {}; const xs = [...stockMap().entries()].filter(([id, x]) => x.have <= 0.05 && foodMap.get(id) && !inCart(id)).map(([id]) => id); const all = xs.every(id => st.sel[id]); xs.forEach(id => { st.sel[id] = !all; }); render(); },
+  stkbadd: () => {
+    const st = ui.stock, ids = Object.keys(st.sel || {}).filter(id => st.sel[id] && foodMap.get(id) && !inCart(id) && (stockMap().get(id)?.have || 0) <= 0.05); if (!ids.length) return;
+    mut(s => { for (const id of ids) { const f = foodMap.get(id), q = st.rq?.[id] ?? buySug({ ...stockMap().get(id), f }); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: f.name, fid: id, q }); } });
+    ids.forEach(id => { delete st.sel[id]; }); if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ids.length} produit${ids.length > 1 ? 's' : ''} ajouté${ids.length > 1 ? 's' : ''} à la liste de courses`);
+  },
   stkloc: el => { ui.stock.loc = el.dataset.l; render(); },
   stkadd: el => {
     const id = el.dataset.id, f = foodMap.get(id); if (!f) return;
@@ -3425,12 +3457,14 @@ extraInput = function (e) {
   if (el.dataset?.i === 'rgnew') { const r = ui.modal?.rows?.[+el.dataset.r]; if (r) r.addVal = el.value; return true; }
   if (el.dataset?.i === 'stq') { ui.stock.q = el.value; render(); return true; }
   if (el.dataset?.i === 'stqty') return true;
+  if (el.dataset?.i === 'stkbq') { (ui.stock.rq ||= {})[el.dataset.id] = num(el.value); return true; }
   return prevExtraInputStk(e);
 };
 const prevExtraChangeStk = extraChange;
 extraChange = function (e) {
   const el = e.target, k = el.dataset?.i;
   if (k === 'stqty') { stockSet(el.dataset.id, num(el.value)); return true; }
+  if (k === 'stkbsel') { (ui.stock.sel ||= {})[el.dataset.id] = el.checked; render(); return true; }
   if (k === 'stloc') { stockLoc(el.dataset.id, el.value); return true; }
   return prevExtraChangeStk(e);
 };
