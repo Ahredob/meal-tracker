@@ -1042,6 +1042,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 
 .fform input.owarn{border-color:var(--warn,#b5532f)!important;background:#FBE9DF}.fform .wl{display:block;text-align:left;background:none;border:0;padding:3px 0 0;color:var(--warn,#b5532f);font-size:12px;font-weight:700}.fform .wl u{font-weight:600}
 .fform .note.ocrok{background:var(--accent-soft)}
+.ocrimg{width:100%;border-radius:10px;margin:8px 0;border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -1985,7 +1986,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 17:02 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 18:07 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2256,7 +2257,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 17:02';
+const BUILD_ID = '24/10/2026 à 18:07';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2964,6 +2965,13 @@ async function ocrPrep(file) {
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }), k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
   const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
   const g = c.getContext('2d'); g.drawImage(bmp, 0, 0, c.width, c.height);
+  // niveaux de gris + contraste étiré (aide la lecture sur emballages brillants ou peu éclairés)
+  const im = g.getImageData(0, 0, c.width, c.height), px = im.data, hist = new Uint32Array(256);
+  for (let i = 0; i < px.length; i += 4) { const y = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0; px[i] = y; hist[y]++; }
+  const tot = px.length / 4; let lo = 0, hi = 255, a = 0; while (lo < 254 && (a += hist[lo]) < tot * 0.02) lo++; a = 0; while (hi > lo + 1 && (a += hist[hi]) < tot * 0.02) hi--;
+  const sc = 255 / Math.max(1, hi - lo);
+  for (let i = 0; i < px.length; i += 4) { const v = Math.max(0, Math.min(255, (px[i] - lo) * sc)); px[i] = px[i + 1] = px[i + 2] = v; }
+  g.putImageData(im, 0, 0);
   return new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
 }
 function ocrBox() {
@@ -2972,7 +2980,7 @@ function ocrBox() {
   if (o?.err) return btn + `<div class="note ocrerr">${esc(o.err)}</div>`;
   if (o?.res) { const r = o.res, n = ['p', 'c', 'l', 'f', 'k'].filter(k => r.vals[k] != null).length, w = Object.keys(r.warn).length + (r.notes.length ? 1 : 0);
     const head = n === 0 ? `<div class="note ocrerr"><b>Je n'ai pas repéré le tableau.</b> Reprends la photo bien à plat, de près et bien éclairée, en cadrant seulement « Valeurs nutritionnelles ».</div>` : `<div class="note ${w ? '' : 'ocrok'}">✓ ${n} valeur${n > 1 ? 's' : ''} lue${n > 1 ? 's' : ''} sur 5. <b>Vérifie avant d'enregistrer</b>${w ? ' : les cases en orange sont à contrôler.' : '.'}${r.notes.map(x => `<br>• ${esc(x)}`).join('')}</div>`;
-    return btn + head + `<details class="ocrtxt"><summary>Texte lu sur la photo</summary><pre>${esc(o.text.trim() || '(aucun texte reconnu)')}</pre></details>`; }
+    return btn + head + `<details class="ocrtxt"><summary>Revoir la photo et le texte lu</summary>${o.img ? `<img class="ocrimg" src="${o.img}" alt="Photo de l'étiquette">` : ''}<pre>${esc(o.text.trim() || '(aucun texte reconnu)')}</pre></details>`; }
   if (o?.text !== undefined) return btn + `<details class="ocrtxt"><summary>Texte lu sur la photo</summary><pre>${esc(o.text.trim() || '(aucun texte reconnu)')}</pre></details>`;
   return btn;
 }
@@ -2992,7 +3000,7 @@ async function ocrRun(file) {
     await loadTess();
     const w = await Tesseract.createWorker('fra', 1, { logger: m => { if (m.status === 'recognizing text') upd('Lecture de l\'étiquette…', 0.3 + 0.7 * m.progress); else if (/loading/.test(m.status)) upd('Téléchargement de l\'outil de lecture (première fois seulement)…', 0.05 + 0.25 * (m.progress || 0)); } });
     const { data } = await w.recognize(img); await w.terminate();
-    if (ui.form === d) { const res = parseLabel(data.text || ''); ocrApply(d, res); ui.ocr = { text: data.text || '', res }; render(); }
+    if (ui.form === d) { const res = parseLabel(data.text || ''); ocrApply(d, res); if (ui.ocr?.img) URL.revokeObjectURL(ui.ocr.img); ui.ocr = { text: data.text || '', res, img: URL.createObjectURL(img) }; render(); }
   } catch (e) { if (ui.form === d) { ui.ocr = { err: 'Lecture impossible : ' + (e.message || e) }; render(); } }
 }
 const prevExtraChange = extraChange;
@@ -3868,7 +3876,7 @@ function parseLabel(raw) {
   let col = 0, basis = '100';
   if (i100 < 0 && iP >= 0) basis = 'portion'; else if (i100 >= 0 && iP >= 0 && iP < i100) col = 1;
   const pick = a => a.length ? (a[col] || a[0]) : null;
-  const defs = { p: /proteine|protein/, c: /glucide|hydrate.{0,4}carbone|carbohydrat/, l: /matiere.{0,3}grasse|lipide|graisse/, f: /fibre|fiber/ };
+  const defs = { p: /proteine|protein/, c: /glucide|hydrate.{0,4}carbone|carbohydrat/, l: /mat(?:iere)?s?\.?\s{0,2}grasse|lipide|graisse/, f: /fibre|fiber/ };
   for (const [k, re] of Object.entries(defs)) {
     for (let i = 0; i < lines.length; i++) {
       const ln = lines[i]; const m = re.exec(ln); if (!m) continue;
@@ -3889,6 +3897,11 @@ function parseLabel(raw) {
     if (kcal != null) vals.k = kcal; else if (kj != null) { vals.k = Math.round(kj / 4.184); notes.push(`Calories calculées depuis les ${kj} kJ de l'étiquette.`); }
     if (kcal != null && kj != null && Math.abs(kj / 4.184 - kcal) > 0.04 * kcal + 3) warn.k = { read: String(kcal), msg: `${kj} kJ ≈ ${Math.round(kj / 4.184)} kcal, pas ${kcal} : à vérifier` };
   }
+  if (basis === 'portion') {
+    const pm = /(?:portion|par|ration)[^\d\n]{0,12}(\d+(?:\.\d+)?)\s*(g|ml)\b/.exec(t) || /\((\d+(?:\.\d+)?)\s*(g|ml)\)/.exec(t), size = pm ? +pm[1] : 0;
+    if (size > 0) { for (const k of ['p', 'c', 'l', 'f', 'k']) if (vals[k] != null) vals[k] = Math.round(vals[k] * 100 / size * 10) / 10; if (vals.k != null) vals.k = Math.round(vals.k); notes.push(`Valeurs données pour une portion de ${size} g : converties en « pour 100 g ».`); basis = '100'; }
+    else notes.push('Je n\'ai vu que des valeurs « par portion », sans poids de portion : vérifie la base (pour 100 g ou par portion).');
+  }
   for (const k of ['p', 'c', 'l', 'f']) if (vals[k] > 100) warn[k] = { read: vals[k], msg: 'Plus de 100 g pour 100 g : à vérifier' };
   // cohérence avec les calories (4 / 4 / 9 / 2)
   const has = ['p', 'c', 'l'].every(k => vals[k] != null);
@@ -3902,8 +3915,7 @@ function parseLabel(raw) {
     if (best) warn[best.k] = { read: vals[best.k], sug: best.v2, msg: `lu « ${vals[best.k]} » : ${String(best.v2).replace('.', ',')} ?` };
     else notes.push(`Les valeurs lues ne correspondent pas aux ${vals.k} kcal (≈ ${Math.round(est(vals))} kcal calculées) : vérifie chaque case.`);
   }
-  if (basis === 'portion') notes.push('Je n\'ai vu que des valeurs « par portion » : vérifie la base (pour 100 g ou par portion).');
-  else if (i100 >= 0 && iP >= 0) notes.push(`Deux colonnes détectées : j'ai pris celle « pour 100 g ».`);
+  if (i100 >= 0 && iP >= 0) notes.push(`Deux colonnes détectées : j'ai pris celle « pour 100 g ».`);
   return { vals, warn, notes, basis, found: Object.keys(vals).length };
 }
 
