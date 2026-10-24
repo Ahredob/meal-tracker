@@ -1028,6 +1028,10 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .pwcn{max-width:420px}
 }
 @media (max-width:640px){.pwcs{flex-wrap:wrap}.pwcs span{flex:1 1 30%}.pwcyc .cyrow{min-height:62px}}
+.fform .btn.pri[disabled]{background:var(--soft);color:var(--mute);border-color:var(--line);cursor:default;opacity:1}
+.fform .fdirty{align-self:center;color:var(--warn,#b45309);font-weight:600}.fform .fdirty[hidden]{display:none}
+.ov:has(.fgd){z-index:130}
+@media (max-width:640px){.fform .fdirty{display:none!important}}
 </style>
 </head>
 <body>
@@ -1765,7 +1769,13 @@ function viewFoods() {
     <label class="sw"><input type="checkbox" data-i="showhidden" ${ui.showHidden ? 'checked' : ''}> Afficher les aliments archivés</label></main>
     <aside class="right ${ui.form ? 'fopen' : 'fhint'}">${ui.form ? foodForm() : '<h5>Aliment</h5><p class="mini">Choisis un aliment dans la liste pour le modifier, ou crée-en un nouveau. Les valeurs se saisissent comme sur l\'étiquette (pour 100 g ou par portion).</p><p class="mini">Astuce : ↑ ↓ pour parcourir la liste, Entrée pour modifier, Échap pour fermer.</p>'}</aside>`;
 }
-function draftFrom(f) {
+// brouillon « propre » : on mémorise l'état d'origine pour savoir s'il y a des modifications à enregistrer
+const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news') ? undefined : v);
+const fdirty = d => !!d && d._s !== fsnap(d);
+function draftFrom(f) { const o = draftFrom0(f); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
+function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
+function fsyncBtn() { const b = document.querySelector('[data-a=savefood]'); if (b && ui.form) { const d = fdirty(ui.form); b.disabled = !d; const t = document.querySelector('.fform .fdirty'); if (t) t.hidden = !d; } }
+function draftFrom0(f) {
   const mode = f && f.unit === 'portion' && !f.recipe && f.pg > 0 ? '100' : 'port';
   const b = f ? (mode === '100' ? { fac: 100 / f.pg } : perBasis(f)) : { fac: 100 };
   const v = k => f ? String(Math.round(f[k] * b.fac * 1000) / 1000).replace('.', ',') : '';
@@ -1833,7 +1843,7 @@ function foodForm() {
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
     ${d.news ? `<div class="note"><b>${d.news.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(d.news.byName || 'l\'autre personne')}</b>${d.news.diff?.length ? '<br>' + d.news.diff.map(esc).join('<br>') : ''}</div>` : ''}
     ${used ? `<div class="note">Présent ${used} fois dans l'historique, les repas types, les recettes ou le stock.${(() => { const u = foodUsage(d.id); return u.n ? `<br>Utilisé dans ${u.n} journée${u.n > 1 ? 's' : ''} · dernière fois le ${esc(fmtDMY(u.last))}. <button class="lnk" style="margin:0" data-a="foodhist" data-id="${d.id}">Voir dans l'historique</button>` : ''; })()}</div>` : ''}
-    <div class="row"><button class="btn pri" data-a="savefood">Enregistrer</button><button class="btn" data-a="cancelfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
+    <div class="row"><button class="btn pri" data-a="savefood"${fdirty(d) ? '' : ' disabled'}>Enregistrer</button><span class="mini fdirty"${fdirty(d) ? '' : ' hidden'}>Modifications non enregistrées</span><button class="btn" data-a="cancelfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
 }
 function draftToFood(d) {
   const m = draftMult(d), r = x => Math.round(num(x) * m * 1e6) / 1e6;
@@ -1963,7 +1973,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 09:25 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 10:04 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2109,8 +2119,10 @@ const actions = {
   resettgt: () => openModal({ type: 'confirm', title: 'Rétablir les objectifs ?', text: 'Les objectifs reprennent les valeurs de ton fichier Excel.', ok: 'Rétablir', onOk: resetTargets }),
   export: flushBackup,
 };
-function onClick(e) { if (e.target.matches?.('input[type=date]')) try { e.target.showPicker?.(); } catch {} const el = e.target.closest('[data-a]'); if (!el) return; const fn = actions[el.dataset.a]; if (fn) fn(el, e); }
+function onClick(e) { if (e.target.matches?.('input[type=date]')) try { e.target.showPicker?.(); } catch {} const el = e.target.closest('[data-a]'); if (!el) return; const fn = actions[el.dataset.a]; if (!fn) return; if (FLEAVE.has(el.dataset.a) && ui.form && fdirty(ui.form)) { e.preventDefault(); leaveForm(() => fn(el, e)); return; } fn(el, e); setTimeout(fsyncBtn, 0); }
+const FLEAVE = new Set(['cancelfood', 'editfood', 'newfood', 'nav']);
 function onInput(e) {
+  setTimeout(fsyncBtn, 0);
   if (extraInput(e)) return;
   const el = e.target, k = el.dataset.i; if (!k) return;
   if (k === 'qty') setQty(el.dataset.d || ui.date, el.dataset.meal, +el.dataset.idx, num(el.value));
@@ -2126,6 +2138,7 @@ function onInput(e) {
 function refreshForm() { const d = ui.form; if (!d) return; if (d.mode === '100' && d.calc && num(d.ck) > 0 && num(d.cn) > 0) { d.pg = String(Math.round(num(d.ck) / num(d.cn) * 100) / 100).replace('.', ','); const e = $('#ff-pg'); if (e) e.value = d.pg; }
   if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
 function onChange(e) {
+  setTimeout(fsyncBtn, 0);
   if (ui.rendering) return;
   if (extraChange(e)) return;
   const el = e.target, k = el.dataset.i; if (!k) return;
@@ -2195,10 +2208,10 @@ function foodKeys(e) {
   if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (!inField || t.id === 'fq')) {
     const ids = ui._foodIds || []; if (!ids.length) return false; e.preventDefault();
     const i = ids.indexOf(ui.form?.id), n = i < 0 ? (e.key === 'ArrowDown' ? 0 : ids.length - 1) : Math.max(0, Math.min(ids.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
-    ui.form = draftFrom(foodMap.get(ids[n])); render(); document.querySelector('.ft tr.sel')?.scrollIntoView({ block: 'nearest' }); return true;
+    leaveForm(() => { ui.form = draftFrom(foodMap.get(ids[n])); render(); document.querySelector('.ft tr.sel')?.scrollIntoView({ block: 'nearest' }); }); return true;
   }
   if (e.key === 'Enter' && !inField && ui.form) { e.preventDefault(); $('#ff-name')?.focus(); return true; }
-  if (e.key === 'Escape' && ui.form) { ui.form = null; render(); return true; }
+  if (e.key === 'Escape' && ui.form) { leaveForm(() => { ui.form = null; render(); }); return true; }
   return false;
 }
 function onKey(e) {
@@ -2230,7 +2243,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 09:25';
+const BUILD_ID = '24/10/2026 à 10:04';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3004,6 +3017,10 @@ function seedDay(date) {
 }
 const fmtT = t => { const d = new Date(t); return `${fmtShort(iso(d))} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 function renderModal3(m, root) {
+  if (m.type === 'fguard') {
+    root.innerHTML = shell('Modifications non enregistrées', `<p class="fgd">Tu as modifié « ${esc(ui.form?.name || 'cet aliment')} » sans l'enregistrer.</p>`, `<button class="btn" data-a="fgstay">Continuer</button><button class="btn dng" data-a="fgdrop">Abandonner</button><button class="btn pri" data-a="fgsave">Enregistrer</button>`);
+    return true;
+  }
   if (m.type === 'journal') {
     const j = S.meta.journal || [];
     const list = j.length ? j.map((e, i) => `<div class="jr"><div><b>${esc(e.label)}</b><div class="mini">${esc(fmtT(e.t))} · ${e.snaps.length} jour${e.snaps.length > 1 ? 's' : ''} concerné${e.snaps.length > 1 ? 's' : ''} : ${esc(e.snaps.slice(0, 3).map(x => fmtDM(x[0])).join(', '))}${e.snaps.length > 3 ? '…' : ''}</div></div><button class="btn sm" data-a="jrestore" data-i="${i}">Revenir à avant</button></div>`).join('') : '<p class="mini">Aucune modification enregistrée pour l\'instant. Les copies, copies de semaine et « Vider la journée » sont mémorisées ici.</p>';
@@ -3750,6 +3767,9 @@ function viewWeightKg() {
 Object.assign(actions, {
   pwprev: () => { ui.pw.week = addDays(ui.pw.week, -7); render(); },
   pwnext: () => { if (ui.pw.week < mondayOf(today())) { ui.pw.week = addDays(ui.pw.week, 7); render(); } },
+  fgstay: () => closeModal(),
+  fgdrop: () => { const fn = ui.modal?.fn; closeModal(); ui.form = null; fn && fn(); },
+  fgsave: () => { const fn = ui.modal?.fn; closeModal(); trySaveFood(); if (!ui.modal && ui.form && !fdirty(ui.form)) fn && fn(); },
   pwrange: el => { ui.pw.range = el.dataset.r; ui.pw.sel = null; render(); },
   pwcyc: el => { const cyc = pwCycles(), i = ui.pw.cyc ?? cyc.length - 1, j = Math.max(0, Math.min(cyc.length - 1, i + +el.dataset.d)); ui.pw.cyc = j; ui.pw.sel = null; render(); },
   pwcycgo: el => { ui.pw.range = 'cycle'; ui.pw.cyc = +el.dataset.i; ui.pw.sel = null; render(); const c = document.querySelector('.pwchart'); if (c) c.scrollIntoView({ block: 'start', behavior: 'smooth' }); },
