@@ -1032,6 +1032,13 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .fdirty{align-self:center;color:var(--warn,#b45309);font-weight:600}.fform .fdirty[hidden]{display:none}
 .ov:has(.fgd){z-index:130}
 @media (max-width:640px){.fform .fdirty{display:none!important}}
+
+/* photo étiquette */
+.fform .ocrbtn{display:none;align-items:center;gap:12px;width:100%;padding:13px 14px;border:2px dashed var(--accent);border-radius:12px;background:var(--accent-soft);color:var(--accent);margin:4px 0 8px;cursor:pointer}
+.ocrbtn.off{opacity:.55;pointer-events:none}.ocrbtn .ocri{font-size:26px}.ocrbtn b{display:block;font-size:15px}.ocrbtn small{display:block;font-weight:500;color:var(--mute);font-size:12px}
+.ocrst{margin:0 0 10px}.ocrbar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin-bottom:4px}.ocrbar i{display:block;height:100%;background:var(--accent);transition:width .2s}
+.ocrtxt{margin:0 0 10px;font-size:13px}.ocrtxt pre{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:10px;font-size:12.5px;max-height:220px;overflow:auto}.ocrerr{color:var(--warn,#b5532f)}
+@media (max-width:640px){.fform .ocrbtn{display:flex}}
 </style>
 </head>
 <body>
@@ -1772,7 +1779,7 @@ function viewFoods() {
 // brouillon « propre » : on mémorise l'état d'origine pour savoir s'il y a des modifications à enregistrer
 const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news') ? undefined : v);
 const fdirty = d => !!d && d._s !== fsnap(d);
-function draftFrom(f) { const o = draftFrom0(f); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
+function draftFrom(f) { ui.ocr = null; const o = draftFrom0(f); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
 function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
 function fsyncBtn() { const b = document.querySelector('[data-a=savefood]'); if (b && ui.form) { const d = fdirty(ui.form); b.disabled = !d; } }
 function draftFrom0(f) {
@@ -1835,7 +1842,7 @@ function foodForm() {
   return `<div class="fform"><h5>${d.id ? 'Modifier l\'aliment' : 'Nouvel aliment'}<button class="ib fclose" data-a="cancelfood" aria-label="Fermer">✕</button></h5>
     <label for="ff-name">Nom</label><input id="ff-name" type="text" value="${esc(d.name)}" data-i="ff" data-k="name" data-fk="ff-name"><div id="dup">${okHint(d)}${dupHint(d)}</div>
     ${d.recipe ? '' : `<div class="seg ftabs"><button class="${tab === 'val' ? 'on' : ''}" data-a="fftab" data-t="val">Valeurs</button><button class="${tab === 'achat' ? 'on' : ''}" data-a="fftab" data-t="achat">Format d'achat${npk ? ` (${npk})` : ''}</button></div>`}
-    ${tab === 'achat' && !d.recipe ? packTab(d) : `    <label for="ff-catsel">Catégorie</label>${(() => { const cats = categories(), isNew = d.catNew || (!!d.cat && !cats.includes(d.cat)); return `<select id="ff-catsel" data-i="ffcatsel">${!d.cat && !isNew ? '<option value="" selected>— Choisir une catégorie —</option>' : ''}${cats.map(c => `<option value="${esc(c)}"${!isNew && c === d.cat ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__new__"${isNew ? ' selected' : ''}>+ Nouvelle catégorie…</option></select>${isNew ? `<input id="ff-cat" type="text" placeholder="Nom de la nouvelle catégorie" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat" style="margin-top:6px">` : ''}`; })()}
+    ${tab === 'achat' && !d.recipe ? packTab(d) : `    ${ocrBox()}<label for="ff-catsel">Catégorie</label>${(() => { const cats = categories(), isNew = d.catNew || (!!d.cat && !cats.includes(d.cat)); return `<select id="ff-catsel" data-i="ffcatsel">${!d.cat && !isNew ? '<option value="" selected>— Choisir une catégorie —</option>' : ''}${cats.map(c => `<option value="${esc(c)}"${!isNew && c === d.cat ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__new__"${isNew ? ' selected' : ''}>+ Nouvelle catégorie…</option></select>${isNew ? `<input id="ff-cat" type="text" placeholder="Nom de la nouvelle catégorie" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat" style="margin-top:6px">` : ''}`; })()}
     <label for="ff-unit">Unité</label><div class="unitrow"><select id="ff-unit" data-i="ffunit"${d.id ? ' disabled' : ''}><option value="g" ${d.unit === 'g' ? 'selected' : ''}>Grammes</option><option value="ml" ${d.unit === 'ml' ? 'selected' : ''}>Millilitres</option><option value="portion" ${d.unit === 'portion' ? 'selected' : ''}>Portion</option></select>${d.id && !shareOn() ? '<button class="lnk" style="margin:0" data-a="unitconv" data-id="' + d.id + '">Changer l\'unité de comptage…</button>' : ''}</div>
     ${d.unit === 'portion' && !d.recipe ? `<div class="lbl">Saisie des valeurs</div><div class="seg"><button class="${md === 'port' ? 'on' : ''}" data-a="ffmode" data-m="port" title="Valeurs données par portion">Par portion</button><button class="${md === '100' ? 'on' : ''}" data-a="ffmode" data-m="100" title="Valeurs pour 100 g, avec le poids d'une portion">100 g</button></div>${md === '100' ? `<div class="lbl">Poids d'une portion</div><div class="seg"><button class="${d.calc ? '' : 'on'}" data-a="ffcalc" data-v="0">Je le connais</button><button class="${d.calc ? 'on' : ''}" data-a="ffcalc" data-v="1">Depuis le paquet</button></div>${d.calc ? `<div class="g2"><div><label for="ff-ck">Poids du paquet (g)</label><input id="ff-ck" type="text" inputmode="decimal" value="${esc(d.ck)}" data-i="ff" data-k="ck" data-fk="ff-ck"></div><div><label for="ff-cn">Nombre de parts</label><input id="ff-cn" type="text" inputmode="decimal" value="${esc(d.cn)}" data-i="ff" data-k="cn" data-fk="ff-cn"></div></div><div class="note" id="pgres">${pgRes(d)}</div>` : `<label for="ff-pg">Poids d'une portion (g)</label><input id="ff-pg" type="text" inputmode="decimal" value="${esc(d.pg)}" data-i="ff" data-k="pg" data-fk="ff-pg">`}` : ''}` : ''}
     <div class="lbl">Valeurs ${fac}</div><div class="g2">${inp('p', 'Protéines (g)')}${inp('c', 'Glucides (g)')}${inp('l', 'Lipides (g)')}${inp('f', 'Fibres (g)')}</div>
@@ -1973,7 +1980,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 14:01 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 24/10/2026 à 17:00 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2244,7 +2251,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 14:01';
+const BUILD_ID = '24/10/2026 à 17:00';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2945,8 +2952,37 @@ const actions3 = {
 };
 Object.assign(actions, actions3);
 // case à cocher d'un article (branchée sur le gestionnaire de changement existant)
+// ---- photo de l'étiquette (étape 1 : prise de vue + lecture du texte) ----
+const TESS_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const loadTess = () => window.Tesseract ? Promise.resolve() : new Promise((ok, ko) => { const s = document.createElement('script'); s.src = TESS_URL; s.onload = ok; s.onerror = () => ko(new Error('Impossible de charger l\'outil de lecture. Vérifie ta connexion (nécessaire la première fois).')); document.head.appendChild(s); });
+async function ocrPrep(file) {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }), k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  const g = c.getContext('2d'); g.drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+}
+function ocrBox() {
+  const o = ui.ocr, btn = `<label class="ocrbtn${o?.busy ? ' off' : ''}"><input type="file" accept="image/*" capture="environment" data-i="ocrfile" hidden ${o?.busy ? 'disabled' : ''}><span class="ocri">📷</span><span><b>Photographier l'étiquette</b><small>Remplit les valeurs nutritionnelles pour toi</small></span></label>`;
+  if (o?.busy) return btn + `<div class="ocrst"><div class="ocrbar"><i style="width:${Math.round((o.pct || 0) * 100)}%"></i></div><span class="mini">${esc(o.msg)}</span></div>`;
+  if (o?.err) return btn + `<div class="note ocrerr">${esc(o.err)}</div>`;
+  if (o?.text !== undefined) return btn + `<details class="ocrtxt"><summary>Texte lu sur la photo</summary><pre>${esc(o.text.trim() || '(aucun texte reconnu)')}</pre></details>`;
+  return btn;
+}
+async function ocrRun(file) {
+  const d = ui.form, upd = (m, p) => { if (ui.form !== d) return; const had = ui.ocr?.busy; ui.ocr = { busy: true, msg: m, pct: p }; const st = document.querySelector('.ocrst'); if (had && st) { st.querySelector('i').style.width = Math.round(p * 100) + '%'; st.querySelector('.mini').textContent = m; } else render(); };
+  upd('Préparation de la photo…', 0.02);
+  try {
+    const img = await ocrPrep(file);
+    upd('Téléchargement de l\'outil de lecture (première fois seulement)…', 0.05);
+    await loadTess();
+    const w = await Tesseract.createWorker('fra', 1, { logger: m => { if (m.status === 'recognizing text') upd('Lecture de l\'étiquette…', 0.3 + 0.7 * m.progress); else if (/loading/.test(m.status)) upd('Téléchargement de l\'outil de lecture (première fois seulement)…', 0.05 + 0.25 * (m.progress || 0)); } });
+    const { data } = await w.recognize(img); await w.terminate();
+    if (ui.form === d) { ui.ocr = { text: data.text || '' }; render(); }
+  } catch (e) { if (ui.form === d) { ui.ocr = { err: 'Lecture impossible : ' + (e.message || e) }; render(); } }
+}
 const prevExtraChange = extraChange;
 extraChange = function (e) {
+  if (e.target?.dataset?.i === 'ocrfile') { const f = e.target.files?.[0]; e.target.value = ''; if (f && ui.form) ocrRun(f); return true; }
   const el = e.target;
   if (el.dataset?.i === 'shopchk') { const mon = shopMon(), id = el.dataset.id, v = el.checked; mut(s => { s.meta.shop ||= {}; (s.meta.shop[mon] ||= {})[id] = v || undefined; if (!v) delete s.meta.shop[mon][id]; }); return true; }
   return prevExtraChange(e);
