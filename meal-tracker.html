@@ -1071,6 +1071,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 @media (max-width:640px){.mdt{font-size:13px}.mdt td,.mdt th{padding:7px 4px}.mdt td.mdn{min-width:92px}}
 .mdt th.mdnh{text-align:left}.mdt th:first-child{text-align:right}.mdt td.mdq{text-align:right}.mdt td.mdn{padding-left:10px}.mdt th.mdnh{padding-left:10px}
 @media (max-width:640px){.mdt td.mdn{min-width:0;padding-left:6px}.mdt th.mdnh{padding-left:6px}.mdt td.mdq{white-space:nowrap}.mdt{font-size:12.5px}.mdt td,.mdt th{padding:7px 3px}}
+.rsb .rhide{margin-left:auto;padding:6px 4px;font-size:12.5px;color:var(--mute)}
 </style>
 </head>
 <body>
@@ -2017,7 +2018,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 07:47 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 07:51 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2289,7 +2290,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 07:47';
+const BUILD_ID = '25/10/2026 à 07:51';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3282,11 +3283,11 @@ function histMeals(mom) {   // repas réellement mangés à ce moment : regroup�
   for (const d of Object.keys(S.days).sort().reverse()) { if (d > t) continue; const ents = (S.days[d].meals[mom] || []).filter(e => foodMap.get(e[0])); if (!ents.length) continue;
     const key = ents.map(e => e[0]).sort().join('|'), o = g.get(key), tt = mom === 'midi' ? (S.days[d].title || '').trim() : '';   // le titre de la journée résume le repas du midi
     if (o) { o.n++; if (!o.title && tt) o.title = tt; } else g.set(key, { ents, n: 1, last: d, title: tt }); }
-  return [...g.values()];
+  return [...g.entries()].map(([k, v]) => ({ ...v, hk: mom + '|' + k }));
 }
-function tplItems(mom) {
-  if (ui.tpl.src === 'hist') return histMeals(mom).map(h => ({ key: 'h' + h.last, ents: h.ents, title: h.title || (h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : '')), full: h.title ||  h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).join(', '), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` }));
-  return S.templates.filter(x => !x.hidden && (x.meals[mom] || []).length).map(x => ({ key: 't' + x.id, ents: x.meals[mom], title: x.name, tag: OWNERS[x.owner] || '', sub: x.group, tid: x.id }));
+function tplItems(mom, masked = false) {
+  if (ui.tpl.src === 'hist') { const hs = new Set(S.meta.hideMeals || []); return histMeals(mom).filter(h => hs.has(h.hk) === masked).map(h => ({ kind: 'h', hk: h.hk, key: 'h' + h.hk, ents: h.ents, title: h.title || (h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : '')), full: h.title || h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).join(', '), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` })); }
+  return S.templates.filter(x => !!x.hidden === masked && (x.meals[mom] || []).length).map(x => ({ kind: 't', key: 't' + x.id, ents: x.meals[mom], title: x.name, tag: OWNERS[x.owner] || '', sub: x.group, tid: x.id }));
 }
 function tplRows(mom) { return tplItems(mom).map(it => ({ it, miss: entsMiss(it.ents) })); }
 const tplStockCount = () => { const mom = tplMom(); return tplRows(mom).filter(r => !r.miss.length).length; };
@@ -3295,24 +3296,27 @@ function tplStockChips() {
   return `<div class="chips" style="margin-bottom:8px"><button class="chip ${on ? '' : 'on'}" data-a="tplstk" data-v="0">Tous les repas types</button><button class="chip ${on ? 'on' : ''}" data-a="tplstk" data-v="1">Avec mon stock <small>${tplStockCount()}</small></button></div>`;
 }
 function viewTplStock() {
-  const mom = tplMom(), src = ui.tpl.src, rows = tplRows(mom), ok = rows.filter(r => !r.miss.length);
+  const mom = tplMom(), src = ui.tpl.src, masked = !!ui.tpl.masked, nMask = tplItems(mom, true).length, rows = masked ? tplItems(mom, true).map(it => ({ it, miss: entsMiss(it.ents) })) : tplRows(mom), ok = masked ? [] : rows.filter(r => !r.miss.length);
   const nT = S.templates.filter(x => !x.hidden && (x.meals[mom] || []).length).length, nH = histMeals(mom).length;
   const by = n => rows.filter(r => r.miss.length === n);
+  if (!masked && ui.tpl.masked) ui.tpl.masked = false;
   const card = r => { const it = r.it, m = r.miss, k = sumEntries(it.ents).k;
     return `<div class="rsc"><div class="rsh"><b>${esc(it.title)}</b>${it.tag ? `<span class="rtag">${esc(it.tag)}</span>` : ''}${m.length ? `<span class="rno">${m.length} manque${m.length > 1 ? 'nt' : ''}</span>` : '<span class="rok">✓ tout en stock</span>'}</div>
       <div class="rct">${it.ents.map(e => { const g = foodMap.get(e[0]); return `${esc(g.name.replace(/ \(.*$/, ''))} ${esc(haveTxt(g, e[1]))}`; }).join(' · ')}</div>
       <div class="mini">${it.sub ? esc(it.sub) + ' · ' : ''}${f0(k)} kcal</div>
       ${m.length ? `<div class="rmiss">Manque : ${m.map(x => `${esc(foodMap.get(x.id)?.name || '')} (${esc(haveTxt(foodMap.get(x.id), x.short))})`).join(', ')}</div>` : ''}
-      <div class="rsb"><button class="btn sm pri" data-a="mealplan" data-k="${esc(it.key)}">Planifier</button>${m.length ? `<button class="btn sm" data-a="mealcart" data-k="${esc(it.key)}">+ Courses</button>` : ''}<button class="btn sm" data-a="mealdet" data-k="${esc(it.key)}">Voir le détail</button></div></div>`;
+      <div class="rsb"><button class="btn sm pri" data-a="mealplan" data-k="${esc(it.key)}">Planifier</button>${m.length ? `<button class="btn sm" data-a="mealcart" data-k="${esc(it.key)}">+ Courses</button>` : ''}<button class="btn sm" data-a="mealdet" data-k="${esc(it.key)}">Voir le détail</button>${masked ? `<button class="btn sm" data-a="mealunhide" data-k="${esc(it.key)}">Remettre</button>` : `<button class="lnk rhide" data-a="mealhide" data-k="${esc(it.key)}">Ne plus proposer</button>`}</div></div>`;
   }, sec = (t, a) => a.length ? `<h3 class="rsh3">${t}</h3><div class="xgrid xg-t rsg">${a.map(card).join('')}</div>` : '';
-  const body = sec('Faisable avec ton stock', ok) + sec('Il manque 1 ingrédient', by(1)) + sec('Il manque 2 ingrédients', by(2)) + sec('Il manque 3 ingrédients', by(3));
+  const body = masked ? sec('Repas masqués', rows) : sec('Faisable avec ton stock', ok) + sec('Il manque 1 ingrédient', by(1)) + sec('Il manque 2 ingrédients', by(2)) + sec('Il manque 3 ingrédients', by(3));
   return `<main class="main wide2"><div class="dh"><h1>Recettes</h1><span class="mini">${ok.length} faisable${ok.length > 1 ? 's' : ''} avec ton stock</span></div>
     ${recSwitch('modeles')}${tplStockChips()}
     <div class="seg wseg"><button class="${src === 'tpl' ? 'on' : ''}" data-a="tplsrc" data-v="tpl">Repas types <small>${nT}</small></button><button class="${src === 'hist' ? 'on' : ''}" data-a="tplsrc" data-v="hist">Repas déjà mangés <small>${nH}</small></button></div>
     <div class="chips fchips" style="margin-bottom:8px">${MEALS.map(m => `<button class="chip ${mom === m.id ? 'on' : ''}" data-a="tplmom" data-m="${m.id}">${esc(m.label)}</button>`).join('')}</div>
-    ${body || `<p class="mu">${src === 'hist' ? 'Aucun repas déjà mangé à ce moment qui soit faisable (ou il manque plus de 3 ingrédients).' : 'Aucun repas type faisable à ce moment.'} Renseigne ton stock dans l'onglet Stock.</p>`}</main>`;
+    ${masked ? `<button class="lnk" data-a="tplmasked" data-v="0">‹ Retour aux propositions</button>` : ''}
+    ${body || `<p class="mu">${masked ? 'Aucun repas masqué.' : src === 'hist' ? 'Aucun repas déjà mangé à ce moment qui soit faisable (ou il manque plus de 3 ingrédients).' : 'Aucun repas type faisable à ce moment.'} ${masked ? '' : "Renseigne ton stock dans l'onglet Stock."}</p>`}
+    ${!masked && nMask ? `<p><button class="lnk" data-a="tplmasked" data-v="1">Voir les repas masqués (${nMask})</button></p>` : ''}</main>`;
 }
-const tplFind = key => tplItems(tplMom()).find(x => x.key === key);
+const tplFind = key => [...tplItems(tplMom()), ...tplItems(tplMom(), true)].find(x => x.key === key);
 const recOkCount = () => S.foods.filter(f => f.recipe && !f.hidden && !recStock(f).length).length;
 function viewRecipes() {
   const words = qwords(ui.rec.q);
@@ -3419,6 +3423,11 @@ Object.assign(actions, {
     mut(s => { for (const x of ms) { const g = foodMap.get(x.id); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: g.name, fid: x.id, q: x.short }); } });
     if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ms.length} ingrédient${ms.length > 1 ? 's' : ''} ajouté${ms.length > 1 ? 's' : ''} aux courses`); },
   tplstk: el => { ui.tpl.stock = el.dataset.v === '1'; render(); },
+  tplmasked: el => { ui.tpl.masked = el.dataset.v === '1'; render(); },
+  mealhide: el => { const it = tplFind(el.dataset.k); if (!it) return; ui.lastHide = it.kind === 't' ? { kind: 't', id: it.tid } : { kind: 'h', id: it.hk };
+    mut(s => { if (it.kind === 't') s.templates.find(x => x.id === it.tid).hidden = true; else (s.meta.hideMeals ||= []).push(it.hk); }); render(); toast('Repas masqué', [{ a: 'mealundo', l: 'Annuler' }], 5000); },
+  mealundo: () => { const h = ui.lastHide; if (!h) return; mut(s => { if (h.kind === 't') delete s.templates.find(x => x.id === h.id).hidden; else s.meta.hideMeals = (s.meta.hideMeals || []).filter(k => k !== h.id); }); ui.lastHide = null; render(); },
+  mealunhide: el => { const it = tplFind(el.dataset.k); if (!it) return; mut(s => { if (it.kind === 't') delete s.templates.find(x => x.id === it.tid).hidden; else s.meta.hideMeals = (s.meta.hideMeals || []).filter(k => k !== it.hk); }); toast('Repas remis dans les propositions'); },
   tplsrc: el => { ui.tpl.src = el.dataset.v; render(); },
   tplmom: el => { ui.tpl.mom = el.dataset.m; render(); },
   mealplan: el => { const it = tplFind(el.dataset.k); if (it) openModal({ type: 'mealplan', key: it.key, ents: it.ents, title: it.title, mom: tplMom() }); },
