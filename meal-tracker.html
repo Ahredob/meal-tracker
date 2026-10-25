@@ -1363,10 +1363,12 @@ function usageCount(foodId) {
 // références hors historique : ingrédient d'une recette ou article en stock
 const extraRefs = id => S.foods.filter(f => f.recipe && f.recipe.items.some(i => i[0] === id)).length + (S.stock?.items?.[id] ? 1 : 0);
 const categories = () => [...new Set(S.foods.filter(f => !f.hidden).map(f => f.cat))].sort((a, b) => a.localeCompare(b, 'fr'));
+// articles « Maison » (mouchoirs, éponges…) : pas de valeurs nutritionnelles, jamais signalés ni proposés dans les repas
+const isHome = f => norm(f.cat || '').trim() === 'maison';
 function searchFoods(q, cat) {
   const words = qwords(q);
   const all = !cat || cat === 'all';   // les articles « Maison » (mouchoirs…) n'apparaissent pas dans la recherche des repas, sauf si on ouvre leur catégorie
-  return S.foods.filter(f => !f.hidden && (all ? norm(f.cat || '').trim() !== 'maison' : f.cat === cat) && words.every(w => norm(f.name).includes(w)))
+  return S.foods.filter(f => !f.hidden && (all ? !isHome(f) : f.cat === cat) && words.every(w => norm(f.name).includes(w)))
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
 
@@ -1675,7 +1677,7 @@ const foodSig = f => [f.name, f.unit, f.p, f.c, f.l, f.f, f.k, f.pg || ''].join(
 const foodOk = f => f.chk === foodSig(f);
 const foodIssuesU = f => foodOk(f) ? [] : foodIssues(f);
 function foodIssues(f) {
-  if (f.recipe || f.hidden) return [];
+  if (f.recipe || f.hidden || isHome(f)) return [];
   const out = [], b = perBasis(f), v = k => f[k] * b.fac, P = v('p'), C = v('c'), L = v('l'), F = v('f'), K = v('k');
   if (f.unit !== 'portion' && P + C + L > 100.5) out.push(`Plus de 100 g de macros pour 100 ${f.unit}`);
   const calc = 4 * P + 4 * C + 9 * L;
@@ -1709,7 +1711,7 @@ const navHtml = () => NAV.map(([g, items], gi) => {
 }).join('');
 const undoHtml = () => `<div class="undo"><button data-a="gundo" ${canUndo() ? '' : 'disabled'} title="Annuler la dernière modification (Ctrl+Z)">↶ Annuler</button><button data-a="gredo" ${canRedo() ? '' : 'disabled'} title="Rétablir (Ctrl+Y)">↷ Rétablir</button></div>`;
 const moreBtn = () => `<button class="nmore ${ui.moreOpen ? 'open' : ''} ${SECOND.includes(ui.view) ? 'on' : ''}" data-a="navmore">${icon('more')}<span>Plus</span>${newsCount() || newsCount(true) ? '<i class="ndot"></i>' : ''}</button>`;
-const suspectFood = f => !f.hidden && !f.recipe && !f.k && !foodOk(f) && !/^(eau|the|stevia|cafe)\b/.test(norm(f.name));
+const suspectFood = f => !f.hidden && !f.recipe && !isHome(f) && !f.k && !foodOk(f) && !/^(eau|the|stevia|cafe)\b/.test(norm(f.name));
 const PALETTES = {"vert": ["Vert", "#F3F6F4", "#D9ECE5", "#1F6F5B"], "ocean": ["Océan", "#F2F5F9", "#DCE8F6", "#2563A8"], "prune": ["Prune", "#F6F3F8", "#E9DDF4", "#7B4BA6"], "terre": ["Terracotta", "#F8F4F0", "#F5E0D6", "#B5532F"], "rose": ["Rose", "#FAF3F6", "#F8DDE9", "#C2467A"], "graphite": ["Graphite", "#F4F5F6", "#E1E5E9", "#3D4650"]};
 function applyTheme() {
   const t = S?.meta?.theme || {}, r = document.documentElement;
@@ -2075,7 +2077,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 21:12 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 21:14 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2350,7 +2352,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 21:12';
+const BUILD_ID = '25/10/2026 à 21:14';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
