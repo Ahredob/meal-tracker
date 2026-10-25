@@ -1078,6 +1078,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .hint{background:var(--asoft,#D9ECE5);color:var(--accent);border-radius:10px;padding:9px 11px;font-size:13px;margin-top:8px}
 .minbox{margin-top:18px}
 .usage ul{margin:6px 0 0;padding-left:18px}.usage li{margin:3px 0}
+.usage{margin-top:22px;position:relative}.usage::before{content:'';position:absolute;left:0;right:0;top:-12px;border-top:1px solid var(--line,#0002)}
 </style>
 </head>
 <body>
@@ -1952,7 +1953,7 @@ function foodForm() {
     ${d.recipe ? '<div class="note">Cet aliment vient d\'une recette : ses valeurs (pour 1 part) sont calculées d\'après les ingrédients. Pour les changer, modifie la recette dans l\'onglet Recettes.</div>' : ''}`}
     ${!d.news && d.id && S.meta.share?.hist?.[d.id] ? (hs => `<div class="hbox"><button class="hbtn" data-a="histtoggle" aria-expanded="${!!ui.histOpen}"><span>${ui.histOpen ? 'Masquer' : 'Afficher'} les modifications (${hs.length})</span><i>${ui.histOpen ? '▴' : '▾'}</i></button>${ui.histOpen ? hs.map(h => `<div class="hent"><div class="hh"><b>${h.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(h.byName || 'l\'autre personne')}</b><span class="hdt">${esc(fmtT(h.u))}</span></div>${h.diff?.length ? `<ul>${h.diff.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('') : ''}</div>`)([].concat(S.meta.share.hist[d.id])) : ''}
     ${d.news ? `<div class="note"><b>${d.news.t === 'new' ? 'Ajouté' : 'Modifié'} par ${esc(d.news.byName || 'l\'autre personne')}</b>${d.news.diff?.length ? '<br>' + d.news.diff.map(esc).join('<br>') : ''}</div>` : ''}
-    ${used ? usageNote(d.id) : ''}}
+    ${used ? usageNote(d.id) : ''}
     <div class="row"><button class="btn pri" data-a="savefood"${fdirty(d) ? '' : ' disabled'}>Enregistrer</button><button class="btn" data-a="discardfood">Annuler</button>${d.id ? `<button class="btn dng" data-a="delfood">${used ? 'Archiver' : 'Supprimer'}</button>` : ''}${f?.hidden ? `<button class="btn" data-a="unhide">Réactiver</button>` : ''}</div></div>`;
 }
 function draftToFood(d) {
@@ -2089,7 +2090,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 21:18 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 21:24 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2364,7 +2365,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 21:18';
+const BUILD_ID = '25/10/2026 à 21:24';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
