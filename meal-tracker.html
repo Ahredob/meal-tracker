@@ -2041,7 +2041,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 20:30 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 20:34 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2314,7 +2314,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 20:30';
+const BUILD_ID = '25/10/2026 à 20:34';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2787,11 +2787,12 @@ function viewShop() {
   const row = (days, lbl) => `<div class="shoprow"><span class="mini">${lbl}</span>${days.map(d => { const n = hasMeals(d); return `<button class="chip ${shopOn(d) ? 'on' : ''}" ${n ? '' : 'disabled style="opacity:.4"'} data-a="shopday" data-d="${d}">${WEEKDAYS[weekdayIdx(d)].slice(0, 3)} ${+d.slice(8)}</button>`; }).join('')}</div>`;
   const line = x => { const sub = shopItemSub(x), on = !!chk[x.f.id]; return `<label class="shopi ${on ? 'done' : ''}"><input type="checkbox" data-i="shopchk" data-id="${x.f.id}" ${on ? 'checked' : ''}><span class="sname">${esc(x.f.name)}${sub ? `<small class="sub">${esc(sub)}</small>` : ''}${on && shareBy('sk|' + shopMon() + '|' + x.f.id) ? `<small class="by">coché par ${esc(shareBy('sk|' + shopMon() + '|' + x.f.id))}</small>` : ''}</span><b class="sqty">${esc(shopParts(x.f, x.q).main)}</b></label>`; };
   const todo = groups.map(([cat, items]) => [cat, items.filter(x => !chk[x.f.id])]).filter(g => g[1].length);
-  const todoHtml = todo.map(([cat, items]) => `<section class="card shopc"><h2>${esc(cat)}</h2>${items.map(line).join('')}</section>`).join('');
+  const todoHtml = todo.map(([cat, items]) => `<section class="card shopc"><h2>${esc(cat)}</h2>${items.map(line).join('')}</section>`).join('')
+  const todoX = xs.filter(x => !chk['x:' + x.k]), todoXHtml = todoX.length ? `<section class="card shopc"><h2>Ajoutés à la main</h2>${todoX.map(x => xline(x, false)).join('')}</section>` : '';
   const inCart = flat.filter(x => chk[x.f.id]), cartX = xs.filter(x => chk['x:' + x.k]);
   const cartHtml = inCart.length || cartX.length ? `<section class="card shopc cart"><h2>🛒 Dans le panier <span class="mini">${inCart.length + cartX.length}</span></h2>${inCart.map(line).join('')}${cartX.map(x => xline(x, true)).join('')}</section>` : '';
   function xline(x, on) { return `<label class="shopi ${on ? 'done' : ''}"><input type="checkbox" data-i="shopchk" data-id="x:${x.k}" ${on ? 'checked' : ''}><span class="sname">${esc(x.name)}${shareBy('sx|' + x.k) ? `<small class="by">ajouté par ${esc(shareBy('sx|' + x.k))}</small>` : ''}${on && shareBy('sk|' + shopMon() + '|x:' + x.k) ? `<small class="by">coché par ${esc(shareBy('sk|' + shopMon() + '|x:' + x.k))}</small>` : ''}</span><button class="x" data-a="shopxdel" data-k="${x.k}" aria-label="Retirer" title="Retirer de la liste">${icon('x')}</button></label>`; }
-  const xHtml = `<section class="card shopadd"><h2>+ Ajouter à la liste</h2><div class="shopadd2"><div><div class="lbl">Article libre</div>${xs.filter(x => !chk['x:' + x.k]).map(x => xline(x, false)).join('')}<div class="padd"><input id="shopxin" type="text" placeholder="éponges, poivre…" autocomplete="off"><button class="btn sm" data-a="shopxadd">Ajouter</button></div></div>
+  const xHtml = `<section class="card shopadd"><h2>+ Ajouter à la liste</h2><div class="shopadd2"><div><div class="lbl">Article libre</div><div class="padd"><input id="shopxin" type="text" placeholder="éponges, poivre…" autocomplete="off"><button class="btn sm" data-a="shopxadd">Ajouter</button></div></div>
     <div><div class="lbl">Aliment de ma base <small>(entre dans le stock)</small></div>${shopXf().length ? `<div class="shopf">${shopXf().map(x => { const f = foodMap.get(x.fid); return `<div class="shopi"><span class="sname">${esc(f.name)}<small class="sub">${esc(haveTxt(f, x.q))}</small></span><button class="ib" data-a="shopxdel" data-k="${x.k}" aria-label="Retirer">✕</button></div>`; }).join('')}</div>` : ''}${shopFoodAddHtml()}</div></div></section>`;
   const recHtml = recs.length ? `<section class="card shopc"><h2>Recettes à préparer</h2>${recs.map(r => `<div class="shopi"><span class="sname">${esc(recBase(r.f.name))}<small class="sub">${qtxt(r.q)} part${r.q > 1 ? 's' : ''} prévue${r.q > 1 ? 's' : ''} sur ${r.f.recipe.parts * r.batches}</small></span><b class="sqty">${r.batches} recette${r.batches > 1 ? 's' : ''}</b></div>`).join('')}<p class="mini">Les ingrédients de ces recettes sont déjà dans la liste.</p></section>` : '';
   const cov = groups.covered || [];
@@ -2805,7 +2806,7 @@ function viewShop() {
     ${mode === 'custom' ? `<div class="shopdays">${row(all.slice(0, 7), '7 prochains jours')}${row(all.slice(7), '7 jours suivants')}</div>` : ''}
     <div class="swrs">${sw('shopstk', useStock, 'Retirer ce que j\'ai en stock', stockN ? `${stockN} produit${stockN > 1 ? 's' : ''} en stock` : 'ton stock est vide pour le moment')}${sw('shopexp', shopExpand(), 'Remplacer les recettes par leurs ingrédients', 'on cuisine toujours des recettes entières')}</div></section>
     ${total ? `<div class="shprog"><div><i style="width:${Math.round(done / total * 100)}%"></i></div><span class="mini">${done} / ${total} article${total > 1 ? 's' : ''} dans le panier</span></div>` : ''}
-    ${empty}<div class="shopgrid">${recHtml}${todoHtml}</div><div class="shopbot">${xHtml}${cartHtml || '<section class="card shopc cart empty"><h2>🛒 Dans le panier <span class="mini">0</span></h2><p class="mini">Coche les articles au fil des courses.</p></section>'}${covHtml || '<section class="card shopc cov"><h2>Déjà à la maison</h2><p class="mini">Rien de ta liste n\'est déjà en stock.</p></section>'}</div>
+    ${empty}<div class="shopgrid">${recHtml}${todoHtml}${todoXHtml}</div><div class="shopbot">${xHtml}${cartHtml || '<section class="card shopc cart empty"><h2>🛒 Dans le panier <span class="mini">0</span></h2><p class="mini">Coche les articles au fil des courses.</p></section>'}${covHtml || '<section class="card shopc cov"><h2>Déjà à la maison</h2><p class="mini">Rien de ta liste n\'est déjà en stock.</p></section>'}</div>
     ${total ? `<div class="shopbar"><button class="btn pri" data-a="shopstock" title="Choisis ce que tu as acheté : le stock est mis à jour">Ranger les achats dans le stock${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}</button></div>` : ''}</main>`;
 }
 
