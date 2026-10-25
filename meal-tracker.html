@@ -1064,6 +1064,13 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .rmiss{color:var(--warn,#b5532f);font-size:12.5px;font-weight:600;margin-top:4px}.rsb{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .rsg{gap:10px}
 .rtag{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:#E6EBF7;color:#3B4F8C;margin-left:6px}.rct{font-size:13px;color:var(--mute);margin:4px 0 2px}
+
+.mdw{overflow-x:auto}.mdt{width:100%;border-collapse:collapse;font-size:14px}.mdt th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);text-align:right;padding:6px 6px;font-weight:700}.mdt th:first-child{text-align:left}
+.mdt td{padding:8px 6px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}.mdt td.mdn{text-align:left;font-weight:600;min-width:120px}.mdt td.mdq{color:var(--accent);font-weight:700;white-space:nowrap}
+.mdt tfoot td{font-weight:800;background:var(--soft)}.mdt tfoot td:first-child{text-align:left}
+@media (max-width:640px){.mdt{font-size:13px}.mdt td,.mdt th{padding:7px 4px}.mdt td.mdn{min-width:92px}}
+.mdt th.mdnh{text-align:left}.mdt th:first-child{text-align:right}.mdt td.mdq{text-align:right}.mdt td.mdn{padding-left:10px}.mdt th.mdnh{padding-left:10px}
+@media (max-width:640px){.mdt td.mdn{min-width:0;padding-left:6px}.mdt th.mdnh{padding-left:6px}.mdt td.mdq{white-space:nowrap}.mdt{font-size:12.5px}.mdt td,.mdt th{padding:7px 3px}}
 </style>
 </head>
 <body>
@@ -2010,7 +2017,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 07:33 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 07:44 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2282,7 +2289,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 07:33';
+const BUILD_ID = '25/10/2026 à 07:44';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3112,7 +3119,7 @@ function renderModal3(m, root) {
   }
   if (m.type === 'mealdet') {
     const t = sumEntries(m.ents);
-    root.innerHTML = shell(m.title, `<div class="xgrid"><section class="xb"><div class="xr xc"><span class="xq">Qté</span><span class="xn">Aliment</span><span class="hp">P</span><span class="hc">G</span><span class="hl">L</span><span class="hf">F</span><span>kcal</span></div>${m.ents.map(e => { const g = foodMap.get(e[0]), em = entryMacros(e); return `<div class="xr"><span class="xq">${qtxt(e[1])}${g.unit === 'portion' ? '×' : ' ' + g.unit}</span><span class="xn">${esc(g.name)}</span>${M5.map(k => `<span>${k === 'k' ? f0(em[k]) : nf(em[k], 1)}</span>`).join('')}</div>`; }).join('')}<div class="xr xt"><span class="xq"></span><span class="xn">Total</span>${M5.map(k => `<span>${k === 'k' ? f0(t[k]) : nf(t[k], 1)}</span>`).join('')}</div></section></div>`, `<button class="btn pri" data-a="close">Fermer</button>`);
+    root.innerHTML = shell(m.title, `<div class="tw mdw"><table class="mdt"><thead><tr><th class="mdqh">Qté</th><th class="mdnh">Aliment</th><th class="hp">P</th><th class="hc">G</th><th class="hl">L</th><th class="hf">F</th><th>kcal</th></tr></thead><tbody>${m.ents.map(e => { const g = foodMap.get(e[0]), em = entryMacros(e); return `<tr><td class="mdq">${qtxt(e[1])}${g.unit === 'portion' ? ' ×' : ' ' + g.unit}</td><td class="mdn">${esc(g.name)}</td>${M5.map(k => `<td>${k === 'k' ? f0(em[k]) : nf(em[k], 1)}</td>`).join('')}</tr>`; }).join('')}</tbody><tfoot><tr><td colspan="2">Total</td>${M5.map(k => `<td>${k === 'k' ? f0(t[k]) : nf(t[k], 1)}</td>`).join('')}</tr></tfoot></table></div>`, `<button class="btn pri" data-a="close">Fermer</button>`);
     return true;
   }
   if (m.type === 'recplan') {
@@ -3277,7 +3284,7 @@ function histMeals(mom) {   // repas réellement mangés à ce moment : regroup�
   return [...g.values()];
 }
 function tplItems(mom) {
-  if (ui.tpl.src === 'hist') return histMeals(mom).map(h => ({ key: 'h' + h.last, ents: h.ents, title: h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : ''), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` }));
+  if (ui.tpl.src === 'hist') return histMeals(mom).map(h => ({ key: 'h' + h.last, ents: h.ents, title: h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : ''), full: h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).join(', '), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` }));
   return S.templates.filter(x => !x.hidden && (x.meals[mom] || []).length).map(x => ({ key: 't' + x.id, ents: x.meals[mom], title: x.name, tag: OWNERS[x.owner] || '', sub: x.group, tid: x.id }));
 }
 function tplRows(mom) { return tplItems(mom).map(it => ({ it, miss: entsMiss(it.ents) })); }
@@ -3415,7 +3422,7 @@ Object.assign(actions, {
   tplmom: el => { ui.tpl.mom = el.dataset.m; render(); },
   mealplan: el => { const it = tplFind(el.dataset.k); if (it) openModal({ type: 'mealplan', key: it.key, ents: it.ents, title: it.title, mom: tplMom() }); },
   mealplanok: () => { const m = ui.modal, d = $('#mpdate').value, meal = $('#mpmeal').value; if (!d) return; mut(s => { for (const [id, q] of m.ents) ensureDay(d).meals[meal].push([id, q]); }); closeModal(); toast(`${m.title} ajouté au ${fmtShort(d)}`); },
-  mealdet: el => { const it = tplFind(el.dataset.k); if (it) openModal({ type: 'mealdet', title: it.title, ents: it.ents }); },
+  mealdet: el => { const it = tplFind(el.dataset.k); if (it) openModal({ type: 'mealdet', title: it.full || it.title, ents: it.ents }); },
   mealcart: el => { const it = tplFind(el.dataset.k); if (!it) return; const ms = entsMiss(it.ents).filter(x => !inCart(x.id)); if (!ms.length) { toast('Déjà dans les courses'); return; }
     mut(s => { for (const x of ms) { const g = foodMap.get(x.id); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: g.name, fid: x.id, q: x.short }); } });
     if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ms.length} ingrédient${ms.length > 1 ? 's' : ''} ajouté${ms.length > 1 ? 's' : ''} aux courses`); },
