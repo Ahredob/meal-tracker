@@ -1074,6 +1074,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .pmode{margin:10px 0 8px}.padd input.pn{width:56px;flex:0 0 56px;text-align:center}.pchip em{font-style:normal;color:var(--mute);font-size:12px}
 .minbox{margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#0002)}.minbox .lbl{margin-bottom:4px}.minh{margin-top:6px}
 .padd.lotrow{flex-wrap:wrap}.padd.lotrow input#ff-packnew{flex:1 1 90px;min-width:90px}
+.usebox{margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#0002)}.usebox .padd{flex-wrap:wrap}.usebox .padd input{flex:0 0 70px;text-align:center}.useper{margin:0;flex:1 1 150px}
+.fform .hint{background:var(--asoft,#D9ECE5);color:var(--accent);border-radius:10px;padding:9px 11px;font-size:13px;margin-top:8px}
+.minbox{margin-top:18px}
 </style>
 </head>
 <body>
@@ -1455,6 +1458,9 @@ function shopAgg(dates) {
 // chaque produit garde la quantité comptée à une date (asof) ; ce qui a été mangé depuis (repas planifiés des jours écoulés) est retiré automatiquement
 const LOCS = ['Frigo', 'Placards', 'Congélateur'];
 const guessLoc = f => /surgel|glace/i.test(f.cat || '') ? 'Congélateur' : /laitier|viande|poisson|légume|fruit|charcut|œuf|oeuf|frais|traiteur/i.test(f.cat || '') ? 'Frigo' : 'Placards';
+// consommation régulière : f.use = { q: 1, per: 'day'|'week'|'month' } → quantité retirée du stock par jour
+const USE_DAYS = { day: 1, week: 7, month: 30 }, USE_LBL = { day: 'jour', week: 'semaine', month: 'mois' };
+const useRate = f => (f && f.use && f.use.q > 0 && USE_DAYS[f.use.per]) ? f.use.q / USE_DAYS[f.use.per] : 0;
 function stockMap() {
   if (stockCache) return stockCache;
   const items = S.stock?.items || {}, ids = Object.keys(items), t = today(), map = new Map();
@@ -1475,7 +1481,8 @@ function stockMap() {
   for (const id of ids) {
     const it = items[id]; let ate = 0, ateO = 0;
     for (const [d, u, src] of use) if (d >= it.asof) { const v = u.get(id) || 0; ate += v; if (src) ateO += v; }
-    map.set(id, { q: it.q, asof: it.asof, ate, ateO, have: Math.max(0, it.q - ate), loc: it.loc });
+    const reg = useRate(foodMap.get(id)) * Math.max(0, diffDays(t, it.asof));
+    map.set(id, { q: it.q, asof: it.asof, ate, ateO, reg, have: Math.max(0, it.q - ate - reg), loc: it.loc });
   }
   return map;
 }
@@ -1824,7 +1831,7 @@ function draftFrom0(f) {
   const b = f ? (mode === '100' ? { fac: 100 / f.pg } : perBasis(f)) : { fac: 100 };
   const v = k => f ? String(Math.round(f[k] * b.fac * 1000) / 1000).replace('.', ',') : '';
   const calc = f ? 4 * f.p + 4 * f.c + 9 * f.l : 0, c2 = x => String(Math.round(x * 100) / 100).replace('.', ',');
-  return { id: f?.id || null, name: f?.name || '', cat: f?.cat || (ui.foodCat !== 'all' && ui.foodCat !== 'check' && ui.foodCat !== 'dups' && ui.foodCat !== 'incoh' && ui.foodCat !== 'news' ? ui.foodCat : ''), unit: f?.unit || 'g', tab: 'val', packnew: '', packn: '', packmode: 'u', lots: JSON.parse(JSON.stringify((f && f.lots) || {})), min: f?.min > 0 ? String(f.min).replace('.', ',') : '', packs: packsOf(f).map(n => String(n).replace('.', ',')).join(' '), p: v('p'), c: v('c'), l: v('l'), f: v('f'), k: v('k'), mode, pg: mode === '100' ? c2(f.pg) : '', ck: f?.pkw ? c2(f.pkw) : '', cn: f?.pkn ? c2(f.pkn) : '', calc: !!(f && (f.pkw || f.pkn)), auto: f ? Math.abs(f.k - calc) <= Math.max(0.01 * f.k, 0.005) : true, recipe: f?.recipe };
+  return { id: f?.id || null, name: f?.name || '', cat: f?.cat || (ui.foodCat !== 'all' && ui.foodCat !== 'check' && ui.foodCat !== 'dups' && ui.foodCat !== 'incoh' && ui.foodCat !== 'news' ? ui.foodCat : ''), unit: f?.unit || 'g', tab: 'val', packnew: '', packn: '', packmode: 'u', usq: f?.use?.q ? String(f.use.q).replace('.', ',') : '', usper: f?.use?.per || 'week', max: f?.max > 0 ? String(f.max).replace('.', ',') : '', lots: JSON.parse(JSON.stringify((f && f.lots) || {})), min: f?.min > 0 ? String(f.min).replace('.', ',') : '', packs: packsOf(f).map(n => String(n).replace('.', ',')).join(' '), p: v('p'), c: v('c'), l: v('l'), f: v('f'), k: v('k'), mode, pg: mode === '100' ? c2(f.pg) : '', ck: f?.pkw ? c2(f.pkw) : '', cn: f?.pkn ? c2(f.pkn) : '', calc: !!(f && (f.pkw || f.pkn)), auto: f ? Math.abs(f.k - calc) <= Math.max(0.01 * f.k, 0.005) : true, recipe: f?.recipe };
 }
 // facteur : valeur saisie → valeur par unité stockée
 const draftMult = d => d.unit !== 'portion' ? 0.01 : d.recipe ? 1 : d.mode === '100' ? num(d.pg) / 100 : 1;
@@ -1870,6 +1877,11 @@ function addPackDraft(d) {
   d.packnew = ''; d.packn = ''; return true;
 }
 const setPacks = (d, arr) => { d.packs = [...new Set(arr)].sort((a, b) => a - b).map(n => String(n).replace('.', ',')).join(' '); };
+function useHint(d) {
+  const q = num(d.usq); if (!(q > 0)) return '';
+  const r = q / (USE_DAYS[d.usper] || 7), u = d.unit === 'portion' ? '' : ' ' + d.unit;
+  return `<div class="hint">Ton stock baisse de <b>${qtxt(q)}${u}</b> chaque ${USE_LBL[d.usper]}${d.usper === 'day' ? '' : ` (≈ ${qtxt(Math.round(r * 100) / 100)}${u} par jour)`}, à partir de la date de ton dernier comptage. Pense à ajouter l'aliment au stock.</div>`;
+}
 function minHint(d) {
   const m = num(d.min); if (!(m > 0)) return '';
   const fu = { unit: d.unit, packs: getPacks(d), lots: d.lots }, pl = packPlan(fu, m);
@@ -1883,9 +1895,13 @@ function packTab(d) {
     <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip">${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="seg pmode" role="group" aria-label="Type de format"><button class="${lot ? '' : 'on'}" data-a="packmode" data-m="u">À l'unité</button><button class="${lot ? 'on' : ''}" data-a="packmode" data-m="l">Lot</button></div>
     <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd${lot ? ' lotrow' : ''}">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}${lot ? ' / unité' : ''}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
-    <div class="minbox"><div class="lbl">Stock minimum</div>
+<div class="usebox"><div class="lbl">Consommation régulière</div>
+      <p class="mini">Pour ce que tu utilises à rythme régulier (mouchoirs, papier toilette…), le stock baisse tout seul.</p>
+      <div class="padd"><input id="ff-usq" type="text" inputmode="decimal" placeholder="ex. 1" value="${esc(d.usq || '')}" data-i="ff" data-k="usq" data-fk="ff-usq" aria-label="Quantité consommée"><span class="u">${esc(u)} par</span><div class="seg useper">${['day', 'week', 'month'].map(k => `<button class="${d.usper === k ? 'on' : ''}" data-a="useper" data-m="${k}">${USE_LBL[k]}</button>`).join('')}</div></div><div id="useh">${useHint(d)}</div></div>
+        <div class="minbox"><div class="lbl">Stock minimum</div>
       <p class="mini">Seuil d'alerte : quand il t'en reste <b>moins que cette quantité</b>, l'aliment apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.</p>
-      <div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum"><span class="u">${esc(u)}</span></div><div id="minh">${minHint(d)}</div></div>
+      <div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum"><span class="u">${esc(u)}</span></div><div id="minh">${minHint(d)}</div>
+      <label for="ff-max" style="margin-top:12px">Racheter pour remonter à <span class="mini">(facultatif)</span></label><div class="padd"><input id="ff-max" type="text" inputmode="decimal" placeholder="= le minimum" value="${esc(d.max || '')}" data-i="ff" data-k="max" data-fk="ff-max"><span class="u">${esc(u)}</span></div></div>
     ${quick.length && !lot ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
 }
 const pgRes = d => num(d.ck) > 0 && num(d.cn) > 0 ? `1 portion = <b>${f1(num(d.ck) / num(d.cn))} g</b> <span class="mini">(${f1(num(d.ck))} g ÷ ${f1(num(d.cn))} parts)</span>` : '<span class="mini">Renseigne le poids du paquet et le nombre de parts : le poids d\'une portion est calculé pour toi.</span>';
@@ -1924,6 +1940,8 @@ function draftToFood(d) {
   const lo = {}; for (const n of pk) { const l = d.lots && d.lots[String(n)]; if (l && l.n > 1 && l.s > 0) lo[String(n)] = { n: l.n, s: l.s }; }
   if (Object.keys(lo).length && !d.recipe) o.lots = lo; else delete o.lots;
   if (num(d.min) > 0 && !d.recipe) o.min = num(d.min); else delete o.min;
+  if (num(d.max) > 0 && num(d.min) > 0 && !d.recipe) o.max = num(d.max); else delete o.max;
+  if (num(d.usq) > 0 && USE_DAYS[d.usper] && !d.recipe) o.use = { q: num(d.usq), per: d.usper }; else delete o.use;
   return o;
 }
 
@@ -2041,7 +2059,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 20:34 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 20:55 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2169,6 +2187,7 @@ const actions = {
   ffmode: el => { const d = ui.form, to = el.dataset.m; if (d.mode === to) return;  const from = draftMult(d), ok = x => x > 0 && isFinite(x); const save = d.mode; d.mode = to; const mt = draftMult(d); d.mode = save; if (ok(from) && ok(mt)) { const conv = x => (x === '' || x == null) ? x : String(Math.round(num(x) * from / mt * 1000) / 1000).replace('.', ','); for (const k of ['p', 'c', 'l', 'f']) d[k] = conv(d[k]); if (!d.auto) d.k = conv(d.k); } d.mode = to; d.calc = false; render(); },
   fftab: el => { ui.form.tab = el.dataset.t; render(); },
   packadd: () => { const d = ui.form; if (!addPackDraft(d)) { toast('Indique la taille du paquet'); return; } render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
+  useper: el => { ui.form.usper = el.dataset.m; render(); },
   packmode: el => { ui.form.packmode = el.dataset.m; render(); },
   packquick: el => { const d = ui.form; setPacks(d, [...getPacks(d), +el.dataset.n]); render(); },
   packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); if (d.lots) delete d.lots[String(+el.dataset.n)]; render(); },
@@ -2207,7 +2226,7 @@ function onInput(e) {
   else if (k === 'tgt') { const t = { ...targetForLabel(el.dataset.l) }; t[el.dataset.k] = num(el.value); setTarget(el.dataset.l, t); }
 }
 function refreshForm() { const d = ui.form; if (!d) return; if (d.mode === '100' && d.calc && num(d.ck) > 0 && num(d.cn) > 0) { d.pg = String(Math.round(num(d.ck) / num(d.cn) * 100) / 100).replace('.', ','); const e = $('#ff-pg'); if (e) e.value = d.pg; }
-  if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#minh')) $('#minh').innerHTML = minHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
+  if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#minh')) $('#minh').innerHTML = minHint(d); if ($('#useh')) $('#useh').innerHTML = useHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
 function onChange(e) {
   setTimeout(fsyncBtn, 0);
   if (ui.rendering) return;
@@ -2314,7 +2333,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 20:34';
+const BUILD_ID = '25/10/2026 à 20:55';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3505,7 +3524,7 @@ function viewStock() {
     const f = x.f, pk = packsOf(f); let rem = x.have; const pcs = [];
     for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; } }
     if (f.lots) for (const s of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / s + 1e-9); if (c >= 1 && !pk.includes(s)) { pcs.push(`${c} paquet${c > 1 ? 's' : ''} de ${esc(packSz(f, s))}`); rem -= c * s; } }
-    const rest = rem, nP = pcs.length, parts = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '', nP >= 1 ? `<span class="stp">≈ ${pcs.join(' + ')}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span><span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` <em>(${x.ate - x.ateO > 0.05 ? esc(haveTxt(f, x.ate - x.ateO)) + ' toi, ' : ''}${esc(haveTxt(f, x.ateO))} ${esc(remote?.name || 'l\'autre')})</em>` : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
+    const rest = rem, nP = pcs.length, parts = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '', nP >= 1 ? `<span class="stp">≈ ${pcs.join(' + ')}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 || x.reg > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span>` : '', x.reg > 0.05 ? `<span class="ste" title="Retiré automatiquement">−${esc(haveTxt(f, x.reg))} usage régulier <em>(${esc(qtxt(f.use.q))} / ${USE_LBL[f.use.per]})</em></span>` : '', x.ate > 0.5 ? `<span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` <em>(${x.ate - x.ateO > 0.05 ? esc(haveTxt(f, x.ate - x.ateO)) + ' toi, ' : ''}${esc(haveTxt(f, x.ateO))} ${esc(remote?.name || 'l\'autre')})</em>` : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
     return `<div class="stk"><div class="stn"><b>${esc(f.name)}</b>${note}${pk.length ? `<div class="pkb">${pk.map(n => `<button class="btn sm" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}</div>` : ''}</div>
       <div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>
       <select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select>
@@ -3530,7 +3549,7 @@ function stkBuyAll() {
   for (const f of S.foods) if (!f.hidden && !f.recipe && f.min > 0 && !items[f.id]) out.push({ id: f.id, f, q: 0, have: 0, ate: 0, virtual: true, loc: guessLoc(f) });
   return out.filter(stkLow).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
 }
-const buySug = x => { const f = x.f, pk = packsOf(f); if (x.virtual) return f.min; if (f.min > 0 && x.have > 0.05) return Math.round((f.min - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
+const buySug = x => { const f = x.f, pk = packsOf(f), tg = f.max > f.min ? f.max : f.min; if (x.virtual) return tg; if (f.min > 0 && x.have > 0.05) return Math.round((tg - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
 function stockBuyView(all, st, resHtml, cnt) {
   const xs = stkBuyAll(); st.sel ||= {}; st.rq ||= {};
   const chips = `<div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['old', 'À recompter'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>`;
