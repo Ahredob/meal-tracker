@@ -1071,6 +1071,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 @media (max-width:640px){.mdt td.mdn{min-width:0;padding-left:6px}.mdt th.mdnh{padding-left:6px}.mdt td.mdq{white-space:nowrap}.mdt{font-size:12.5px}.mdt td,.mdt th{padding:7px 3px}}
 .rsb .rhide{margin-left:auto;padding:6px 4px;font-size:12.5px;color:var(--mute)}
 .chip.chmask{margin-left:auto;background:transparent;border:1px dashed var(--line)}.chip.chmask.on{background:var(--accent);border-style:solid}
+.pmode{margin:10px 0 8px}.padd input.pn{width:56px;flex:0 0 56px;text-align:center}.pchip em{font-style:normal;color:var(--mute);font-size:12px}
 </style>
 </head>
 <body>
@@ -1484,6 +1485,8 @@ const stockRemove = id => mut(s => { if (s.stock?.items) delete s.stock.items[id
 const stockLoc = (id, loc) => mut(s => { const it = s.stock?.items?.[id]; if (it) it.loc = loc; });
 
 // formats d'achat : f.packs = tailles de paquets possibles (dans l'unité de l'aliment : 4, 6, 12 œufs ; 150 g…)
+// f.lots = { "150": {n:2, s:75} } : le format de 150 est un lot de 2 × 75
+const lotOf = (f, n) => (f && f.lots && f.lots[String(n)]) || null;
 const packsOf = f => ((f && f.packs) || []).filter(n => n > 0).sort((a, b) => a - b);
 // combinaison de paquets qui couvre q en dépassant le moins possible (puis le moins de paquets) → { parts: [[taille, nombre]…] gros d'abord, total }
 function packPlan(f, q) {
@@ -1809,7 +1812,7 @@ function viewFoods() {
     <aside class="right ${ui.form ? 'fopen' : 'fhint'}">${ui.form ? foodForm() : '<h5>Aliment</h5><p class="mini">Choisis un aliment dans la liste pour le modifier, ou crée-en un nouveau. Les valeurs se saisissent comme sur l\'étiquette (pour 100 g ou par portion).</p><p class="mini">Astuce : ↑ ↓ pour parcourir la liste, Entrée pour modifier, Échap pour fermer.</p>'}</aside>`;
 }
 // brouillon « propre » : on mémorise l'état d'origine pour savoir s'il y a des modifications à enregistrer
-const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news') ? undefined : v);
+const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news' || k === 'packmode') ? undefined : v);
 const fdirty = d => !!d && d._s !== fsnap(d);
 function draftFrom(f) { ui.ocr = null; const o = draftFrom0(f); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
 function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
@@ -1819,7 +1822,7 @@ function draftFrom0(f) {
   const b = f ? (mode === '100' ? { fac: 100 / f.pg } : perBasis(f)) : { fac: 100 };
   const v = k => f ? String(Math.round(f[k] * b.fac * 1000) / 1000).replace('.', ',') : '';
   const calc = f ? 4 * f.p + 4 * f.c + 9 * f.l : 0, c2 = x => String(Math.round(x * 100) / 100).replace('.', ',');
-  return { id: f?.id || null, name: f?.name || '', cat: f?.cat || (ui.foodCat !== 'all' && ui.foodCat !== 'check' && ui.foodCat !== 'dups' && ui.foodCat !== 'incoh' && ui.foodCat !== 'news' ? ui.foodCat : ''), unit: f?.unit || 'g', tab: 'val', packnew: '', min: f?.min > 0 ? String(f.min).replace('.', ',') : '', packs: packsOf(f).map(n => String(n).replace('.', ',')).join(' '), p: v('p'), c: v('c'), l: v('l'), f: v('f'), k: v('k'), mode, pg: mode === '100' ? c2(f.pg) : '', ck: f?.pkw ? c2(f.pkw) : '', cn: f?.pkn ? c2(f.pkn) : '', calc: !!(f && (f.pkw || f.pkn)), auto: f ? Math.abs(f.k - calc) <= Math.max(0.01 * f.k, 0.005) : true, recipe: f?.recipe };
+  return { id: f?.id || null, name: f?.name || '', cat: f?.cat || (ui.foodCat !== 'all' && ui.foodCat !== 'check' && ui.foodCat !== 'dups' && ui.foodCat !== 'incoh' && ui.foodCat !== 'news' ? ui.foodCat : ''), unit: f?.unit || 'g', tab: 'val', packnew: '', packn: '', packmode: 'u', lots: JSON.parse(JSON.stringify((f && f.lots) || {})), min: f?.min > 0 ? String(f.min).replace('.', ',') : '', packs: packsOf(f).map(n => String(n).replace('.', ',')).join(' '), p: v('p'), c: v('c'), l: v('l'), f: v('f'), k: v('k'), mode, pg: mode === '100' ? c2(f.pg) : '', ck: f?.pkw ? c2(f.pkw) : '', cn: f?.pkn ? c2(f.pkn) : '', calc: !!(f && (f.pkw || f.pkn)), auto: f ? Math.abs(f.k - calc) <= Math.max(0.01 * f.k, 0.005) : true, recipe: f?.recipe };
 }
 // facteur : valeur saisie → valeur par unité stockée
 const draftMult = d => d.unit !== 'portion' ? 0.01 : d.recipe ? 1 : d.mode === '100' ? num(d.pg) / 100 : 1;
@@ -1856,15 +1859,25 @@ function kcalHint0(d) {
   return c > 5 && Math.abs(k - c) / c > 0.1 ? `<div class="mini warn">Écart avec 4×P + 4×G + 9×L (${f0(c)} kcal) : vérifie les valeurs.</div>` : '';
 }
 const getPacks = d => [...new Set(String(d.packs || '').split(/\s+/).map(num).filter(n => n > 0))].sort((a, b) => a - b);
+// ajoute le format en cours de saisie (taille, ou nombre × taille en mode lot) ; renvoie false si rien à ajouter
+function addPackDraft(d) {
+  const s = num(d.packnew), n = Math.round(num(d.packn));
+  if (!(s > 0)) return false;
+  if (d.packmode === 'l' && n > 1) { const t = Math.round(n * s * 100) / 100; d.lots = d.lots || {}; d.lots[String(t)] = { n, s }; setPacks(d, [...getPacks(d), t]); }
+  else { setPacks(d, [...getPacks(d), s]); if (d.lots) delete d.lots[String(s)]; }
+  d.packnew = ''; d.packn = ''; return true;
+}
 const setPacks = (d, arr) => { d.packs = [...new Set(arr)].sort((a, b) => a - b).map(n => String(n).replace('.', ',')).join(' '); };
 function packTab(d) {
-  const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? 'parts' : d.unit;
+  const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? 'parts' : d.unit, lot = d.packmode === 'l', lt = n => d.lots && d.lots[String(n)];
   const quick = d.unit === 'portion' ? [4, 6, 10, 12].filter(n => !pk.includes(n)) : [];
-  return `<div class="lbl">Tailles de paquets</div><p class="mini">Les formats dans lesquels tu achètes cet aliment. Ils servent au stock (boutons « + paquet ») et à la liste de courses.</p>
-    <div class="pchips">${pk.length ? pk.map(n => `<span class="pchip">${esc(packSz(fu, n))}${d.unit === 'portion' ? ' parts' : ''}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
-    <label for="ff-packnew">Ajouter un format</label><div class="padd"><input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 150'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>
+  const tot = lot && num(d.packn) > 1 && num(d.packnew) > 0 ? `<p class="mini">= lot de <b>${esc(packSz(fu, Math.round(num(d.packn)) * num(d.packnew)))}</b></p>` : '';
+  return `<div class="lbl">Format d'achat</div><p class="mini">Les formats dans lesquels tu achètes cet aliment : à l'unité (un paquet, un pot…) ou en lot (plusieurs unités vendues ensemble). Ils servent au stock (boutons « + ») et à la liste de courses.</p>
+    <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip">${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
+    <div class="seg pmode" role="group" aria-label="Type de format"><button class="${lot ? '' : 'on'}" data-a="packmode" data-m="u">À l'unité</button><button class="${lot ? 'on' : ''}" data-a="packmode" data-m="l">Lot</button></div>
+    <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}${lot ? ' / unité' : ''}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
     <label for="ff-min" style="margin-top:14px">Stock minimum</label><div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min"><span class="u">${esc(u)}</span></div><p class="mini">Quand il t'en reste moins que ça, le produit apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.</p>
-    ${quick.length ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
+    ${quick.length && !lot ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
 }
 const pgRes = d => num(d.ck) > 0 && num(d.cn) > 0 ? `1 portion = <b>${f1(num(d.ck) / num(d.cn))} g</b> <span class="mini">(${f1(num(d.ck))} g ÷ ${f1(num(d.cn))} parts)</span>` : '<span class="mini">Renseigne le poids du paquet et le nombre de parts : le poids d\'une portion est calculé pour toi.</span>';
 function foodForm() {
@@ -1899,6 +1912,8 @@ function draftToFood(d) {
   if (d.unit === 'portion' && !d.recipe && d.mode === '100' && num(d.cn) > 0) o.pkn = num(d.cn); else delete o.pkn;
   const pk = [...new Set(String(d.packs || '').split(/\s*[;\/]\s*|\s*,\s+|\s+/).map(num).filter(n => n > 0))].sort((a, b) => a - b);
   if (pk.length && !d.recipe) o.packs = pk; else delete o.packs;
+  const lo = {}; for (const n of pk) { const l = d.lots && d.lots[String(n)]; if (l && l.n > 1 && l.s > 0) lo[String(n)] = { n: l.n, s: l.s }; }
+  if (Object.keys(lo).length && !d.recipe) o.lots = lo; else delete o.lots;
   if (num(d.min) > 0 && !d.recipe) o.min = num(d.min); else delete o.min;
   return o;
 }
@@ -2017,7 +2032,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 15:06 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 15:19 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2091,7 +2106,7 @@ const flushBackup = () => { const blob = new Blob([exportJSON()], { type: 'appli
 function pickFood(id) { const m = ui.modal; m.step = 'qty'; m.foodId = id; const f = foodMap.get(id); const prev = m.swap ? S.days[ui.date].meals[m.swap.meal][m.swap.idx] : null, pf = prev && foodMap.get(prev[0]);
   m.qty = prev && pf && (pf.unit === 'portion') === (f.unit === 'portion') ? prev[1] : (lastQty(id, m.meal) ?? (f.unit === 'portion' ? 1 : 100)); renderModal(); }
 function trySaveFood() {
-  const d = ui.form; if (num(d.packnew) > 0) { setPacks(d, [...getPacks(d), num(d.packnew)]); d.packnew = ''; }
+  const d = ui.form; addPackDraft(d);
   if (!d.name.trim()) { toast('Donne un nom à l\'aliment'); return; }
   if (d.unit === 'portion' && !d.recipe && d.mode === '100' && !(num(d.pg) > 0)) { toast('Indique le poids d\'une portion'); return; }
   const nn = norm(d.name).trim();
@@ -2144,9 +2159,10 @@ const actions = {
   foodsort: el => { const k = el.dataset.k, s = ui.foodSort; ui.scrollReset = true; ui.foodSort = s.k === k ? (k === 'name' && s.d === -1 ? { k: 'name', d: 1 } : { k, d: -s.d }) : { k, d: (k === 'name' || k === 'cat') ? 1 : -1 }; render(); },
   ffmode: el => { const d = ui.form, to = el.dataset.m; if (d.mode === to) return;  const from = draftMult(d), ok = x => x > 0 && isFinite(x); const save = d.mode; d.mode = to; const mt = draftMult(d); d.mode = save; if (ok(from) && ok(mt)) { const conv = x => (x === '' || x == null) ? x : String(Math.round(num(x) * from / mt * 1000) / 1000).replace('.', ','); for (const k of ['p', 'c', 'l', 'f']) d[k] = conv(d[k]); if (!d.auto) d.k = conv(d.k); } d.mode = to; d.calc = false; render(); },
   fftab: el => { ui.form.tab = el.dataset.t; render(); },
-  packadd: () => { const d = ui.form, n = num(d.packnew); if (!(n > 0)) { toast('Indique la taille du paquet'); return; } setPacks(d, [...getPacks(d), n]); d.packnew = ''; render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
+  packadd: () => { const d = ui.form; if (!addPackDraft(d)) { toast('Indique la taille du paquet'); return; } render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
+  packmode: el => { ui.form.packmode = el.dataset.m; render(); },
   packquick: el => { const d = ui.form; setPacks(d, [...getPacks(d), +el.dataset.n]); render(); },
-  packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); render(); },
+  packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); if (d.lots) delete d.lots[String(+el.dataset.n)]; render(); },
   ffcalc: el => { ui.form.calc = el?.dataset?.v ? el.dataset.v === '1' : !ui.form.calc; render(); },
   mergefood: el => { const src = foodMap.get(el.dataset.id), dst = ui.form?.id && foodMap.get(ui.form.id); if (!src || !dst) return; const bs = perBasis(src), bd = perBasis(dst), same = ['p', 'c', 'l', 'f', 'k'].every(k => Math.abs(src[k] * bs.fac - dst[k] * bd.fac) < 0.05); openModal({ type: 'confirm', title: 'Fusionner ces deux aliments ?', text: `« ${src.name} » sera remplacé par « ${dst.name} » partout (journées, repas types, recettes, stock), puis supprimé. ${same ? 'Les valeurs nutritionnelles sont identiques.' : `Attention : les valeurs diffèrent (${f0(src.k * bs.fac)} kcal contre ${f0(dst.k * bd.fac)} kcal ${bd.txt.startsWith('1') ? 'par part' : 'pour 100 ' + dst.unit}) : celles de « ${dst.name} » seront utilisées.`} Tu pourras annuler juste après avec le bouton Annuler.`, ok: 'Fusionner', onOk: () => { mergeFoods(src.id, dst.id); ui.form = draftFrom(foodMap.get(dst.id)); toast('Aliments fusionnés', [{ a: 'gundo', l: 'Annuler' }], 6000); } }); },
   ftoolsT: () => { ui.ftOpen = !ui.ftOpen; render(); },
@@ -2289,7 +2305,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 15:06';
+const BUILD_ID = '25/10/2026 à 15:19';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2711,8 +2727,9 @@ const checkedMap = () => (S.meta.shop && S.meta.shop[shopMon()]) || {};
 const shopStock = () => ui.shop.stock !== false;
 const haveTxt = (f, q) => f.unit === 'portion' ? `${qtxt(Math.round(q * 2) / 2)} ×` : `${qtxt(Math.round(q))} ${f.unit}`;
 const packSz = (f, n) => f.unit === 'portion' ? qtxt(n) : n >= 1000 ? `${nf(n / 1000, 2)} ${f.unit === 'g' ? 'kg' : 'l'}` : `${qtxt(n)} ${f.unit}`;
-const packLbl = (f, n) => `paquet de ${packSz(f, n)}`;
-const packTxt = (f, parts) => parts.map(([n, c]) => `${c} paquet${c > 1 ? 's' : ''} de ${packSz(f, n)}`).join(' + ');
+const lotTxt = (f, l) => `lot de ${l.n} × ${packSz(f, l.s)}`;
+const packLbl = (f, n) => { const l = lotOf(f, n); return l ? lotTxt(f, l) : `paquet de ${packSz(f, n)}`; };
+const packTxt = (f, parts) => parts.map(([n, c]) => { const l = lotOf(f, n); return l ? `${c} lot${c > 1 ? 's' : ''} de ${l.n} × ${packSz(f, l.s)}` : `${c} paquet${c > 1 ? 's' : ''} de ${packSz(f, n)}`; }).join(' + ');
 function shopQty0(f, q) {
   if (f.unit === 'portion') { const r = Math.ceil(q * 2 - 1e-9) / 2; return `${String(r).replace('.', ',')} ×`; }
   const r = Math.ceil(q / 5 - 1e-9) * 5;
@@ -3476,7 +3493,8 @@ function viewStock() {
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
     const f = x.f, pk = packsOf(f); let rem = x.have; const pcs = [];
-    for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(`${c} paquet${c > 1 ? 's' : ''} de ${esc(packSz(f, L))}`); rem -= c * L; } }
+    for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; } }
+    if (f.lots) for (const s of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / s + 1e-9); if (c >= 1 && !pk.includes(s)) { pcs.push(`${c} paquet${c > 1 ? 's' : ''} de ${esc(packSz(f, s))}`); rem -= c * s; } }
     const rest = rem, nP = pcs.length, parts = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '', nP >= 1 ? `<span class="stp">≈ ${pcs.join(' + ')}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span><span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` <em>(${x.ate - x.ateO > 0.05 ? esc(haveTxt(f, x.ate - x.ateO)) + ' toi, ' : ''}${esc(haveTxt(f, x.ateO))} ${esc(remote?.name || 'l\'autre')})</em>` : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
     return `<div class="stk"><div class="stn"><b>${esc(f.name)}</b>${note}${pk.length ? `<div class="pkb">${pk.map(n => `<button class="btn sm" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}</div>` : ''}</div>
       <div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>
