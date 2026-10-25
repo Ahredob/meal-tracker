@@ -1072,6 +1072,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .rsb .rhide{margin-left:auto;padding:6px 4px;font-size:12.5px;color:var(--mute)}
 .chip.chmask{margin-left:auto;background:transparent;border:1px dashed var(--line)}.chip.chmask.on{background:var(--accent);border-style:solid}
 .pmode{margin:10px 0 8px}.padd input.pn{width:56px;flex:0 0 56px;text-align:center}.pchip em{font-style:normal;color:var(--mute);font-size:12px}
+.minbox{margin-top:18px;padding-top:14px;border-top:1px solid var(--line,#0002)}.minbox .lbl{margin-bottom:4px}.minh{margin-top:6px}
+.padd.lotrow{flex-wrap:wrap}.padd.lotrow input#ff-packnew{flex:1 1 90px;min-width:90px}
 </style>
 </head>
 <body>
@@ -1868,6 +1870,11 @@ function addPackDraft(d) {
   d.packnew = ''; d.packn = ''; return true;
 }
 const setPacks = (d, arr) => { d.packs = [...new Set(arr)].sort((a, b) => a - b).map(n => String(n).replace('.', ',')).join(' '); };
+function minHint(d) {
+  const m = num(d.min); if (!(m > 0)) return '';
+  const fu = { unit: d.unit, packs: getPacks(d), lots: d.lots }, pl = packPlan(fu, m);
+  return `<p class="mini minh">Alerte sous <b>${esc(d.unit === 'portion' ? qtxt(m) + ' parts' : packSz(fu, m))}</b>${pl && pl.parts.length ? ` (≈ ${esc(packTxt(fu, pl.parts))})` : ''}.</p>`;
+}
 function packTab(d) {
   const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? 'parts' : d.unit, lot = d.packmode === 'l', lt = n => d.lots && d.lots[String(n)];
   const quick = d.unit === 'portion' ? [4, 6, 10, 12].filter(n => !pk.includes(n)) : [];
@@ -1875,8 +1882,10 @@ function packTab(d) {
   return `<div class="lbl">Format d'achat</div><p class="mini">Les formats dans lesquels tu achètes cet aliment : à l'unité (un paquet, un pot…) ou en lot (plusieurs unités vendues ensemble). Ils servent au stock (boutons « + ») et à la liste de courses.</p>
     <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip">${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="seg pmode" role="group" aria-label="Type de format"><button class="${lot ? '' : 'on'}" data-a="packmode" data-m="u">À l'unité</button><button class="${lot ? 'on' : ''}" data-a="packmode" data-m="l">Lot</button></div>
-    <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}${lot ? ' / unité' : ''}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
-    <label for="ff-min" style="margin-top:14px">Stock minimum</label><div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min"><span class="u">${esc(u)}</span></div><p class="mini">Quand il t'en reste moins que ça, le produit apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.</p>
+    <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd${lot ? ' lotrow' : ''}">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}${lot ? ' / unité' : ''}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
+    <div class="minbox"><div class="lbl">Stock minimum</div>
+      <p class="mini">Seuil d'alerte : quand il t'en reste <b>moins que cette quantité</b>, l'aliment apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.</p>
+      <div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum"><span class="u">${esc(u)}</span></div><div id="minh">${minHint(d)}</div></div>
     ${quick.length && !lot ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
 }
 const pgRes = d => num(d.ck) > 0 && num(d.cn) > 0 ? `1 portion = <b>${f1(num(d.ck) / num(d.cn))} g</b> <span class="mini">(${f1(num(d.ck))} g ÷ ${f1(num(d.cn))} parts)</span>` : '<span class="mini">Renseigne le poids du paquet et le nombre de parts : le poids d\'une portion est calculé pour toi.</span>';
@@ -2032,7 +2041,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 15:19 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 20:30 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2198,7 +2207,7 @@ function onInput(e) {
   else if (k === 'tgt') { const t = { ...targetForLabel(el.dataset.l) }; t[el.dataset.k] = num(el.value); setTarget(el.dataset.l, t); }
 }
 function refreshForm() { const d = ui.form; if (!d) return; if (d.mode === '100' && d.calc && num(d.ck) > 0 && num(d.cn) > 0) { d.pg = String(Math.round(num(d.ck) / num(d.cn) * 100) / 100).replace('.', ','); const e = $('#ff-pg'); if (e) e.value = d.pg; }
-  if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
+  if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#minh')) $('#minh').innerHTML = minHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
 function onChange(e) {
   setTimeout(fsyncBtn, 0);
   if (ui.rendering) return;
@@ -2305,7 +2314,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 15:19';
+const BUILD_ID = '25/10/2026 à 20:30';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
