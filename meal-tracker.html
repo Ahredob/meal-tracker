@@ -2017,7 +2017,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 07:44 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 07:47 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2289,7 +2289,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 07:44';
+const BUILD_ID = '25/10/2026 à 07:47';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3280,11 +3280,12 @@ function tplMom() { if (ui.tpl.mom) return ui.tpl.mom; const h = new Date().getH
 function histMeals(mom) {   // repas réellement mangés à ce moment : regroupés par aliments identiques, du plus récent au plus ancien
   const g = new Map(), t = today();
   for (const d of Object.keys(S.days).sort().reverse()) { if (d > t) continue; const ents = (S.days[d].meals[mom] || []).filter(e => foodMap.get(e[0])); if (!ents.length) continue;
-    const key = ents.map(e => e[0]).sort().join('|'), o = g.get(key); if (o) o.n++; else g.set(key, { ents, n: 1, last: d }); }
+    const key = ents.map(e => e[0]).sort().join('|'), o = g.get(key), tt = mom === 'midi' ? (S.days[d].title || '').trim() : '';   // le titre de la journée résume le repas du midi
+    if (o) { o.n++; if (!o.title && tt) o.title = tt; } else g.set(key, { ents, n: 1, last: d, title: tt }); }
   return [...g.values()];
 }
 function tplItems(mom) {
-  if (ui.tpl.src === 'hist') return histMeals(mom).map(h => ({ key: 'h' + h.last, ents: h.ents, title: h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : ''), full: h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).join(', '), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` }));
+  if (ui.tpl.src === 'hist') return histMeals(mom).map(h => ({ key: 'h' + h.last, ents: h.ents, title: h.title || (h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : '')), full: h.title ||  h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).join(', '), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` }));
   return S.templates.filter(x => !x.hidden && (x.meals[mom] || []).length).map(x => ({ key: 't' + x.id, ents: x.meals[mom], title: x.name, tag: OWNERS[x.owner] || '', sub: x.group, tid: x.id }));
 }
 function tplRows(mom) { return tplItems(mom).map(it => ({ it, miss: entsMiss(it.ents) })); }
