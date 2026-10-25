@@ -1524,11 +1524,18 @@ function shoppingRecipes(dates, withStock = true) {
 function shoppingList(dates, expand = true, withStock = true) {
   const agg = shopAgg(dates);
   if (expand) for (const r of shoppingRecipes(dates, withStock)) { agg.delete(r.f.id); if (r.batches > 0) for (const [iid, iq] of r.f.recipe.items) if (iq > 0) agg.set(iid, (agg.get(iid) || 0) + iq * r.batches); }
+  // consommation régulière : si le stock prévu en fin de période passe sous le minimum, on ajoute de quoi remonter à la cible
+  const reg = new Map(), last = typeof shopHorizon === 'function' ? shopHorizon(dates) : (dates.length ? dates.reduce((m, d) => d > m ? d : m, dates[0]) : null);
+  if (last) for (const f of S.foods) {
+    const r = useRate(f); if (!(r > 0) || !(f.min > 0) || f.hidden || f.recipe) continue;
+    const have = withStock ? stockHave(f.id) : 0, meals = agg.get(f.id) || 0, dd = Math.max(0, diffDays(last, today())), proj = have - r * dd - meals, tg = f.max > f.min ? f.max : f.min;
+    if (proj < f.min - 1e-9) { agg.set(f.id, meals + r * dd + tg); reg.set(f.id, { proj: Math.max(0, proj), min: f.min }); }
+  }
   const groups = {}, covered = [];
   for (const [id, need] of agg) {
     const f = foodMap.get(id); if (!f) continue;
     const have = withStock ? stockHave(id) : 0, buy = need - have, min = f.unit === 'portion' ? 0.25 : 2;
-    if (buy >= min) (groups[f.cat] ||= []).push({ f, q: buy, need, have });
+    if (buy >= min) (groups[f.cat] ||= []).push({ f, q: buy, need, have, reg: reg.get(id) });
     else if (have > 0 && need > 0) covered.push({ f, q: 0, need, have });
   }
   for (const g of Object.values(groups)) g.sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
@@ -2059,7 +2066,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 20:55 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 21:03 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2333,7 +2340,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 20:55';
+const BUILD_ID = '25/10/2026 à 21:03';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2750,6 +2757,8 @@ const hasMeals = d => { const w = shopWho(); return (w !== 'other' && !!(S.days[
 const shopOn = d => hasMeals(d) && (d in ui.shop.on ? ui.shop.on[d] : (d > today() && d <= addDays(today(), 7)));
 const shopAll = () => Array.from({ length: 14 }, (_, i) => addDays(addDays(today(), 1), i));   // les 14 prochains jours, à partir de demain
 const shopDates = () => shopAll().filter(shopOn);
+// fin de la période de courses (pour prévoir ce qui sera consommé d'ici là)
+const shopHorizon = dates => { const m = ui.shop.mode || 'sun'; if (m === 'sun') return addDays(today(), 7); if (m === 'two') return addDays(today(), 14); return dates.length ? dates.reduce((a, d) => d > a ? d : a, dates[0]) : null; };
 const checkedMap = () => (S.meta.shop && S.meta.shop[shopMon()]) || {};
 
 const shopStock = () => ui.shop.stock !== false;
@@ -2768,7 +2777,7 @@ function shopQty0(f, q) {
 
 function shopParts(f, q) {
   const pl = packPlan(f, q);
-  if (pl) return { main: packTxt(f, pl.parts), sub: `total ${f.unit === 'portion' ? qtxt(pl.total) : packSz(f, pl.total)}` };
+  if (pl) return { main: packTxt(f, pl.parts), sub: `total ${f.unit === 'portion' ? qtxt(pl.total) : packSz(f, pl.total)}`, extra: pl.total - q > 0.05 ? `${f.unit === 'portion' ? qtxt(Math.round((pl.total - q) * 10) / 10) : packSz(f, Math.round((pl.total - q) * 10) / 10)} en trop` : '' };
   return { main: shopQty0(f, q), sub: '' };
 }
 const shopQty = (f, q) => { const p = shopParts(f, q); return p.main + (p.sub ? ` (${p.sub})` : ''); };
@@ -2784,7 +2793,7 @@ function shopFoodRes() {
   const res = S.foods.filter(f => !f.hidden && !f.recipe && words.every(w => norm(f.name).includes(w))).slice(0, 6);
   return res.map(f => `<button class="ai" data-a="shopfpick" data-id="${f.id}"><span class="an">${esc(f.name)}</span><span class="am">${esc(f.cat)}</span></button>`).join('') || '<p class="mini" style="padding:6px">Aucun aliment trouvé.</p>';
 }
-function shopItemSub(x) { const p = shopParts(x.f, x.q), t = []; if (x.have > 0 || p.sub) t.push(`besoin ${haveTxt(x.f, x.need)}`); if (x.have > 0) t.push(`en stock ${haveTxt(x.f, x.have)}`); return t.join(' · '); }
+function shopItemSub(x) { const p = shopParts(x.f, x.q); if (x.reg) return [`en stock ${haveTxt(x.f, x.have)} · prévu ${haveTxt(x.f, x.reg.proj)} en fin de période (min. ${qtxt(x.reg.min)})`, p.extra].filter(Boolean).join(' · '); const t = []; if (x.have > 0 || p.sub) t.push(`besoin ${haveTxt(x.f, x.need)}`); if (x.have > 0) t.push(`en stock ${haveTxt(x.f, x.have)}`); if (p.extra) t.push(p.extra); return t.join(' · '); }
 // liste envoyée au téléphone : le même calcul que l'écran Courses
 function shopPayload() {
   const dates = shopDates(); if (!dates.length) return null;
