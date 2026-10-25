@@ -800,10 +800,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .tp-m .tb2 em{font-size:11px;line-height:1.2}
   .sbar-m{position:static}
 }
-}
 
 /* ===== téléphone : onglet Courses ===== */
-.shopsum{display:none}
+.shopcfg>.shopsum{display:none!important}
 @media (max-width:640px){
   .dh:has(.sp>[data-a=shopcopy]){display:block}
   .dh:has(.sp>[data-a=shopcopy])>.dt{margin-bottom:10px}
@@ -811,7 +810,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .dh:has(.sp>[data-a=shopcopy]) .sp .btn{min-height:44px;font-size:14px;justify-content:center}
   .dh:has(.sp>[data-a=shopcopy]) .sp [data-a=shopreset]{grid-column:1/-1}
   .shopcfg{padding:0}
-  .shopcfg .shopsum{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:left;background:transparent;border:0;font-size:13.5px}
+  .shopcfg>.shopsum{display:flex!important;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:left;background:transparent;border:0;font-size:13.5px}
   .shopcfg .shopsum b{flex:none;color:var(--accent);font-size:13px}
   .shopcfg:not(.open)>*:not(.shopsum){display:none}
   .shopcfg.open>*:not(.shopsum){margin-left:14px;margin-right:14px}.shopcfg.open{padding-bottom:12px}
@@ -835,7 +834,6 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .stk .qin{width:52px;min-height:40px;font-size:16px}
   .stk .pkb{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.stk .pkb .btn{min-height:40px}
   .stkres .li{min-height:52px}
-}
 }
 
 /* téléphone : « Copier vers… » par carte, feuille avec Valider */
@@ -2019,7 +2017,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 07:54 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 15:02 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2291,7 +2289,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 07:54';
+const BUILD_ID = '25/10/2026 à 15:02';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
