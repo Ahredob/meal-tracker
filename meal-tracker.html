@@ -1063,6 +1063,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .rok,.rno{display:inline-block;font-weight:800;font-size:12px;padding:3px 9px;border-radius:99px}.rok{background:var(--accent-soft);color:var(--accent)}.rno{background:#FBE9DF;color:var(--warn,#b5532f)}
 .rmiss{color:var(--warn,#b5532f);font-size:12.5px;font-weight:600;margin-top:4px}.rsb{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .rsg{gap:10px}
+.rtag{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:#E6EBF7;color:#3B4F8C;margin-left:6px}.rct{font-size:13px;color:var(--mute);margin:4px 0 2px}
 </style>
 </head>
 <body>
@@ -2009,7 +2010,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 24/10/2026 à 21:52 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 07:33 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2281,7 +2282,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '24/10/2026 à 21:52';
+const BUILD_ID = '25/10/2026 à 07:33';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2327,7 +2328,7 @@ const GROUPS = [['1', '8', 'P'], ['2', '7'], ['3', '6'], ['4', '5'], ['9']];   /
 const gKey = g => g.join('-');
 const gName = g => { const a = g.filter(x => x !== 'P'); return a.length === 1 ? labelName(a[0]) : `Sem. ${a.join(' et ')}`; };
 const gKcal = g => targetForLabel(g[0]).k;
-ui.tpl = { owner: 'all', q: '', week: 'all', mode: 'tables', shown: 12, vsel: {} };
+ui.tpl = { owner: 'all', q: '', week: 'all', mode: 'tables', shown: 12, vsel: {}, stock: false, src: 'tpl', mom: null };
 ui.weekMode = 'tables';
 
 const OWNERS = { Deb: 'Programme', Commun: 'Communs', Perso: 'Mes modèles' };
@@ -2487,6 +2488,7 @@ function tplBlock(fam) {
 }
 const recSwitch = cur => `<div class="seg recsw"><button class="${cur === 'modeles' ? 'on' : ''}" data-a="nav" data-v="modeles">Repas types</button><button class="${cur === 'recettes' ? 'on' : ''}" data-a="nav" data-v="recettes">Recettes</button></div>`;
 function viewTpl() {
+  if (ui.tpl.stock) return viewTplStock();
   const t = ui.tpl, words = qwords(t.q), tables = t.mode === 'tables';
   const base = S.templates.filter(x => (t.owner === 'arch' ? !!x.hidden : !x.hidden && (t.owner === 'all' || x.owner === t.owner)) && words.every(w => norm(x.name + ' ' + x.group + ' ' + tplFoods(x)).includes(w)));
   const list = base.filter(x => t.week === 'all' || tplWeek(x) === t.week);
@@ -2500,6 +2502,7 @@ function viewTpl() {
     : `<div class="gh">${esc(g)}</div><div class="card list">${vg[g].map(x => { const tot = templateTotals(x); return `<button class="li" data-a="tplopen" data-id="${x.id}"><div class="b"><b>${esc(x.name)}</b><span>${esc(OWNERS[x.owner] || x.owner)}${variantOf(x).n > 1 ? ` · variante ${variantOf(x).i + 1}/${variantOf(x).n}` : ''}</span></div><div class="r">${f0(tot.k)} kcal · P ${f0(tot.p)}</div></button>`; }).join('')}</div>`).join('');
   return `<main class="main wide2">${ui.copyOpen && ui.copyTpl ? destStrip() : ''}<div class="dh"><h1>Recettes</h1><span class="mini">${tables ? `${flat.length} repas · ${list.length} variantes` : `${list.length} sur ${S.templates.length} repas`}</span></div>
     ${recSwitch('modeles')}
+    ${tplStockChips()}
     <div class="seg wseg"><button class="${tables ? 'on' : ''}" data-a="tplmode" data-m="tables">Tableaux</button><button class="${!tables ? 'on' : ''}" data-a="tplmode" data-m="list">Liste</button></div>
     <div class="chips fchips" style="margin-bottom:8px">${[['all', 'Tous'], ...Object.entries(OWNERS), ...(S.templates.some(x => x.hidden) || t.owner === 'arch' ? [['arch', `Archivés (${S.templates.filter(x => x.hidden).length})`]] : [])].map(([k, l]) => `<button class="chip ${t.owner === k ? 'on' : ''}" data-a="tplowner" data-o="${k}">${l}</button>`).join('')}</div>
     <div class="chips fchips" style="margin-bottom:8px">${wchips}</div>
@@ -3101,6 +3104,17 @@ function seedDay(date) {
 }
 const fmtT = t => { const d = new Date(t); return `${fmtShort(iso(d))} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 function renderModal3(m, root) {
+  if (m.type === 'mealplan') {
+    root.innerHTML = shell('Planifier ce repas', `<p><b>${esc(m.title)}</b> <span class="mini">· ${f0(sumEntries(m.ents).k)} kcal</span></p>
+      <label for="mpdate">Jour</label><input id="mpdate" type="date" value="${addDays(today(), 1)}">
+      <label for="mpmeal">Repas</label><select id="mpmeal">${MEALS.map(x => `<option value="${x.id}" ${x.id === m.mom ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>`, `<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="mealplanok">Planifier</button>`);
+    return true;
+  }
+  if (m.type === 'mealdet') {
+    const t = sumEntries(m.ents);
+    root.innerHTML = shell(m.title, `<div class="xgrid"><section class="xb"><div class="xr xc"><span class="xq">Qté</span><span class="xn">Aliment</span><span class="hp">P</span><span class="hc">G</span><span class="hl">L</span><span class="hf">F</span><span>kcal</span></div>${m.ents.map(e => { const g = foodMap.get(e[0]), em = entryMacros(e); return `<div class="xr"><span class="xq">${qtxt(e[1])}${g.unit === 'portion' ? '×' : ' ' + g.unit}</span><span class="xn">${esc(g.name)}</span>${M5.map(k => `<span>${k === 'k' ? f0(em[k]) : nf(em[k], 1)}</span>`).join('')}</div>`; }).join('')}<div class="xr xt"><span class="xq"></span><span class="xn">Total</span>${M5.map(k => `<span>${k === 'k' ? f0(t[k]) : nf(t[k], 1)}</span>`).join('')}</div></section></div>`, `<button class="btn pri" data-a="close">Fermer</button>`);
+    return true;
+  }
   if (m.type === 'recplan') {
     const f = foodMap.get(m.id);
     root.innerHTML = shell('Planifier la recette', `<p><b>${esc(recBase(f?.name || ''))}</b> <span class="mini">· ${f ? f0(f.k) : ''} kcal par part</span></p>
@@ -3248,6 +3262,49 @@ function recStockHtml(list) {
   const out = sec('Faisable avec ton stock', ok) + sec('Il manque 1 ingrédient', by(1)) + sec('Il manque 2 ingrédients', by(2)) + sec('Il manque 3 ingrédients', by(3));
   return out || '<p class="mu">Aucune recette réalisable avec ton stock (ou il manque plus de 3 ingrédients). Renseigne ton stock dans l\'onglet Stock.</p>';
 }
+// ---- « Avec mon stock » dans Repas types : repas types et repas déjà mangés, par moment de la journée ----
+function entsMiss(ents) {
+  const need = new Map(), add = (id, q) => need.set(id, (need.get(id) || 0) + q);
+  for (const [id, q] of ents) { const g = foodMap.get(id); if (!g) continue; if (g.recipe && !stockMap().get(id)) for (const [iid, iq] of g.recipe.items) add(iid, iq / g.recipe.parts * q); else add(id, q); }
+  const miss = []; for (const [id, n] of need) { const have = stockMap().get(id)?.have || 0; if (have < n - 0.01) miss.push({ id, short: Math.round((n - have) * 100) / 100 }); }
+  return miss;
+}
+function tplMom() { if (ui.tpl.mom) return ui.tpl.mom; const h = new Date().getHours(); return h < 10 ? 'matin' : h < 15 ? 'midi' : h < 18 ? 'snack' : 'soir'; }
+function histMeals(mom) {   // repas réellement mangés à ce moment : regroupés par aliments identiques, du plus récent au plus ancien
+  const g = new Map(), t = today();
+  for (const d of Object.keys(S.days).sort().reverse()) { if (d > t) continue; const ents = (S.days[d].meals[mom] || []).filter(e => foodMap.get(e[0])); if (!ents.length) continue;
+    const key = ents.map(e => e[0]).sort().join('|'), o = g.get(key); if (o) o.n++; else g.set(key, { ents, n: 1, last: d }); }
+  return [...g.values()];
+}
+function tplItems(mom) {
+  if (ui.tpl.src === 'hist') return histMeals(mom).map(h => ({ key: 'h' + h.last, ents: h.ents, title: h.ents.map(e => foodMap.get(e[0]).name.replace(/ \(.*$/, '')).slice(0, 3).join(', ') + (h.ents.length > 3 ? '…' : ''), tag: `🕘 mangé ${h.n} fois`, sub: `dernier : ${fmtShort(h.last)}` }));
+  return S.templates.filter(x => !x.hidden && (x.meals[mom] || []).length).map(x => ({ key: 't' + x.id, ents: x.meals[mom], title: x.name, tag: OWNERS[x.owner] || '', sub: x.group, tid: x.id }));
+}
+function tplRows(mom) { return tplItems(mom).map(it => ({ it, miss: entsMiss(it.ents) })); }
+const tplStockCount = () => { const mom = tplMom(); return tplRows(mom).filter(r => !r.miss.length).length; };
+function tplStockChips() {
+  const on = ui.tpl.stock;
+  return `<div class="chips" style="margin-bottom:8px"><button class="chip ${on ? '' : 'on'}" data-a="tplstk" data-v="0">Tous les repas types</button><button class="chip ${on ? 'on' : ''}" data-a="tplstk" data-v="1">Avec mon stock <small>${tplStockCount()}</small></button></div>`;
+}
+function viewTplStock() {
+  const mom = tplMom(), src = ui.tpl.src, rows = tplRows(mom), ok = rows.filter(r => !r.miss.length);
+  const nT = S.templates.filter(x => !x.hidden && (x.meals[mom] || []).length).length, nH = histMeals(mom).length;
+  const by = n => rows.filter(r => r.miss.length === n);
+  const card = r => { const it = r.it, m = r.miss, k = sumEntries(it.ents).k;
+    return `<div class="rsc"><div class="rsh"><b>${esc(it.title)}</b>${it.tag ? `<span class="rtag">${esc(it.tag)}</span>` : ''}${m.length ? `<span class="rno">${m.length} manque${m.length > 1 ? 'nt' : ''}</span>` : '<span class="rok">✓ tout en stock</span>'}</div>
+      <div class="rct">${it.ents.map(e => { const g = foodMap.get(e[0]); return `${esc(g.name.replace(/ \(.*$/, ''))} ${esc(haveTxt(g, e[1]))}`; }).join(' · ')}</div>
+      <div class="mini">${it.sub ? esc(it.sub) + ' · ' : ''}${f0(k)} kcal</div>
+      ${m.length ? `<div class="rmiss">Manque : ${m.map(x => `${esc(foodMap.get(x.id)?.name || '')} (${esc(haveTxt(foodMap.get(x.id), x.short))})`).join(', ')}</div>` : ''}
+      <div class="rsb"><button class="btn sm pri" data-a="mealplan" data-k="${esc(it.key)}">Planifier</button>${m.length ? `<button class="btn sm" data-a="mealcart" data-k="${esc(it.key)}">+ Courses</button>` : ''}<button class="btn sm" data-a="mealdet" data-k="${esc(it.key)}">Voir le détail</button></div></div>`;
+  }, sec = (t, a) => a.length ? `<h3 class="rsh3">${t}</h3><div class="xgrid xg-t rsg">${a.map(card).join('')}</div>` : '';
+  const body = sec('Faisable avec ton stock', ok) + sec('Il manque 1 ingrédient', by(1)) + sec('Il manque 2 ingrédients', by(2)) + sec('Il manque 3 ingrédients', by(3));
+  return `<main class="main wide2"><div class="dh"><h1>Recettes</h1><span class="mini">${ok.length} faisable${ok.length > 1 ? 's' : ''} avec ton stock</span></div>
+    ${recSwitch('modeles')}${tplStockChips()}
+    <div class="seg wseg"><button class="${src === 'tpl' ? 'on' : ''}" data-a="tplsrc" data-v="tpl">Repas types <small>${nT}</small></button><button class="${src === 'hist' ? 'on' : ''}" data-a="tplsrc" data-v="hist">Repas déjà mangés <small>${nH}</small></button></div>
+    <div class="chips fchips" style="margin-bottom:8px">${MEALS.map(m => `<button class="chip ${mom === m.id ? 'on' : ''}" data-a="tplmom" data-m="${m.id}">${esc(m.label)}</button>`).join('')}</div>
+    ${body || `<p class="mu">${src === 'hist' ? 'Aucun repas déjà mangé à ce moment qui soit faisable (ou il manque plus de 3 ingrédients).' : 'Aucun repas type faisable à ce moment.'} Renseigne ton stock dans l'onglet Stock.</p>`}</main>`;
+}
+const tplFind = key => tplItems(tplMom()).find(x => x.key === key);
 const recOkCount = () => S.foods.filter(f => f.recipe && !f.hidden && !recStock(f).length).length;
 function viewRecipes() {
   const words = qwords(ui.rec.q);
@@ -3351,6 +3408,15 @@ Object.assign(actions, {
   reccat: el => { ui.rec.cat = el.dataset.k; render(); },
   recstk: el => { ui.rec.stock = el.dataset.v === '1'; render(); },
   recmisscart: el => { const f = foodMap.get(el.dataset.id); if (!f) return; const ms = recStock(f).filter(x => !inCart(x.id)); if (!ms.length) { toast('Déjà dans les courses'); return; }
+    mut(s => { for (const x of ms) { const g = foodMap.get(x.id); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: g.name, fid: x.id, q: x.short }); } });
+    if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ms.length} ingrédient${ms.length > 1 ? 's' : ''} ajouté${ms.length > 1 ? 's' : ''} aux courses`); },
+  tplstk: el => { ui.tpl.stock = el.dataset.v === '1'; render(); },
+  tplsrc: el => { ui.tpl.src = el.dataset.v; render(); },
+  tplmom: el => { ui.tpl.mom = el.dataset.m; render(); },
+  mealplan: el => { const it = tplFind(el.dataset.k); if (it) openModal({ type: 'mealplan', key: it.key, ents: it.ents, title: it.title, mom: tplMom() }); },
+  mealplanok: () => { const m = ui.modal, d = $('#mpdate').value, meal = $('#mpmeal').value; if (!d) return; mut(s => { for (const [id, q] of m.ents) ensureDay(d).meals[meal].push([id, q]); }); closeModal(); toast(`${m.title} ajouté au ${fmtShort(d)}`); },
+  mealdet: el => { const it = tplFind(el.dataset.k); if (it) openModal({ type: 'mealdet', title: it.title, ents: it.ents }); },
+  mealcart: el => { const it = tplFind(el.dataset.k); if (!it) return; const ms = entsMiss(it.ents).filter(x => !inCart(x.id)); if (!ms.length) { toast('Déjà dans les courses'); return; }
     mut(s => { for (const x of ms) { const g = foodMap.get(x.id); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: g.name, fid: x.id, q: x.short }); } });
     if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ms.length} ingrédient${ms.length > 1 ? 's' : ''} ajouté${ms.length > 1 ? 's' : ''} aux courses`); },
   recplan: el => { const f = foodMap.get(el.dataset.id); if (f) openModal({ type: 'recplan', id: f.id }); },
