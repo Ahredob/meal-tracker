@@ -1829,7 +1829,7 @@ function viewFoods() {
     <aside class="right ${ui.form ? 'fopen' : 'fhint'}">${ui.form ? foodForm() : '<h5>Aliment</h5><p class="mini">Choisis un aliment dans la liste pour le modifier, ou crée-en un nouveau. Les valeurs se saisissent comme sur l\'étiquette (pour 100 g ou par portion).</p><p class="mini">Astuce : ↑ ↓ pour parcourir la liste, Entrée pour modifier, Échap pour fermer.</p>'}</aside>`;
 }
 // brouillon « propre » : on mémorise l'état d'origine pour savoir s'il y a des modifications à enregistrer
-const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news' || k === 'packmode') ? undefined : v);
+const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news' || k === 'packmode' || k === 'ulnew') ? undefined : v);
 const fdirty = d => !!d && d._s !== fsnap(d);
 function draftFrom(f) { ui.ocr = null; const o = draftFrom0(f); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
 function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
@@ -1885,6 +1885,12 @@ function addPackDraft(d) {
   d.packnew = ''; d.packn = ''; return true;
 }
 const setPacks = (d, arr) => { d.packs = [...new Set(arr)].sort((a, b) => a - b).map(n => String(n).replace('.', ',')).join(' '); };
+// liste d'unités proposées : usuelles + celles déjà utilisées dans tes aliments
+const UL_BASE = ['paquets', 'boîtes', 'pots', 'sachets', 'bouteilles', 'rouleaux', 'tubes', 'barquettes'];
+function ulList(cur) {
+  const set = new Set(UL_BASE); for (const f of S.foods) if (f.ulbl) set.add(f.ulbl); if (cur) set.add(cur);
+  return [['', 'part (par défaut)'], ...[...set].sort((a, b) => a.localeCompare(b, 'fr')).map(x => [x, x]), ['__new', '+ Nouvelle unité…']];
+}
 function useHint(d) {
   const q = num(d.usq); if (!(q > 0)) return '';
   const r = q / (USE_DAYS[d.usper] || 7), u = d.unit === 'portion' ? '' : ' ' + d.unit;
@@ -1903,7 +1909,7 @@ function packTab(d) {
     <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip">${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="seg pmode" role="group" aria-label="Type de format"><button class="${lot ? '' : 'on'}" data-a="packmode" data-m="u">À l'unité</button><button class="${lot ? 'on' : ''}" data-a="packmode" data-m="l">Lot</button></div>
     <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd${lot ? ' lotrow' : ''}">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew"><span class="u">${esc(u)}${lot ? ' / unité' : ''}</span><button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
-${d.unit === 'portion' ? `<div class="padd" style="margin-top:12px"><label for="ff-ulbl" style="margin:0;white-space:nowrap">Nom de l'unité</label><input id="ff-ulbl" type="text" maxlength="20" placeholder="parts (ex. paquets)" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl"></div><p class="mini">Affiché dans le stock à la place de « part ».</p>` : ''}
+${d.unit === 'portion' ? `<label for="ff-ulsel" style="margin-top:12px">Nom de l'unité</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom de l'unité">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">Affiché dans le stock à la place de « part ».</p>` : ''}
     <div class="usebox"><div class="lbl">Consommation régulière</div>
       <p class="mini">Pour ce que tu utilises à rythme régulier (mouchoirs, papier toilette…), le stock baisse tout seul.</p>
       <div class="padd"><input id="ff-usq" type="text" inputmode="decimal" placeholder="ex. 1" value="${esc(d.usq || '')}" data-i="ff" data-k="usq" data-fk="ff-usq" aria-label="Quantité consommée"><span class="u">${esc(u)} par</span><div class="seg useper">${['day', 'week', 'month'].map(k => `<button class="${d.usper === k ? 'on' : ''}" data-a="useper" data-m="${k}">${USE_LBL[k]}</button>`).join('')}</div></div><div id="useh">${useHint(d)}</div></div>
@@ -2069,7 +2075,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 21:08 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 21:12 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2244,6 +2250,7 @@ function onChange(e) {
   const el = e.target, k = el.dataset.i; if (!k) return;
   if (k === 'qty') { ui.noKeep = true; render(); ui.noKeep = false; return; }
   if (k === 'date') { if (el.value) { ui.date = el.value; render(); } }
+  else if (k === 'ulsel') { const v = el.value, d = ui.form; if (v === '__new') { d.ulnew = true; d.ulbl = ''; } else { d.ulnew = false; d.ulbl = v; } render(); if (d.ulnew) setTimeout(() => $('#ff-ulbl')?.focus(), 0); }
   else if (k === 'ffunit') { ui.form.unit = el.value; if (el.value !== 'portion') { Object.assign(ui.form, { mode: 'port', pg: '', ck: '', cn: '', calc: false }); } render(); }
   else if (k === 'ffauto') { ui.form.auto = el.checked; if (!el.checked) ui.form.k = String(Math.round(draftCalc(ui.form))); render(); }
   else if (k === 'showhidden') { ui.showHidden = el.checked; render(); }
@@ -2343,7 +2350,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 21:08';
+const BUILD_ID = '25/10/2026 à 21:12';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
