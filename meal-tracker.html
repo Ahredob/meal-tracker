@@ -2017,7 +2017,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 15:02 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 25/10/2026 à 15:06 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2289,7 +2289,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 15:02';
+const BUILD_ID = '25/10/2026 à 15:06';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3471,7 +3471,7 @@ const stkStep = f => f.unit === 'portion' ? 1 : 50;
 function viewStock() {
   const st = ui.stock, map = stockMap(), words = qwords(st.q);
   const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
-  const eatenF = x => x.ate > 0.05, zeroF = x => stkLow(x), oldF = x => diffDays(today(), x.asof) >= 28, cnt = loc => all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'buy' ? zeroF(x) : loc === 'old' ? oldF(x) : x.loc === loc)).length;
+  const eatenF = x => x.ate > 0.05, oldF = x => diffDays(today(), x.asof) >= 28, cnt = loc => loc === 'buy' ? stkBuyAll().length : all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : x.loc === loc)).length;
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
@@ -3495,14 +3495,21 @@ function viewStock() {
 // ---- vue « À racheter » : produits à 0, on coche ce qu'on veut ajouter à la liste de courses ----
 const inCart = id => (S.meta.shopx || []).some(x => x.fid === id);
 const stkLow = x => x.have <= 0.05 || (x.f?.min > 0 && x.have < x.f.min);
-const buySug = x => { const f = x.f, pk = packsOf(f); if (f.min > 0 && x.have > 0.05) return Math.round((f.min - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
+// produits à racheter : ceux du stock à 0 ou sous leur minimum, + les aliments avec un stock minimum qui ne sont pas (ou plus) dans le stock
+function stkBuyAll() {
+  const map = stockMap(), items = S.stock?.items || {};
+  const out = Object.keys(items).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f);
+  for (const f of S.foods) if (!f.hidden && !f.recipe && f.min > 0 && !items[f.id]) out.push({ id: f.id, f, q: 0, have: 0, ate: 0, virtual: true, loc: guessLoc(f) });
+  return out.filter(stkLow).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
+}
+const buySug = x => { const f = x.f, pk = packsOf(f); if (x.virtual) return f.min; if (f.min > 0 && x.have > 0.05) return Math.round((f.min - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
 function stockBuyView(all, st, resHtml, cnt) {
-  const xs = all.filter(stkLow); st.sel ||= {}; st.rq ||= {};
+  const xs = stkBuyAll(); st.sel ||= {}; st.rq ||= {};
   const chips = `<div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['old', 'À recompter'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>`;
   const n = xs.filter(x => st.sel[x.id] && !inCart(x.id)).length;
   const row = x => { const f = x.f, inc = inCart(x.id), q = st.rq[x.id] ?? buySug(x);
     return `<div class="stkb ${inc ? 'inc' : ''}"><label class="stkbc"><input type="checkbox" data-i="stkbsel" data-id="${x.id}" ${st.sel[x.id] && !inc ? 'checked' : ''} ${inc ? 'disabled' : ''}><span class="cbx"></span></label>
-      <div class="stkbn"><b>${esc(f.name)}</b><small>${inc ? 'déjà dans les courses' : x.have > 0.05 ? `sous ton minimum : ${esc(haveTxt(f, x.have))} sur ${esc(haveTxt(f, f.min))}` : x.ate > 0.05 ? `plus en stock · ${esc(haveTxt(f, x.q))} comptés le ${esc(fmtDM(x.asof))}` : 'plus en stock'}</small></div>
+      <div class="stkbn"><b>${esc(f.name)}</b><small>${inc ? 'déjà dans les courses' : x.virtual ? `pas dans ton stock · minimum ${esc(haveTxt(f, f.min))}` : x.have > 0.05 ? `sous ton minimum : ${esc(haveTxt(f, x.have))} sur ${esc(haveTxt(f, f.min))}` : x.ate > 0.05 ? `plus en stock · ${esc(haveTxt(f, x.q))} comptés le ${esc(fmtDM(x.asof))}` : 'plus en stock'}</small></div>
       <div class="qc"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(q * 100) / 100)}" data-i="stkbq" data-id="${x.id}" aria-label="Quantité à racheter"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${f.unit === 'portion' ? 'part' : esc(f.unit)}</span></div></div>`; };
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span></div>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}${chips}
@@ -3563,11 +3570,11 @@ Object.assign(actions, {
   rgx: () => { ui.modal.clearX = !ui.modal.clearX; renderModal(); },
   rgstep: el => { const r = ui.modal.rows[+el.dataset.r], n = el.dataset.s; r.counts[n] = Math.max(0, (r.counts[n] || 0) + +el.dataset.d); renderModal(); },
   rgdo: () => { const m = ui.modal, ov = {}; for (const r of m.rows) if (r.on) ov[r.id] = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy; const cx = m.clearX; closeModal(); rangeStock(ov, cx); },
-  stkbstep: el => { const id = el.dataset.id, x = stockMap().get(id), f = foodMap.get(id); if (!f) return; const st = ui.stock; st.rq ||= {}; const cur = st.rq[id] ?? buySug({ ...x, f }); st.rq[id] = Math.max(stkStep(f) / (f.unit === 'portion' ? 1 : 1), Math.round((cur + stkStep(f) * +el.dataset.dir) * 100) / 100); render(); },
-  stkball: () => { const st = ui.stock; st.sel ||= {}; const xs = [...stockMap().entries()].filter(([id, x]) => foodMap.get(id) && stkLow({ ...x, f: foodMap.get(id) }) && !inCart(id)).map(([id]) => id); const all = xs.every(id => st.sel[id]); xs.forEach(id => { st.sel[id] = !all; }); render(); },
+  stkbstep: el => { const id = el.dataset.id, x = stkBuyAll().find(y => y.id === id), f = foodMap.get(id); if (!f || !x) return; const st = ui.stock; st.rq ||= {}; const cur = st.rq[id] ?? buySug(x); st.rq[id] = Math.max(stkStep(f) / (f.unit === 'portion' ? 1 : 1), Math.round((cur + stkStep(f) * +el.dataset.dir) * 100) / 100); render(); },
+  stkball: () => { const st = ui.stock; st.sel ||= {}; const xs = stkBuyAll().filter(x => !inCart(x.id)).map(x => x.id); const all = xs.every(id => st.sel[id]); xs.forEach(id => { st.sel[id] = !all; }); render(); },
   stkbadd: () => {
-    const st = ui.stock, ids = Object.keys(st.sel || {}).filter(id => st.sel[id] && foodMap.get(id) && !inCart(id) && stkLow({ ...stockMap().get(id), f: foodMap.get(id) })); if (!ids.length) return;
-    mut(s => { for (const id of ids) { const f = foodMap.get(id), q = st.rq?.[id] ?? buySug({ ...stockMap().get(id), f }); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: f.name, fid: id, q }); } });
+    const st = ui.stock, cand = new Map(stkBuyAll().map(x => [x.id, x])), ids = Object.keys(st.sel || {}).filter(id => st.sel[id] && cand.has(id) && !inCart(id)); if (!ids.length) return;
+    mut(s => { for (const id of ids) { const f = foodMap.get(id), q = st.rq?.[id] ?? buySug(cand.get(id)); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: f.name, fid: id, q }); } });
     ids.forEach(id => { delete st.sel[id]; }); if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ids.length} produit${ids.length > 1 ? 's' : ''} ajouté${ids.length > 1 ? 's' : ''} à la liste de courses`);
   },
   stkloc: el => { ui.stock.loc = el.dataset.l; render(); },
