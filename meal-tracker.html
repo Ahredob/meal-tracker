@@ -1849,7 +1849,7 @@ function draftFrom0(f) {
 const draftMult = d => d.unit !== 'portion' ? 0.01 : d.recipe ? 1 : d.mode === '100' ? num(d.pg) / 100 : 1;
 const draftCalc = d => 4 * num(d.p) + 4 * num(d.c) + 9 * num(d.l);
 function okHint(d) {
-  const f = d.id && foodMap.get(d.id); if (!f || f.hidden || f.recipe) return '';
+  const f = d.id && foodMap.get(d.id); if (!f || f.hidden || f.recipe || isHome(f)) return '';
   const flagged = foodIssues(f).length || nameUnitIssue(f.name, f.unit) || (!f.k && !/^(eau|the|stevia|cafe)\b/.test(norm(f.name)));
   if (!flagged) return '';
   return foodOk(f) ? `<div class="note">✓ Tu as confirmé que cet aliment est correct. <button class="lnk" style="margin:0" data-a="foodunok" data-id="${f.id}">Remettre le signalement</button></div>`
@@ -2090,7 +2090,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 25/10/2026 à 21:24 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 26/10/2026 à 18:29 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2365,7 +2365,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '25/10/2026 à 21:24';
+const BUILD_ID = '26/10/2026 à 18:29';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
