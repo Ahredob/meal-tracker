@@ -1126,6 +1126,11 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 
 
 
+// fetch avec limite de temps : sur téléphone, une requête interrompue par la mise en veille peut rester bloquée pour toujours
+const fetchT = (url, opts = {}, ms = 25000) => { const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms); return fetch(url, { ...opts, signal: ac.signal }).finally(() => setTimeout(() => clearTimeout(t), ms)); };
+// une synchro marquée « en cours » depuis trop longtemps est considérée comme bloquée
+const stuck = s => !s.busy || Date.now() - (s.busyAt || 0) > 40000;
+
 // ---- store.js ----
 // État de l'application, persistance (IndexedDB), calculs de macros, mutations.
 
@@ -2105,7 +2110,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 22:12 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 22:15 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2387,7 +2392,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 22:12';
+const BUILD_ID = '27/10/2026 à 22:15';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2973,7 +2978,7 @@ const fnv = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^=
 function syncPayload() { const d = phoneData(); return { text: JSON.stringify(d), hash: fnv(JSON.stringify({ ...d, generated: '' })) }; }
 async function ghFetch(token, path, method = 'GET', body) {
   let r;
-  try { r = await fetch('https://api.github.com' + path, { method, headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
+  try { r = await fetchT('https://api.github.com' + path, { method, headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
   catch { throw Object.assign(new Error('Pas de connexion à GitHub (internet ?).'), { code: 0 }); }
   if (r.status === 401) throw Object.assign(new Error('Jeton refusé ou expiré : crée-en un nouveau (bouton « Changer de jeton »).'), { code: 401 });
   if (r.status === 403) throw Object.assign(new Error('GitHub refuse : le jeton n\'a pas le droit « gist », ou trop de requêtes. Réessaie plus tard.'), { code: 403 });
@@ -2994,10 +2999,10 @@ function syncInfo() {
   return s.err ? `<span class="warn">${esc(s.err)}</span> ${when}` : `Active. ${when} Les changements partent tout seuls quelques secondes après chaque modification, tant que cette page est ouverte.`;
 }
 async function syncPush(force) {
-  const s = ui.sync, c = s.cfg; if (!c || s.busy || !S) return;
+  const s = ui.sync, c = s.cfg; if (!c || !stuck(s) || !S) return;
   const { text, hash } = syncPayload();
   if (!force && hash === c.hash && !s.err) return;
-  s.busy = true; syncPaint();
+  s.busy = true; s.busyAt = Date.now(); syncPaint();
   try {
     await ghFetch(c.token, '/gists/' + c.gistId, 'PATCH', { files: { [SYNC_FILE]: { content: text } } });
     c.hash = hash; c.last = Date.now(); s.err = ''; await idbSet('sync', { ...c });
@@ -3733,10 +3738,10 @@ function cbkInfo() {
   return s.err ? `<span class="warn">${esc(s.err)}</span> ${when}` : `Active. ${when} Une copie complète part toute seule quelques minutes après une modification, tant que cette page est ouverte.`;
 }
 async function cbkPush(force) {
-  const s = ui.cbk, c = s.cfg; if (!c || s.busy || !S || (c.paused && !force)) return;
+  const s = ui.cbk, c = s.cfg; if (!c || !stuck(s) || !S || (c.paused && !force)) return;
   const text = exportJSON(), hash = fnv(text);
   if (!force && hash === c.hash && !s.err) return;
-  s.busy = true; cbkPaint();
+  s.busy = true; s.busyAt = Date.now(); cbkPaint();
   try {
     await ghFetch(c.token, '/gists/' + c.gistId, 'PATCH', { files: { [CBK_FILE]: { content: text } } });
     c.hash = hash; c.last = Date.now(); s.err = ''; await idbSet('cbk', { ...c });
@@ -3747,7 +3752,7 @@ function cbkSoon(ms = 300000) { if (cbkTimer) return; cbkTimer = setTimeout(() =
 subscribe(() => { if (ui.cbk.cfg) cbkSoon(); });
 async function cbkReadGist(token, gistId) {
   const g = await ghFetch(token, '/gists/' + gistId), f = g.files?.[CBK_FILE]; if (!f) throw new Error('Ce gist ne contient pas de sauvegarde Meal Tracker.');
-  let text = f.content; if (f.truncated || !text) { const r = await fetch(f.raw_url); if (!r.ok) throw new Error('Lecture de la copie impossible.'); text = await r.text(); }
+  let text = f.content; if (f.truncated || !text) { const r = await fetchT(f.raw_url); if (!r.ok) throw new Error('Lecture de la copie impossible.'); text = await r.text(); }
   return text;
 }
 const cbkGistId = v => { const m = String(v || '').match(/[0-9a-f]{20,}/i); return m ? m[0].toLowerCase() : ''; };
@@ -3813,7 +3818,7 @@ Object.assign(actions, {
     if (!window.confirm('Remplacer TOUTES les données de cette application par la dernière copie GitHub ? Ce que tu as modifié depuis cette copie sera perdu.')) return;
     try {
       const g = await ghFetch(c.token, '/gists/' + c.gistId), f = g.files?.[CBK_FILE]; if (!f) throw new Error('Copie introuvable dans le gist.');
-      let text = f.content; if (f.truncated || !text) { const r = await fetch(f.raw_url); if (!r.ok) throw new Error('Lecture de la copie impossible.'); text = await r.text(); }
+      let text = f.content; if (f.truncated || !text) { const r = await fetchT(f.raw_url); if (!r.ok) throw new Error('Lecture de la copie impossible.'); text = await r.text(); }
       importJSON(text); toast('Données restaurées depuis GitHub', [], 5000);
     } catch (e) { toast(e.message || String(e), [], 5000); }
   },
@@ -4341,7 +4346,7 @@ function shareSeen(ids) {
 const ghErr = st => Object.assign(new Error(st === 401 ? 'GitHub refuse ce jeton. Il est sans doute mal copié (incomplet, espace, lettre changée), expiré ou supprimé. Vérifie-le sur github.com/settings/tokens ou crées-en un nouveau (durée « No expiration », case « gist »).' : st === 403 ? 'GitHub refuse : le jeton n\'a pas le droit « gist », ou trop de requêtes. Réessaie plus tard.' : st === 404 ? 'Gist introuvable (code erroné ou gist supprimé).' : 'GitHub a répondu une erreur (' + st + ').'), { code: st });
 async function ghGet(token, path, etag) {
   let r;
-  try { r = await fetch('https://api.github.com' + path, { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(etag ? { 'If-None-Match': etag } : {}) } }); }
+  try { r = await fetchT('https://api.github.com' + path, { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(etag ? { 'If-None-Match': etag } : {}) } }); }
   catch { throw Object.assign(new Error('Pas de connexion à GitHub (internet ?).'), { code: 0 }); }
   if (r.status === 304) return { status: 304 };
   if (!r.ok) throw ghErr(r.status);
@@ -4352,15 +4357,15 @@ async function shareRead() {
   const r = await ghGet(c.token, '/gists/' + c.otherGist, c.etag); if (r.status === 304) return null;
   const file = r.json.files?.[SHARE_FILE]; if (!file) throw new Error('Ce code ne contient pas de données Meal Tracker.');
   let text = file.content;
-  if (file.truncated || text == null) text = await (await fetch(file.raw_url, { cache: 'no-store' })).text();
+  if (file.truncated || text == null) text = await (await fetchT(file.raw_url, { cache: 'no-store' })).text();
   const p = JSON.parse(text); p._etag = r.etag; return p;
 }
 let shareTimer = null;
 const shareSoon = (ms = 3000) => { clearTimeout(shareTimer); shareTimer = setTimeout(() => shareSync(false), ms); };
 async function shareSync(force) {
   const s = ui.share, c = s.cfg; if (!c || !S || !shareOn()) return;
-  if (s.busy) { s.again = true; return; }
-  s.busy = true; sharePaint();
+  if (!stuck(s)) { s.again = true; return; }
+  s.busy = true; s.busyAt = Date.now(); sharePaint();
   try {
     const p = await shareRead();
     if (p) {
@@ -4482,6 +4487,8 @@ async function shareInit() {
   });
   window.addEventListener('pagehide', () => { if (ui.share.cfg) { clearTimeout(shareTimer); shareSync(false); } });
   window.addEventListener('online', () => { if (ui.share.cfg) shareSoon(500); });
+  window.addEventListener('pageshow', e => { if (e.persisted && ui.share.cfg) shareSoon(300); });   // retour depuis le cache (iPhone)
+  window.addEventListener('focus', () => { if (ui.share.cfg && !document.hidden) shareSoon(800); });
   render();
 }
 shareInit();
@@ -4662,7 +4669,7 @@ async function devRead(c) {
     if (!name.startsWith('dev-') || name === c.file || name === devFile(c.me.id)) continue;
     const pe = (c.peers ||= {}); if (typeof pe[name] !== 'object') pe[name] = { n: pe[name] || '' }; pe[name].url = f.raw_url;
     if (seen[name] && seen[name] === f.raw_url) continue;
-    let text = f.content; if (f.truncated || text == null) text = await (await fetch(f.raw_url, { cache: 'no-store' })).text();
+    let text = f.content; if (f.truncated || text == null) text = await (await fetchT(f.raw_url, { cache: 'no-store' })).text();
     const pj = JSON.parse(text); if (pj.who?.id === c.me.id) { delete c.peers[name]; continue; }
     c.peers[name].n = pj.who?.name || ''; c.peers[name].at = pj.at || ''; out.push({ name, url: f.raw_url, ...pj });
   }
@@ -4673,8 +4680,8 @@ async function devRead(c) {
 let devTimer = null;
 const devSoon = (ms = 3000) => { clearTimeout(devTimer); devTimer = setTimeout(() => devSync(false), ms); };
 async function devSync(force) {
-  const s = ui.dev, c = s.cfg; if (!c || s.busy || !S || !devOn()) return;
-  s.busy = true; devPaint();
+  const s = ui.dev, c = s.cfg; if (!c || !stuck(s) || !S || !devOn()) return;
+  s.busy = true; s.busyAt = Date.now(); devPaint();
   try {
     const rd = await devRead(c);
     if (rd) { if (rd.files.length) devMerge(rd.files); for (const p of rd.files) (c.seen ||= {})[p.name] = p.url; c.etag = rd.etag; }
@@ -4748,7 +4755,7 @@ Object.assign(actions, {
     s.busy = true; s.err = ''; render();
     try {
       const r = await ghGet(token, '/gists/' + gist), bf = r.json.files?.[DEV_BASE]; if (!bf) throw new Error('Ce code ne correspond pas à un groupe Meal Tracker.');
-      let text = bf.content; if (bf.truncated || text == null) text = await (await fetch(bf.raw_url, { cache: 'no-store' })).text();
+      let text = bf.content; if (bf.truncated || text == null) text = await (await fetchT(bf.raw_url, { cache: 'no-store' })).text();
       importJSON(text);
       const me = { id: uid('dv'), name };
       mut(st => { delete st.meta.share; st.meta.dev = { on: true, me, recs: {}, lc: 0, conf: [] }; });
@@ -4800,6 +4807,7 @@ async function devInit() {
   subscribe(() => { if (ui.dev.cfg && !ui.dev.applying && devOn()) { S.meta.dev.lc = Date.now(); devSoon(3000); } });
   setInterval(() => { if (!document.hidden && ui.dev.cfg) devSync(false); }, 45000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && ui.dev.cfg) devSoon(500); });
+  window.addEventListener('pageshow', e => { if (e.persisted && ui.dev.cfg) devSoon(500); });
   render();
 }
 devInit();
