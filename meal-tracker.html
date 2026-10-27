@@ -1367,10 +1367,10 @@ const extraRefs = id => S.foods.filter(f => f.recipe && f.recipe.items.some(i =>
 const categories = () => [...new Set(S.foods.filter(f => !f.hidden).map(f => f.cat))].sort((a, b) => a.localeCompare(b, 'fr'));
 // articles « Maison » (mouchoirs, éponges…) : pas de valeurs nutritionnelles, jamais signalés ni proposés dans les repas
 const isHome = f => norm(f.cat || '').trim() === 'maison';
-function searchFoods(q, cat) {
+function searchFoods(q, cat, forMeal) {
   const words = qwords(q);
   const all = !cat || cat === 'all';   // les articles « Maison » (mouchoirs…) n'apparaissent pas dans la recherche des repas, sauf si on ouvre leur catégorie
-  return S.foods.filter(f => !f.hidden && (all ? !isHome(f) : f.cat === cat) && words.every(w => norm(f.name).includes(w)))
+  return S.foods.filter(f => !f.hidden && (all ? !(forMeal && isHome(f)) : f.cat === cat) && words.every(w => norm(f.name).includes(w)))
     .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
 
@@ -2090,7 +2090,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 26/10/2026 à 18:29 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 07:32 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2131,9 +2131,9 @@ function renderModal() {
   }
 }
 function addCandidates(m) {
-  if (m.q.trim()) return searchFoods(m.q, null).slice(0, 80);
+  if (m.q.trim()) return searchFoods(m.q, null, true).slice(0, 80);
   if (m.cat === 'recent') return recentFoods(m.meal, 30);
-  return searchFoods('', m.cat === 'all' ? null : m.cat).slice(0, 150);
+  return searchFoods('', m.cat === 'all' ? null : m.cat, true).slice(0, 150);
 }
 function renderAddList() {
   const m = ui.modal; if (!m || m.type !== 'add' || m.step !== 'list') return;
@@ -2365,7 +2365,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '26/10/2026 à 18:29';
+const BUILD_ID = '27/10/2026 à 07:32';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
