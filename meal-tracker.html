@@ -2090,7 +2090,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 07:39 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 07:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2365,7 +2365,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 07:39';
+const BUILD_ID = '27/10/2026 à 07:42';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4488,8 +4488,8 @@ function progCard() {
     const use = `${on ? 'Dans ton programme' : 'Hors programme'}${u ? ` · utilisée ${u.n} fois, dernière : semaine du ${esc(fmtDM(u.last))}` : ' · jamais utilisée'}`;
     return `<tr data-wk="${esc(l)}" class="${on ? '' : 'wkoff'}"><td class="wkc"><span class="wkh" role="button" tabindex="0" data-l="${esc(l)}" title="Glisser pour changer l'ordre" aria-label="Glisser pour changer l'ordre">⠿</span></td>
       <td class="wkc"><input type="checkbox" data-a="wkon" data-l="${esc(l)}" ${on ? 'checked' : ''} aria-label="${esc(labelName(l))} fait partie de mon programme"></td>
-      <td class="wkt"><input type="text" class="wkn" data-i="wkname" data-l="${esc(l)}" value="${esc(labelName(l))}" aria-label="Nom de la semaine"></td>
-      ${['p', 'c', 'l', 'f', 'k'].map(k => `<td><input type="text" inputmode="decimal" value="${String(t[k]).replace('.', ',')}" data-i="tgt" data-l="${esc(l)}" data-k="${k}" aria-label="${esc(labelName(l))} ${k}"></td>`).join('')}
+      <td class="wkt"><input type="text" class="wkn" data-i="wkname" data-l="${esc(l)}" data-fk="wkn-${esc(l)}" value="${esc(labelName(l))}" aria-label="Nom de la semaine"></td>
+      ${['p', 'c', 'l', 'f', 'k'].map(k => `<td><input type="text" inputmode="decimal" value="${String(t[k]).replace('.', ',')}" data-i="tgt" data-l="${esc(l)}" data-k="${k}" data-fk="tgt-${esc(l)}-${k}" aria-label="${esc(labelName(l))} ${k}"></td>`).join('')}
       <td class="wkb">${LABELS.includes(l) || progUsed(l) ? '' : `<button class="ib" data-a="wkdel" data-l="${esc(l)}" aria-label="Supprimer">✕</button>`}</td></tr>`;
   }).join('');
   return `<section class="card"><h2>Objectifs du programme</h2>
