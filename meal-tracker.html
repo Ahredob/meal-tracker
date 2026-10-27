@@ -2110,7 +2110,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 22:15 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 22:17 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2392,7 +2392,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 22:15';
+const BUILD_ID = '27/10/2026 à 22:17';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2880,7 +2880,7 @@ function viewShop() {
   const range = dates.length ? `${fmtDM(dates[0])} → ${fmtDM(dates[dates.length - 1])} · ${dates.length} jour${dates.length > 1 ? 's' : ''}` : 'aucun jour choisi';
   const sw = (a, on, t, d) => `<label class="swr"><input type="checkbox" data-a="${a}" ${on ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`;
   const empty = !total ? `<section class="card"><p>Rien à acheter : aucun repas n'est planifié pour les jours choisis.</p></section>` : '';
-  return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Courses</h1><span class="mini">${esc(range)}</span></div><div class="sp"><button class="btn sm pri" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
+  return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Courses</h1><span class="mini">${esc(range)}</span>${shareLine()}</div><div class="sp"><button class="btn sm pri" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
     <section class="card shopcfg${ui.cfgOpen ? ' open' : ''}"><button class="shopsum" data-a="shopcfgt" aria-expanded="${!!ui.cfgOpen}"><span>${mode === 'sun' ? '1 semaine' : mode === 'two' ? '2 semaines' : 'Jours choisis'} · ${useStock ? 'stock retiré' : 'stock ignoré'}${shopExpand() ? ' · recettes en ingrédients' : ''}</span><b>${ui.cfgOpen ? 'Fermer ▴' : 'Modifier ▾'}</b></button><div class="lbl">Période</div><div class="seg"><button class="${mode === 'sun' ? 'on' : ''}" data-a="shopmode" data-m="sun">1 semaine</button><button class="${mode === 'two' ? 'on' : ''}" data-a="shopmode" data-m="two">2 semaines</button><button class="${mode === 'custom' ? 'on' : ''}" data-a="shopmode" data-m="custom">Choisir les jours</button></div>
     ${remote && shareOn() ? `<div class="lbl" style="margin-top:12px">Pour qui</div><div class="seg"><button class="${shopWho() === 'all' ? 'on' : ''}" data-a="shopwho" data-w="all">Tout le monde</button><button class="${shopWho() === 'me' ? 'on' : ''}" data-a="shopwho" data-w="me">${esc(S.meta.share.me.name)}</button><button class="${shopWho() === 'other' ? 'on' : ''}" data-a="shopwho" data-w="other">${esc(remote.name)}</button></div>` : ''}
     ${mode === 'custom' ? `<div class="shopdays">${row(all.slice(0, 7), '7 prochains jours')}${row(all.slice(7), '7 jours suivants')}</div>` : ''}
@@ -3594,7 +3594,7 @@ function viewStock() {
   if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt);
   const flt = st.loc === 'eaten' || st.loc === 'old', fp = st.loc === 'old' ? oldF : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
   const body = locs.map(l => { const xs = all.filter(x => x.loc === l && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
-  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span></div>
+  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
     <div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['old', 'À recompter'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>
@@ -3619,7 +3619,7 @@ function stockBuyView(all, st, resHtml, cnt) {
     return `<div class="stkb ${inc ? 'inc' : ''}"><label class="stkbc"><input type="checkbox" data-i="stkbsel" data-id="${x.id}" ${st.sel[x.id] && !inc ? 'checked' : ''} ${inc ? 'disabled' : ''}><span class="cbx"></span></label>
       <div class="stkbn"><b>${esc(f.name)}</b><small>${inc ? 'déjà dans les courses' : x.virtual ? `pas dans ton stock · minimum ${esc(haveTxt(f, f.min))}` : x.have > 0.05 ? `sous ton minimum : ${esc(haveTxt(f, x.have))} sur ${esc(haveTxt(f, f.min))}` : x.ate > 0.05 ? `plus en stock · ${esc(haveTxt(f, x.q))} comptés le ${esc(fmtDM(x.asof))}` : 'plus en stock'}</small></div>
       <div class="qc"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(q * 100) / 100)}" data-i="stkbq" data-id="${x.id}" aria-label="Quantité à racheter"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${f.unit === 'portion' ? 'part' : esc(f.unit)}</span></div></div>`; };
-  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span></div>
+  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}${chips}
     ${xs.length ? `<section class="card stkbuy"><div class="stkbh"><b>À racheter</b><button class="lnk" data-a="stkball">${xs.every(x => st.sel[x.id] || inCart(x.id)) ? 'Tout décocher' : 'Tout cocher'}</button></div><p class="mini" style="padding:0 14px 6px">Coche ce que tu veux ajouter à la liste de courses.</p>${xs.map(row).join('')}</section>
     <div class="stkbbar"><button class="btn pri" data-a="stkbadd" ${n ? '' : 'disabled'}>Ajouter aux courses${n ? ` (${n})` : ''}</button></div>` : `<section class="card"><p style="padding:14px">Rien à racheter pour le moment : aucun produit n'est à 0 ou sous son minimum.</p></section>`}</main>`;
@@ -4387,7 +4387,19 @@ function shareInfo() {
   if (s.busy) return 'Synchronisation…';
   return s.err ? `<span class="warn">${esc(s.err)}</span> ${when}` : `${c.otherGist ? `Relié avec <b>${esc(remote?.name || '…')}</b>. ` : 'En attente du code de l\'autre personne. '}${when} Les changements partent quelques secondes après chaque modification, et l'application relit l'autre toutes les 45 secondes.`;
 }
-function sharePaint() { const el = document.getElementById('shareinfo'); if (el) el.innerHTML = shareInfo(); }
+function sharePaint() { const el = document.getElementById('shareinfo'); if (el) el.innerHTML = shareInfo(); document.querySelectorAll('.shline').forEach(e => { e.outerHTML = shareLine(); }); }
+// ligne d'état du partage, affichée dans Courses et Stock : permet de voir tout de suite si les infos de l'autre personne arrivent
+function shareLine() {
+  if (!shareOn()) return '';
+  const s = ui.share, c = s.cfg, hm = t => new Date(t).toTimeString().slice(0, 5);
+  let txt;
+  if (!c) txt = '<span class="warn">Partage non relié sur cet appareil : va dans Réglages, partage.</span>';
+  else if (s.busy && !stuck(s)) txt = 'Synchronisation…';
+  else if (s.err) txt = `<span class="warn">${esc(s.err)}</span>`;
+  else if (!c.otherGist) txt = 'En attente du code de l\'autre personne.';
+  else { let at = ''; try { if (remote?.at) { const d = new Date(remote.at); at = `${fmtShort(iso(d))} à ${hm(d)}`; } } catch { } txt = remote ? `Données de <b>${esc(remote.name)}</b> du ${esc(at || '?')}${c.last ? ` · vérifié à ${hm(c.last)}` : ''}` : 'Aucune donnée reçue de l\'autre personne pour l\'instant.'; }
+  return `<div class="shline mini">${txt} <button class="lnk" style="margin:0" data-a="shareref">Actualiser</button></div>`;
+}
 function shareCard() {
   const s = ui.share, c = s.cfg, f = s.form;
   const head = `<h2>Partager avec une autre personne</h2><p>Partage les <b>aliments, recettes, stock et courses</b> avec une autre personne (conjoint, ami…). Tes journées, tes semaines, tes poids et tes repas types restent à toi : l'autre ne voit que les repas prévus, pour calculer les courses.</p>
@@ -4473,6 +4485,7 @@ async function shareInit() {
   try {
     const c = await idbGet('share');
     if (c?.token && c?.myGist) {
+      c.etag = null;   // au démarrage on relit toujours l'autre personne en entier (un ancien repère pourrait masquer des changements non enregistrés)
       ui.share.cfg = c; remote = (await idbGet('shareRemote')) || null;
       if (!shareOn()) { S.meta.share = { on: true, me: c.me, recs: {}, rdDone: {}, news: [], adopt: true, adoptDone: false, seen1: false }; shareStamp(true); scheduleSave(); }
       shareSoon(2500);
@@ -4492,6 +4505,14 @@ async function shareInit() {
   render();
 }
 shareInit();
+
+Object.assign(actions, {
+  shareref: async () => {
+    const c = ui.share.cfg; if (!c) { toast('Le partage n\'est pas relié sur cet appareil'); return; }
+    c.etag = null; toast('Actualisation…', [], 1500); await shareSync(false); render();
+    toast(ui.share.err ? 'Erreur : ' + ui.share.err : 'Partage à jour', [], 3000);
+  },
+});
 
 // ---- prog.js ----
 // Programme : les semaines cochées forment le cycle actuel ; on peut en créer, les réordonner (glisser ou flèches) et les renommer.
