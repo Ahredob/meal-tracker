@@ -2092,7 +2092,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 07:47 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 07:50 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2133,18 +2133,21 @@ function renderModal() {
   }
 }
 function addCandidates(m) {
-  if (m.q.trim()) return searchFoods(m.q, null, true).slice(0, 80);
+  if (m.q.trim()) {   // la recherche reste dans le filtre choisi (Récents, une catégorie) ; « Tous » cherche partout
+    if (m.cat === 'recent') { const ws = qwords(m.q); return recentFoods(m.meal, 300).filter(f => ws.every(w => norm(f.name).includes(w))).slice(0, 80); }
+    return searchFoods(m.q, m.cat === 'all' ? null : m.cat, true).slice(0, 80);
+  }
   if (m.cat === 'recent') return recentFoods(m.meal, 30);
   return searchFoods('', m.cat === 'all' ? null : m.cat, true).slice(0, 150);
 }
 function renderAddList() {
   const m = ui.modal; if (!m || m.type !== 'add' || m.step !== 'list') return;
   const cats = ['recent', 'all', ...categories()];
-  const open = !!m.fopen, cn = m.q.trim() ? 'Recherche' : m.cat === 'recent' ? 'Récents' : m.cat === 'all' ? 'Tous' : m.cat;
+  const open = !!m.fopen, cn = m.cat === 'recent' ? 'Récents' : m.cat === 'all' ? 'Tous' : m.cat;
   $('#acats').classList.toggle('show', open); const tg = $('#actog'); if (tg) { tg.textContent = `${open ? 'Masquer' : 'Afficher'} les filtres · ${cn}`; tg.setAttribute('aria-expanded', open); }
-  $('#acats').innerHTML = cats.map(c => `<button class="chip ${m.cat === c && !m.q.trim() ? 'on' : ''}" data-a="addcat" data-c="${esc(c)}">${c === 'recent' ? 'Récents' : c === 'all' ? 'Tous' : esc(c)}</button>`).join('');
+  $('#acats').innerHTML = cats.map(c => `<button class="chip ${m.cat === c ? 'on' : ''}" data-a="addcat" data-c="${esc(c)}">${c === 'recent' ? 'Récents' : c === 'all' ? 'Tous' : esc(c)}</button>`).join('');
   const list = addCandidates(m); m.list = list.map(f => f.id); m.sel = Math.min(m.sel || 0, Math.max(0, list.length - 1));
-  $('#alist').innerHTML = list.length ? list.map((f, i) => { const b = perBasis(f); return `<button class="ai ${i === m.sel ? 'sel' : ''}" role="option" data-a="pickfood" data-id="${f.id}" data-i="${i}"><span class="an">${esc(f.name)}</span><span class="am">${b.txt} · ${f0(f.k * b.fac)} kcal · P ${f1(f.p * b.fac)} · G ${f1(f.c * b.fac)} · L ${f1(f.l * b.fac)}</span></button>`; }).join('') : `<p class="mini" style="padding:12px">Aucun résultat. Tu peux <a href="#" data-a="newfromadd">créer cet aliment</a>.</p>`;
+  $('#alist').innerHTML = list.length ? list.map((f, i) => { const b = perBasis(f); return `<button class="ai ${i === m.sel ? 'sel' : ''}" role="option" data-a="pickfood" data-id="${f.id}" data-i="${i}"><span class="an">${esc(f.name)}</span><span class="am">${b.txt} · ${f0(f.k * b.fac)} kcal · P ${f1(f.p * b.fac)} · G ${f1(f.c * b.fac)} · L ${f1(f.l * b.fac)}</span></button>`; }).join('') : `<p class="mini" style="padding:12px">Aucun résultat${m.cat !== 'all' && m.q.trim() ? ` dans ce filtre. <a href="#" data-a="addall">Chercher dans « Tous »</a>. Ou tu` : '. Tu'} peux <a href="#" data-a="newfromadd">créer cet aliment</a>.</p>`;
   const s = $('#alist .sel'); s?.scrollIntoView({ block: 'nearest' });
 }
 function qtyStep(m) {
@@ -2193,6 +2196,7 @@ const actions = {
   add: el => { openModal({ type: 'add', meal: el.dataset.meal, step: 'list', q: '', cat: recentFoods(el.dataset.meal).length ? 'recent' : 'all', sel: 0, added: 0 }); },
   close: () => closeModal(),
   ovclick: (el, e) => { if (e.target === el) closeModal(); },
+  addall: (el, e) => { e && e.preventDefault(); const m = ui.modal; if (!m) return; m.cat = 'all'; m.sel = 0; renderAddList(); },
   acfilt: () => { const m = ui.modal; if (!m) return; m.fopen = !m.fopen; renderAddList(); },
   addcat: el => { ui.modal.cat = el.dataset.c; ui.modal.fopen = false; ui.modal.q = ''; ui.modal.sel = 0; renderModal(); },
   pickfood: el => pickFood(el.dataset.id),
@@ -2370,7 +2374,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 07:47';
+const BUILD_ID = '27/10/2026 à 07:50';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
