@@ -1079,6 +1079,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .minbox{margin-top:18px}
 .usage ul{margin:6px 0 0;padding-left:18px}.usage li{margin:3px 0}
 .usage{margin-top:22px;position:relative}.usage::before{content:'';position:absolute;left:0;right:0;top:-12px;border-top:1px solid var(--line,#0002)}
+.actog{display:none;margin:6px 0 2px}
+@media(max-width:640px){.actog{display:block}#acats:not(.show){display:none}}
 </style>
 </head>
 <body>
@@ -2090,7 +2092,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 07:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 07:47 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2110,7 +2112,7 @@ function renderModal() {
   modalLock(true);
   if (renderModal2(m, root) || renderModal3(m, root)) return;
   if (m.type === 'add') {
-    root.innerHTML = shell(`Ajouter · ${MEALS.find(x => x.id === m.meal).label}`, m.step === 'qty' ? qtyStep(m) : `<div class="search">${icon('search')}<input id="aq" type="search" placeholder="Rechercher (ex. escalope, pomme, whey…)" value="${esc(m.q)}" data-i="aq" data-fk="aq" autocomplete="off"></div><div class="chips" id="acats"></div><div id="alist" class="alist" role="listbox"></div>`,
+    root.innerHTML = shell(`Ajouter · ${MEALS.find(x => x.id === m.meal).label}`, m.step === 'qty' ? qtyStep(m) : `<div class="search">${icon('search')}<input id="aq" type="search" placeholder="Rechercher (ex. escalope, pomme, whey…)" value="${esc(m.q)}" data-i="aq" data-fk="aq" autocomplete="off"></div><button class="lnk actog" id="actog" data-a="acfilt" aria-expanded="false"></button><div class="chips" id="acats"></div><div id="alist" class="alist" role="listbox"></div>`,
       m.step === 'qty' ? '' : `<span class="mini">${m.added ? `${m.added} ajouté${m.added > 1 ? 's' : ''} · ` : ''}↑ ↓ pour choisir, Entrée pour valider, Échap pour fermer</span><button class="btn pri" data-a="close">Terminé</button>`);
     if (m.step === 'qty') { const q = $('#aqty'); q.focus(); q.select(); updateQty(); } else { renderAddList(); const a = $('#aq'); a.focus(); }
   } else if (m.type === 'label') {
@@ -2138,6 +2140,8 @@ function addCandidates(m) {
 function renderAddList() {
   const m = ui.modal; if (!m || m.type !== 'add' || m.step !== 'list') return;
   const cats = ['recent', 'all', ...categories()];
+  const open = !!m.fopen, cn = m.q.trim() ? 'Recherche' : m.cat === 'recent' ? 'Récents' : m.cat === 'all' ? 'Tous' : m.cat;
+  $('#acats').classList.toggle('show', open); const tg = $('#actog'); if (tg) { tg.textContent = `${open ? 'Masquer' : 'Afficher'} les filtres · ${cn}`; tg.setAttribute('aria-expanded', open); }
   $('#acats').innerHTML = cats.map(c => `<button class="chip ${m.cat === c && !m.q.trim() ? 'on' : ''}" data-a="addcat" data-c="${esc(c)}">${c === 'recent' ? 'Récents' : c === 'all' ? 'Tous' : esc(c)}</button>`).join('');
   const list = addCandidates(m); m.list = list.map(f => f.id); m.sel = Math.min(m.sel || 0, Math.max(0, list.length - 1));
   $('#alist').innerHTML = list.length ? list.map((f, i) => { const b = perBasis(f); return `<button class="ai ${i === m.sel ? 'sel' : ''}" role="option" data-a="pickfood" data-id="${f.id}" data-i="${i}"><span class="an">${esc(f.name)}</span><span class="am">${b.txt} · ${f0(f.k * b.fac)} kcal · P ${f1(f.p * b.fac)} · G ${f1(f.c * b.fac)} · L ${f1(f.l * b.fac)}</span></button>`; }).join('') : `<p class="mini" style="padding:12px">Aucun résultat. Tu peux <a href="#" data-a="newfromadd">créer cet aliment</a>.</p>`;
@@ -2189,7 +2193,8 @@ const actions = {
   add: el => { openModal({ type: 'add', meal: el.dataset.meal, step: 'list', q: '', cat: recentFoods(el.dataset.meal).length ? 'recent' : 'all', sel: 0, added: 0 }); },
   close: () => closeModal(),
   ovclick: (el, e) => { if (e.target === el) closeModal(); },
-  addcat: el => { ui.modal.cat = el.dataset.c; ui.modal.q = ''; ui.modal.sel = 0; renderModal(); },
+  acfilt: () => { const m = ui.modal; if (!m) return; m.fopen = !m.fopen; renderAddList(); },
+  addcat: el => { ui.modal.cat = el.dataset.c; ui.modal.fopen = false; ui.modal.q = ''; ui.modal.sel = 0; renderModal(); },
   pickfood: el => pickFood(el.dataset.id),
   qback: () => { ui.modal.step = 'list'; renderModal(); },
   qset: el => { $('#aqty').value = qtxt(+el.dataset.v); updateQty(); },
@@ -2365,7 +2370,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 07:42';
+const BUILD_ID = '27/10/2026 à 07:47';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
