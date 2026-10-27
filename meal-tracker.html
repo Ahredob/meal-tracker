@@ -2110,7 +2110,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 22:17 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 27/10/2026 à 22:30 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2392,7 +2392,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 22:17';
+const BUILD_ID = '27/10/2026 à 22:30';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4390,10 +4390,10 @@ function shareInfo() {
 function sharePaint() { const el = document.getElementById('shareinfo'); if (el) el.innerHTML = shareInfo(); document.querySelectorAll('.shline').forEach(e => { e.outerHTML = shareLine(); }); }
 // ligne d'état du partage, affichée dans Courses et Stock : permet de voir tout de suite si les infos de l'autre personne arrivent
 function shareLine() {
-  if (!shareOn()) return '';
+  if (!shareOn() && !(ui.dev?.cfg?.shareOffer && !ui.share.cfg)) return '';
   const s = ui.share, c = s.cfg, hm = t => new Date(t).toTimeString().slice(0, 5);
   let txt;
-  if (!c) txt = '<span class="warn">Partage non relié sur cet appareil : va dans Réglages, partage.</span>';
+  if (!c) txt = `<span class="warn">Partage non relié sur cet appareil.</span> ${ui.dev?.cfg?.shareOffer ? '<button class="lnk" style="margin:0" data-a="shareadopt">Relier au même partage que mon autre appareil</button>' : 'Va dans Réglages, partage.'}`;
   else if (s.busy && !stuck(s)) txt = 'Synchronisation…';
   else if (s.err) txt = `<span class="warn">${esc(s.err)}</span>`;
   else if (!c.otherGist) txt = 'En attente du code de l\'autre personne.';
@@ -4405,7 +4405,9 @@ function shareCard() {
   const head = `<h2>Partager avec une autre personne</h2><p>Partage les <b>aliments, recettes, stock et courses</b> avec une autre personne (conjoint, ami…). Tes journées, tes semaines, tes poids et tes repas types restent à toi : l'autre ne voit que les repas prévus, pour calculer les courses.</p>
     <div class="note"><b>À retenir :</b> chacun a <b>son propre compte GitHub et son propre jeton</b>. Le jeton est une clé personnelle : <b>ne le donne jamais</b>. Ce que vous vous échangez, c'est seulement un <b>code de partage</b> (une suite de lettres et de chiffres, sans danger).</div>`;
   if (!c) {
-    return `<section class="card">${head}
+    const o = ui.dev?.cfg?.shareOffer;
+    const offer = o ? `<div class="note"><b>Ton autre appareil est déjà relié au partage</b> (prénom « ${esc(o.me?.name || '')} »${o.otherGist ? '' : ', en attente du code de l\'autre personne'}). Relie celui-ci au <b>même partage</b> : vos deux appareils envoient alors au même code, et l'autre personne n'a rien à faire.<div class="row" style="margin-top:8px"><button class="btn pri" data-a="shareadopt">Relier cet appareil au même partage</button></div></div>` : '';
+    return `<section class="card">${head}${offer}
     <h3 class="subh">À faire sur ton application (puis l'autre personne fait la même chose sur la sienne)</h3>
     <label class="fld"><span class="mini">1. Ton prénom</span><input type="text" data-i="shfield" data-k="name" data-fk="sh-name" value="${esc(f.name)}" placeholder="ex. Camille" autocomplete="off"></label>
     ${tokNote('share')}
@@ -4511,6 +4513,24 @@ Object.assign(actions, {
     const c = ui.share.cfg; if (!c) { toast('Le partage n\'est pas relié sur cet appareil'); return; }
     c.etag = null; toast('Actualisation…', [], 1500); await shareSync(false); render();
     toast(ui.share.err ? 'Erreur : ' + ui.share.err : 'Partage à jour', [], 3000);
+  },
+});
+
+Object.assign(actions, {
+  shareadopt: async () => {
+    const o = ui.dev?.cfg?.shareOffer, token = ghTok(), s = ui.share;
+    if (!o || !o.myGist) { toast('Aucun partage trouvé sur tes autres appareils'); return; }
+    if (!token) { toast('Enregistre d\'abord ton jeton GitHub (Réglages)'); return; }
+    s.busy = true; s.err = ''; render();
+    try {
+      mut(st => { st.meta.share = { on: true, me: o.me, recs: {}, rdDone: {}, news: [], seen1: false }; });
+      shareStamp(true);
+      s.cfg = { token, myGist: o.myGist, otherGist: o.otherGist || '', etag: '', hash: '', last: 0, me: o.me };
+      await idbSet('share', { ...s.cfg });
+      toast('Partage relié : même code que ton autre appareil');
+      s.busy = false; scheduleSave(); await shareSync(true);
+    } catch (e) { s.err = e.message || String(e); s.busy = false; }
+    render();
   },
 });
 
@@ -4643,7 +4663,8 @@ function devStamp(base, cur) {
 function devBuild(cur) {
   const dv = S.meta.dev, recs = {};
   for (const [k, r] of Object.entries(dv.recs)) recs[k] = r.h === '' ? { u: r.u, by: r.by, b: r.b } : { u: r.u, by: r.by, b: r.b, v: cur.get(k) };
-  return { v: 1, who: dv.me, at: new Date().toISOString(), recs };
+  const sc = ui.share?.cfg;   // lien de partage de cet appareil : permet à mes autres appareils de se relier au même partage (sans jeton)
+  return { v: 1, who: dv.me, at: new Date().toISOString(), recs, ...(sc && sc.myGist ? { share: { me: sc.me, myGist: sc.myGist, otherGist: sc.otherGist || '' } } : {}) };
 }
 function devApply(k, val) {
   const [t, a] = k.split('|');
@@ -4705,7 +4726,7 @@ async function devSync(force) {
   s.busy = true; s.busyAt = Date.now(); devPaint();
   try {
     const rd = await devRead(c);
-    if (rd) { if (rd.files.length) devMerge(rd.files); for (const p of rd.files) (c.seen ||= {})[p.name] = p.url; c.etag = rd.etag; }
+    if (rd) { for (const p of rd.files) if (p.share?.myGist) c.shareOffer = p.share; if (rd.files.length) devMerge(rd.files); for (const p of rd.files) (c.seen ||= {})[p.name] = p.url; c.etag = rd.etag; }
     const cur = devCollect(); if (devStamp(false, cur).size) scheduleSave();
     const out = devBuild(cur), hash = fnv(JSON.stringify({ ...out, at: '' }));
     if (force || hash !== c.hash || c.file !== devFileOf(c.me) || c.missing) {
