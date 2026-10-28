@@ -1355,13 +1355,15 @@ function prevSameLabelMonday(monday) {
 function hasData(monday) { for (let i = 0; i < 7; i++) if (dayCount(S.days[addDays(monday, i)])) return true; return false; }
 
 // ---------- statistiques d'usage ----------
-function recentFoods(meal, limit = 14) {
-  const cutoff = addDays(today(), -150), cnt = new Map();
-  for (const [d, day] of Object.entries(S.days)) {
-    if (d < cutoff) continue;
-    for (const e of day.meals[meal] || []) cnt.set(e[0], (cnt.get(e[0]) || 0) + 1);
+function recentFoods(meal, limit = 14, first = []) {   // du plus récemment utilisé à ce repas au plus ancien ; `first` = ajouts de la session en cours
+  const t = today(), cutoff = addDays(t, -150), seen = [], ids = new Set();
+  for (const id of [...first].reverse()) if (!ids.has(id)) { ids.add(id); seen.push(id); }
+  for (const d of Object.keys(S.days).sort().reverse()) {
+    if (d < cutoff || d > t) continue;
+    const list = S.days[d].meals[meal] || [];
+    for (let i = list.length - 1; i >= 0; i--) { const id = list[i][0]; if (!ids.has(id)) { ids.add(id); seen.push(id); } }
   }
-  return [...cnt.entries()].sort((a, b) => b[1] - a[1]).map(x => foodMap.get(x[0])).filter(f => f && !f.hidden).slice(0, limit);
+  return seen.map(id => foodMap.get(id)).filter(f => f && !f.hidden).slice(0, limit);
 }
 function lastQty(foodId, meal) {
   const dates = Object.keys(S.days).sort().reverse();
@@ -2116,7 +2118,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 07:45 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 12:44 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2158,10 +2160,10 @@ function renderModal() {
 }
 function addCandidates(m) {
   if (m.q.trim()) {   // la recherche reste dans le filtre choisi (Récents, une catégorie) ; « Tous » cherche partout
-    if (m.cat === 'recent') { const ws = qwords(m.q); return recentFoods(m.meal, 300).filter(f => ws.every(w => norm(f.name).includes(w))).slice(0, 80); }
+    if (m.cat === 'recent') { const ws = qwords(m.q); return recentFoods(m.meal, 300, m.recent).filter(f => ws.every(w => norm(f.name).includes(w))).slice(0, 80); }
     return searchFoods(m.q, m.cat === 'all' ? null : m.cat, true).slice(0, 80);
   }
-  if (m.cat === 'recent') return recentFoods(m.meal, 30);
+  if (m.cat === 'recent') return recentFoods(m.meal, 30, m.recent);
   return searchFoods('', m.cat === 'all' ? null : m.cat, true).slice(0, 150);
 }
 function renderAddList() {
@@ -2227,7 +2229,7 @@ const actions = {
   qback: () => { ui.modal.step = 'list'; renderModal(); },
   qset: el => { $('#aqty').value = qtxt(+el.dataset.v); updateQty(); },
   qstep: el => { const i = $('#aqty'); i.value = qtxt(Math.max(0, Math.round((num(i.value) + +el.dataset.d) * 1000) / 1000)); updateQty(); },
-  qadd: () => { const m = ui.modal, q = num($('#aqty').value); if (q <= 0) { toast('Indique une quantité'); return; } if (m.swap) { swapEntry(ui.date, m.swap.meal, m.swap.idx, m.foodId, q); closeModal(); toast('Aliment remplacé'); return; } addEntry(ui.date, m.meal, m.foodId, q); m.added++; m.step = 'list'; m.q = ''; m.sel = 0; renderModal(); toast('Ajouté'); },
+  qadd: () => { const m = ui.modal, q = num($('#aqty').value); if (q <= 0) { toast('Indique une quantité'); return; } if (m.swap) { swapEntry(ui.date, m.swap.meal, m.swap.idx, m.foodId, q); closeModal(); toast('Aliment remplacé'); return; } addEntry(ui.date, m.meal, m.foodId, q); (m.recent ||= []).push(m.foodId); m.added++; m.step = 'list'; m.q = ''; m.sel = 0; renderModal(); toast('Ajouté'); },
   newfromadd: () => { const q = ui.modal.q; closeModal(); ui.view = 'aliments'; ui.form = draftFrom(null); ui.form.name = q; render(); },
   selfood: el => { const id = el.dataset.id; ui.picked ||= new Set(); el.checked ? ui.picked.add(id) : ui.picked.delete(id); render(); },
   selall: el => { ui.picked ||= new Set(); const on = el.checked; for (const id of ui._foodIds || []) on ? ui.picked.add(id) : ui.picked.delete(id); render(); },
@@ -2398,7 +2400,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 07:45';
+const BUILD_ID = '28/10/2026 à 12:44';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
