@@ -1090,6 +1090,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 /* le bandeau (toast) ne bloque plus les clics sous lui : seul son bouton « Annuler » réagit ; sur ordinateur il se place à gauche, loin du bouton « Ranger les achats » */
 #toast.act{pointer-events:none}#toast.act .tb{pointer-events:auto}
 @media (min-width:641px){#toast{left:210px;transform:translate(0,20px)}#toast.show{transform:none}}
+
+@media (max-width:640px){.side,#totop{-webkit-transform:translateZ(0);will-change:transform}}
 </style>
 </head>
 <body>
@@ -2114,7 +2116,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 07:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 07:45 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2396,7 +2398,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 07:42';
+const BUILD_ID = '28/10/2026 à 07:45';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4913,6 +4915,20 @@ async function start() {
   document.body.appendChild(top);
   const upd = () => top.classList.toggle('show', window.scrollY > 500);
   window.addEventListener('scroll', upd, { passive: true }); upd();
+  // iOS : après fermeture du clavier, la barre du bas (position fixe) peut rester coincée au milieu de l'écran
+  const unstick = () => {
+    const a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    const y = window.scrollY;
+    window.scrollTo(window.scrollX, y + 1); window.scrollTo(window.scrollX, y);
+    const sd = document.querySelector('.side');
+    if (sd) { sd.style.transform = 'translateZ(0)'; requestAnimationFrame(() => { sd.style.transform = ''; }); }
+  };
+  let ut = 0;
+  const later = () => { clearTimeout(ut); ut = setTimeout(unstick, 150); };
+  document.addEventListener('focusout', later);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
+  window.addEventListener('orientationchange', later);
 }
 start();
 
