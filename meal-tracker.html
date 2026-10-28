@@ -1119,6 +1119,18 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .tg::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}.fform .tg.on::after{left:23px}
 .fform .usebox .padd{margin-top:8px}
 .hq{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--mute);cursor:help;margin-left:4px}
+
+.fform .fmbox{display:flex;flex-direction:column;gap:8px}
+.fform .fmrow{flex-wrap:nowrap}
+.fform .fmtot{margin:0 0 0 auto;font-size:17px;color:var(--accent);white-space:nowrap;text-align:right}
+.fform .fmtot .mini{font-size:12px;white-space:normal;display:inline-block;max-width:110px;line-height:1.2}
+.fform select.fmsel{width:100%;flex:none;min-height:44px;font-size:15px}
+
+.fform .thr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin:8px 0;background:var(--bg)}
+.fform .thr b{font-size:15px}.fform .thr .s{font-size:12.5px;color:var(--mute);margin-top:1px}
+.fform .thr .lnk{margin:0;font-weight:650;color:var(--accent);white-space:nowrap;min-height:36px;padding:0 4px}
+.fform .thr.ed{display:block;background:var(--surface);border-color:var(--accent)}
+.fform .thr.ed .thrh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -1888,7 +1900,7 @@ function viewFoods() {
     <aside class="right ${ui.form ? 'fopen' : 'fhint'}">${ui.form ? foodForm() : '<h5>Aliment</h5><p class="mini">Choisis un aliment dans la liste pour le modifier, ou crée-en un nouveau. Les valeurs se saisissent comme sur l\'étiquette (pour 100 g ou par portion).</p><p class="mini">Astuce : ↑ ↓ pour parcourir la liste, Entrée pour modifier, Échap pour fermer.</p>'}</aside>`;
 }
 // brouillon « propre » : on mémorise l'état d'origine pour savoir s'il y a des modifications à enregistrer
-const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news' || k === 'packmode' || k === 'ulnew') ? undefined : v);
+const fsnap = d => JSON.stringify(d, (k, v) => (k === 'tab' || k === 'news' || k === 'packmode' || k === 'ulnew' || k === 'ed') ? undefined : v);
 const fdirty = d => !!d && d._s !== fsnap(d);
 // quantités saisies en l / kg : d.big[k] = true → la valeur affichée est à multiplier par 1000
 const bigPair = d => d.unit === 'g' ? ['g', 'kg'] : d.unit === 'ml' ? ['ml', 'l'] : null;
@@ -2000,10 +2012,27 @@ function minHint(d) {
 function fmField(d, k) {
   const pk = getPacks(d), m = d.fm && d.fm[k];
   if (!m || !pk.includes(m.n)) return null;
-  const tot = fmTot(d, k), opts = pk.map(n => `<option value="${n}" ${n === m.n ? 'selected' : ''}>${esc(packLbl2(d, n))}</option>`).join('') + '<option value="__free">Quantité libre…</option>';
-  return `<div class="fmrow"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="-1" aria-label="Moins">−</button><input id="ff-${k}-c" type="text" inputmode="decimal" placeholder="1" value="${esc(m.c || '')}" data-i="fmc" data-k="${k}" data-fk="ff-${k}-c" aria-label="Nombre de formats"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="1" aria-label="Plus">+</button><select data-i="fmsel" data-k="${k}" aria-label="Format">${opts}</select></div><div class="fmtot" id="fmt-${k}">${fmTotTxt(d, k)}</div>`;
+  const opts = pk.map(n => `<option value="${n}" ${n === m.n ? 'selected' : ''}>${esc(packLbl2(d, n))}</option>`).join('') + '<option value="__free">Quantité libre…</option>';
+  return `<div class="fmbox"><div class="fmrow"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="-1" aria-label="Moins">−</button><input id="ff-${k}-c" type="text" inputmode="decimal" placeholder="0" value="${esc(m.c || '')}" data-i="fmc" data-k="${k}" data-fk="ff-${k}-c" aria-label="Nombre de formats"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="1" aria-label="Plus">+</button><span class="fmtot" id="fmt-${k}">${fmTotTxt(d, k)}</span></div><select class="fmsel" data-i="fmsel" data-k="${k}" aria-label="Format">${opts}</select></div>`;
 }
-const fmTotTxt = (d, k) => { const t = fmTot(d, k); return t > 0 ? `= <b>${esc(d.unit === 'portion' ? qtxt(t) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, t))}</b>` : ''; };
+const fmTotTxt = (d, k) => { const t = fmTot(d, k), sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, x); if (t > 0) return `= <b>${esc(sz(t))}</b>`; if (k === 'max') { const mi = fv(d, 'min'); return mi > 0 ? `<span class="mini">vide = remonter à ${esc(sz(mi))}</span>` : ''; } return ''; };
+// seuil « À racheter » : résumé + Modifier
+function thrSub(d, k) {
+  const v = fv(d, k); if (!(v > 0)) return ''; const m = d.fm && d.fm[k], pk = getPacks(d);
+  if (m && pk.includes(m.n) && num(m.c) > 0) return `${qtxt(num(m.c))} × ${packLbl2(d, m.n)}`;
+  const fu = { unit: d.unit, packs: pk, lots: d.lots }, pl = d.unit === 'portion' ? null : packPlan(fu, v);
+  return pl && pl.parts.length ? '≈ ' + packTxt(fu, pl.parts) : '';
+}
+function thrBox(d, k) {
+  const sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, x), v = fv(d, k), ed = !!(d.ed && d.ed[k]);
+  const lab = k === 'min' ? 'Alerte sous' : 'Remonter à';
+  if (ed) {
+    const field = fmField(d, k) || `<div class="padd"><input id="ff-${k}" type="text" inputmode="decimal" placeholder="${k === 'max' ? '= le seuil' : d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d[k] || '')}" data-i="ff" data-k="${k}" data-fk="ff-${k}" aria-label="${lab}">${unitSel(d, k)}</div>`;
+    return `<div class="thr ed"><div class="thrh"><b>${lab}…</b><button type="button" class="lnk" data-a="thred" data-k="${k}">OK</button></div>${field}</div>`;
+  }
+  const main = v > 0 ? `${lab} ${esc(sz(v))}` : k === 'min' ? 'Aucune alerte' : `Remonter à : comme le seuil (${esc(sz(fv(d, 'min')))})`, sub = thrSub(d, k);
+  return `<div class="thr"><div><b>${main}</b>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div><button type="button" class="lnk" data-a="thred" data-k="${k}">${v > 0 || k === 'max' ? 'Modifier' : 'Définir'}</button></div>`;
+}
 function packTab(d) {
   const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? (d.ulbl || 'parts') : d.unit, lot = d.packmode === 'l', lt = n => d.lots && d.lots[String(n)];
   const quick = d.unit === 'portion' ? [4, 6, 10, 12].filter(n => !pk.includes(n)) : [];
@@ -2013,10 +2042,8 @@ function packTab(d) {
     <div class="seg pmode" role="group" aria-label="Type de format"><button class="${lot ? '' : 'on'}" data-a="packmode" data-m="u">À l'unité</button><button class="${lot ? 'on' : ''}" data-a="packmode" data-m="l">Lot</button></div>
     <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd${lot ? ' lotrow' : ''}">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew">${unitSel(d, 'packnew', lot ? ' / unité' : '')}<button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
 ${d.unit === 'portion' ? `<label for="ff-ulsel" style="margin-top:12px">Nom de l'unité</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom de l'unité">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">Affiché dans le stock à la place de « part ».</p>` : ''}
-    <div class="minbox"><div class="lbl">Alerte « À racheter »</div>
-      <p class="mini">Prévenir quand il m'en reste moins de : <button type="button" class="hq" data-a="hq" title="Sous ce seuil, l'aliment apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.">?</button></p>
-      ${fmField(d, 'min') || `<div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum">${unitSel(d, 'min')}</div>`}<div id="minh">${minHint(d)}</div>
-      <label for="ff-max" style="margin-top:12px">Racheter pour remonter à <span class="mini">(facultatif)</span></label>${fmField(d, 'max') || `<div class="padd"><input id="ff-max" type="text" inputmode="decimal" placeholder="= le minimum" value="${esc(d.max || '')}" data-i="ff" data-k="max" data-fk="ff-max">${unitSel(d, 'max')}</div>`}</div>
+    <div class="minbox"><div class="lbl">Alerte « À racheter » <button type="button" class="hq" data-a="hq" title="Sous le seuil, l'aliment apparaît dans « À racheter » (onglet Stock). « Remonter à » = jusqu'où racheter ; vide = jusqu'au seuil.">?</button></div>
+      ${thrBox(d, 'min')}${fv(d, 'min') > 0 ? thrBox(d, 'max') : ''}</div>
     <div class="usebox"><div class="sw2"><div><div class="lbl">Consommation régulière</div><div class="mini">Mon stock baisse tout seul <button type="button" class="hq" data-a="hq" title="Pour ce que tu utilises à rythme régulier (mouchoirs, papier toilette, eau…). Pense à ajouter l'aliment au stock : le calcul part de la date du dernier comptage.">?</button></div></div><button type="button" class="tg${d.usOn ? ' on' : ''}" data-a="usetog" role="switch" aria-checked="${!!d.usOn}" aria-label="Consommation régulière"></button></div>
       ${d.usOn ? `<div class="padd"><input id="ff-usq" type="text" inputmode="decimal" placeholder="ex. 1" value="${esc(d.usq || '')}" data-i="ff" data-k="usq" data-fk="ff-usq" aria-label="Quantité consommée">${unitSel(d, 'usq')}<span class="u">par</span><div class="seg useper">${['day', 'week', 'month'].map(k => `<button class="${d.usper === k ? 'on' : ''}" data-a="useper" data-m="${k}">${USE_LBL[k]}</button>`).join('')}</div></div><div id="useh">${useHint(d)}</div>` : ''}</div>
     ${quick.length && !lot ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
@@ -2177,7 +2204,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 22:44 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 23:01 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2314,6 +2341,7 @@ const actions = {
   packadd: () => { const d = ui.form; if (!addPackDraft(d)) { toast('Indique la taille du paquet'); return; } fmInit(d); render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
   fmstep: el => { const d = ui.form, k = el.dataset.k, m = d.fm && d.fm[k]; if (!m) return; const c = Math.max(0, Math.round((num(m.c) + +el.dataset.d) * 100) / 100); m.c = c ? fnum(c) : ''; fmApply(d, k); render(); },
   hq: el => toast(el.title, [], 9000),
+  thred: el => { const d = ui.form, k = el.dataset.k; (d.ed ||= {})[k] = !d.ed[k]; render(); },
   usetog: () => { const d = ui.form; d.usOn = !d.usOn; render(); },
   fu: el => { const d = ui.form, k = el.dataset.k, b = el.dataset.b === '1', was = !!(d.big && d.big[k]); if (b === was) return; (d.big ||= {})[k] = b; if (num(d[k]) > 0) d[k] = fnum(num(d[k]) * (b ? 0.001 : 1000)); render(); },
   useper: el => { ui.form.usper = el.dataset.m; render(); },
@@ -2344,7 +2372,7 @@ function onInput(e) {
   setTimeout(fsyncBtn, 0);
   if (extraInput(e)) return;
   const el = e.target, k = el.dataset.i; if (!k) return;
-  if (k === 'fmc') { const d = ui.form, m = d.fm[el.dataset.k]; m.c = el.value; fmApply(d, el.dataset.k); const t = $('#fmt-' + el.dataset.k); if (t) t.innerHTML = fmTotTxt(d, el.dataset.k); refreshForm(); return; }
+  if (k === 'fmc') { const d = ui.form, m = d.fm[el.dataset.k]; m.c = el.value; fmApply(d, el.dataset.k); for (const kk of ['min', 'max']) { const t = $('#fmt-' + kk); if (t) t.innerHTML = fmTotTxt(d, kk); } refreshForm(); return; }
   if (k === 'qty') setQty(el.dataset.d || ui.date, el.dataset.meal, +el.dataset.idx, num(el.value));
   else if (k === 'title') setTitle(ui.date, el.value);
   else if (k === 'note') setNote(ui.date, el.value);
@@ -2466,7 +2494,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 22:44';
+const BUILD_ID = '28/10/2026 à 23:01';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
