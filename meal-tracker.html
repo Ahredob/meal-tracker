@@ -1113,6 +1113,12 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .fmrow .stp{width:44px;height:44px;flex:none;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;font-weight:700;color:var(--ink);text-align:center}
 .fform .fmrow select{flex:1;min-width:0;min-height:44px}
 .fform .fmtot{margin:6px 0 0;font-size:15px;color:var(--accent);min-height:20px}
+
+.fform .sw2{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px}.fform .sw2 .lbl{margin:0}
+.fform .tg{width:50px;height:30px;border-radius:99px;background:var(--line);position:relative;flex:none;border:0;padding:0}.fform .tg.on{background:var(--accent)}
+.fform .tg::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}.fform .tg.on::after{left:23px}
+.fform .usebox .padd{margin-top:8px}
+.hq{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--mute);cursor:help;margin-left:4px}
 </style>
 </head>
 <body>
@@ -1907,7 +1913,7 @@ function fmInit(o) {
   }
   return o;
 }
-function draftFrom(f) { ui.ocr = null; const o = fmInit(bigInit(draftFrom0(f))); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
+function draftFrom(f) { ui.ocr = null; const o = fmInit(bigInit(draftFrom0(f))); o.usOn = !!f?.use?.q; Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
 function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
 function fsyncBtn() { const b = document.querySelector('[data-a=savefood]'); if (b && ui.form) { const d = fdirty(ui.form); b.disabled = !d; } }
 function draftFrom0(f) {
@@ -1980,8 +1986,11 @@ function usageNote(id) {
 }
 function useHint(d) {
   const q = fv(d, 'usq'); if (!(q > 0)) return '';
-  const r = q / (USE_DAYS[d.usper] || 7), fu = { unit: d.unit }, sz = x => d.unit === 'portion' ? qtxt(x) : packSz(fu, x);
-  return `<div class="hint">Ton stock baisse de <b>${esc(sz(q))}</b> chaque ${USE_LBL[d.usper]}${d.usper === 'day' ? '' : ` (≈ ${esc(sz(Math.round(r * 100) / 100))} par jour)`}, à partir de la date de ton dernier comptage. Pense à ajouter l'aliment au stock.</div>`;
+  const rate = q / (USE_DAYS[d.usper] || 7), fu = { unit: d.unit }, sz = x => d.unit === 'portion' ? qtxt(x) : packSz(fu, x);
+  const pk = getPacks(d), pn = pk.length ? ([...pk].reverse().find(n => d.lots && d.lots[String(n)]) || pk[pk.length - 1]) : 0;
+  const every = pn && rate > 0 ? Math.round(pn / rate * 10) / 10 : 0;
+  const per = d.usper === 'day' ? sz(Math.round(rate * 7 * 100) / 100) + ' par semaine' : `≈ ${sz(rate >= 10 ? Math.round(rate) : Math.round(rate * 100) / 100)} par jour`;
+  return `<div class="hint">${every ? `≈ 1 <b>${esc(packLbl2(d, pn))}</b> tous les ${qtxt(every)} jour${every > 1 ? 's' : ''} · ` : ''}${esc(per)}. Pense à ajouter l'aliment au stock.</div>`;
 }
 function minHint(d) {
   const m = fv(d, 'min'); if (!(m > 0)) return '';
@@ -1999,18 +2008,17 @@ function packTab(d) {
   const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? (d.ulbl || 'parts') : d.unit, lot = d.packmode === 'l', lt = n => d.lots && d.lots[String(n)];
   const quick = d.unit === 'portion' ? [4, 6, 10, 12].filter(n => !pk.includes(n)) : [];
   const tot = lot && num(d.packn) > 1 && fv(d, 'packnew') > 0 ? `<p class="mini">= lot de <b>${esc(packSz(fu, Math.round(num(d.packn)) * fv(d, 'packnew')))}</b></p>` : '';
-  return `<div class="lbl">Format d'achat</div><p class="mini">Les formats dans lesquels tu achètes cet aliment : à l'unité (un paquet, un pot…) ou en lot (plusieurs unités vendues ensemble). Ils servent au stock (boutons « + ») et à la liste de courses.</p>
+  return `<div class="lbl">Format d'achat</div><p class="mini">Comment tu l'achètes : à l'unité ou en lot. Sert au stock (boutons « + ») et aux courses.</p>
     <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip">${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="seg pmode" role="group" aria-label="Type de format"><button class="${lot ? '' : 'on'}" data-a="packmode" data-m="u">À l'unité</button><button class="${lot ? 'on' : ''}" data-a="packmode" data-m="l">Lot</button></div>
     <label for="ff-packnew">${lot ? 'Ajouter un lot' : 'Ajouter un format'}</label><div class="padd${lot ? ' lotrow' : ''}">${lot ? `<input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="2" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'unités dans le lot"><span class="u">×</span>` : ''}<input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 75'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew">${unitSel(d, 'packnew', lot ? ' / unité' : '')}<button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
 ${d.unit === 'portion' ? `<label for="ff-ulsel" style="margin-top:12px">Nom de l'unité</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom de l'unité">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">Affiché dans le stock à la place de « part ».</p>` : ''}
-    <div class="usebox"><div class="lbl">Consommation régulière</div>
-      <p class="mini">Pour ce que tu utilises à rythme régulier (mouchoirs, papier toilette…), le stock baisse tout seul.</p>
-      <div class="padd"><input id="ff-usq" type="text" inputmode="decimal" placeholder="ex. 1" value="${esc(d.usq || '')}" data-i="ff" data-k="usq" data-fk="ff-usq" aria-label="Quantité consommée">${unitSel(d, 'usq')}<span class="u">par</span><div class="seg useper">${['day', 'week', 'month'].map(k => `<button class="${d.usper === k ? 'on' : ''}" data-a="useper" data-m="${k}">${USE_LBL[k]}</button>`).join('')}</div></div><div id="useh">${useHint(d)}</div></div>
-        <div class="minbox"><div class="lbl">Stock minimum</div>
-      <p class="mini">Seuil d'alerte : quand il t'en reste <b>moins que cette quantité</b>, l'aliment apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.</p>
+    <div class="minbox"><div class="lbl">Alerte « À racheter »</div>
+      <p class="mini">Prévenir quand il m'en reste moins de : <button type="button" class="hq" data-a="hq" title="Sous ce seuil, l'aliment apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.">?</button></p>
       ${fmField(d, 'min') || `<div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum">${unitSel(d, 'min')}</div>`}<div id="minh">${minHint(d)}</div>
       <label for="ff-max" style="margin-top:12px">Racheter pour remonter à <span class="mini">(facultatif)</span></label>${fmField(d, 'max') || `<div class="padd"><input id="ff-max" type="text" inputmode="decimal" placeholder="= le minimum" value="${esc(d.max || '')}" data-i="ff" data-k="max" data-fk="ff-max">${unitSel(d, 'max')}</div>`}</div>
+    <div class="usebox"><div class="sw2"><div><div class="lbl">Consommation régulière</div><div class="mini">Mon stock baisse tout seul <button type="button" class="hq" data-a="hq" title="Pour ce que tu utilises à rythme régulier (mouchoirs, papier toilette, eau…). Pense à ajouter l'aliment au stock : le calcul part de la date du dernier comptage.">?</button></div></div><button type="button" class="tg${d.usOn ? ' on' : ''}" data-a="usetog" role="switch" aria-checked="${!!d.usOn}" aria-label="Consommation régulière"></button></div>
+      ${d.usOn ? `<div class="padd"><input id="ff-usq" type="text" inputmode="decimal" placeholder="ex. 1" value="${esc(d.usq || '')}" data-i="ff" data-k="usq" data-fk="ff-usq" aria-label="Quantité consommée">${unitSel(d, 'usq')}<span class="u">par</span><div class="seg useper">${['day', 'week', 'month'].map(k => `<button class="${d.usper === k ? 'on' : ''}" data-a="useper" data-m="${k}">${USE_LBL[k]}</button>`).join('')}</div></div><div id="useh">${useHint(d)}</div>` : ''}</div>
     ${quick.length && !lot ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
 }
 const pgRes = d => num(d.ck) > 0 && num(d.cn) > 0 ? `1 portion = <b>${f1(num(d.ck) / num(d.cn))} g</b> <span class="mini">(${f1(num(d.ck))} g ÷ ${f1(num(d.cn))} parts)</span>` : '<span class="mini">Renseigne le poids du paquet et le nombre de parts : le poids d\'une portion est calculé pour toi.</span>';
@@ -2051,7 +2059,7 @@ function draftToFood(d) {
   if (fv(d, 'min') > 0 && !d.recipe) o.min = fv(d, 'min'); else delete o.min;
   if (d.unit === 'portion' && !d.recipe && (d.ulbl || '').trim()) o.ulbl = d.ulbl.trim().slice(0, 20); else delete o.ulbl;
   if (fv(d, 'max') > 0 && fv(d, 'min') > 0 && !d.recipe) o.max = fv(d, 'max'); else delete o.max;
-  if (fv(d, 'usq') > 0 && USE_DAYS[d.usper] && !d.recipe) o.use = { q: fv(d, 'usq'), per: d.usper }; else delete o.use;
+  if (d.usOn && fv(d, 'usq') > 0 && USE_DAYS[d.usper] && !d.recipe) o.use = { q: fv(d, 'usq'), per: d.usper }; else delete o.use;
   return o;
 }
 
@@ -2169,7 +2177,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 22:41 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 22:44 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2305,6 +2313,8 @@ const actions = {
   fftab: el => { ui.form.tab = el.dataset.t; render(); },
   packadd: () => { const d = ui.form; if (!addPackDraft(d)) { toast('Indique la taille du paquet'); return; } fmInit(d); render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
   fmstep: el => { const d = ui.form, k = el.dataset.k, m = d.fm && d.fm[k]; if (!m) return; const c = Math.max(0, Math.round((num(m.c) + +el.dataset.d) * 100) / 100); m.c = c ? fnum(c) : ''; fmApply(d, k); render(); },
+  hq: el => toast(el.title, [], 9000),
+  usetog: () => { const d = ui.form; d.usOn = !d.usOn; render(); },
   fu: el => { const d = ui.form, k = el.dataset.k, b = el.dataset.b === '1', was = !!(d.big && d.big[k]); if (b === was) return; (d.big ||= {})[k] = b; if (num(d[k]) > 0) d[k] = fnum(num(d[k]) * (b ? 0.001 : 1000)); render(); },
   useper: el => { ui.form.usper = el.dataset.m; render(); },
   packmode: el => { ui.form.packmode = el.dataset.m; render(); },
@@ -2456,7 +2466,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 22:41';
+const BUILD_ID = '28/10/2026 à 22:44';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
