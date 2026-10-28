@@ -1094,6 +1094,15 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 
 .shopbar{position:static;justify-content:flex-start;padding:0;margin:0 0 12px;background:none}
 @media (max-width:640px){.dh .sp [data-a=shopstock],.dh .sp [data-a=shopreset]{grid-column:1/-1}.dh .sp [data-a=shopstock]{min-height:44px;font-size:15px}}
+
+.shoprs{display:none}
+@media (max-width:640px){
+  .shoprc>.shoprs{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:left;background:transparent;border:0;font-size:16px;font-weight:700}
+  .shoprc>.shoprs small{font-weight:500;color:var(--mute)}
+  .shoprc .shoprs b{flex:none;color:var(--accent);font-size:13px}
+  .shoprc>h2{display:none}
+  .shoprc:not(.open)>*:not(.shoprs){display:none}
+}
 </style>
 </head>
 <body>
@@ -2120,7 +2129,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 12:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 13:00 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2402,7 +2411,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 12:56';
+const BUILD_ID = '28/10/2026 à 13:00';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2884,7 +2893,7 @@ function viewShop() {
   function xline(x, on) { return `<label class="shopi ${on ? 'done' : ''}"><input type="checkbox" data-i="shopchk" data-id="x:${x.k}" ${on ? 'checked' : ''}><span class="sname">${esc(x.name)}${shareBy('sx|' + x.k) ? `<small class="by">ajouté par ${esc(shareBy('sx|' + x.k))}</small>` : ''}${on && shareBy('sk|' + shopMon() + '|x:' + x.k) ? `<small class="by">coché par ${esc(shareBy('sk|' + shopMon() + '|x:' + x.k))}</small>` : ''}</span><button class="x" data-a="shopxdel" data-k="${x.k}" aria-label="Retirer" title="Retirer de la liste">${icon('x')}</button></label>`; }
   const xHtml = `<section class="card shopadd"><h2>+ Ajouter à la liste</h2><div class="shopadd2"><div><div class="lbl">Article libre</div><div class="padd"><input id="shopxin" type="text" placeholder="éponges, poivre…" autocomplete="off"><button class="btn sm" data-a="shopxadd">Ajouter</button></div></div>
     <div><div class="lbl">Aliment de ma base <small>(entre dans le stock)</small></div>${shopXf().length ? `<div class="shopf">${shopXf().map(x => { const f = foodMap.get(x.fid); return `<div class="shopi"><span class="sname">${esc(f.name)}<small class="sub">${esc(haveTxt(f, x.q))}</small></span><button class="ib" data-a="shopxdel" data-k="${x.k}" aria-label="Retirer">✕</button></div>`; }).join('')}</div>` : ''}${shopFoodAddHtml()}</div></div></section>`;
-  const recHtml = recs.length ? `<section class="card shopc"><h2>Recettes à préparer</h2>${recs.map(r => `<div class="shopi"><span class="sname">${esc(recBase(r.f.name))}<small class="sub">${qtxt(r.q)} part${r.q > 1 ? 's' : ''} prévue${r.q > 1 ? 's' : ''} sur ${r.f.recipe.parts * r.batches}</small></span><b class="sqty">${r.batches} recette${r.batches > 1 ? 's' : ''}</b></div>`).join('')}<p class="mini">Les ingrédients de ces recettes sont déjà dans la liste.</p></section>` : '';
+  const recHtml = recs.length ? `<section class="card shopc shoprc${ui.recOpen ? ' open' : ''}"><button class="shoprs" data-a="shoprect" aria-expanded="${!!ui.recOpen}"><span>Recettes à préparer <small>(${recs.length})</small></span><b>${ui.recOpen ? 'Masquer' : 'Afficher'} ${ui.recOpen ? '▴' : '▾'}</b></button><h2>Recettes à préparer</h2>${recs.map(r => `<div class="shopi"><span class="sname">${esc(recBase(r.f.name))}<small class="sub">${qtxt(r.q)} part${r.q > 1 ? 's' : ''} prévue${r.q > 1 ? 's' : ''} sur ${r.f.recipe.parts * r.batches}</small></span><b class="sqty">${r.batches} recette${r.batches > 1 ? 's' : ''}</b></div>`).join('')}<p class="mini">Les ingrédients de ces recettes sont déjà dans la liste.</p></section>` : '';
   const cov = groups.covered || [];
   const covHtml = cov.length ? `<details class="card shopc cov"><summary>Déjà à la maison (${cov.length})</summary>${cov.map(({ f, need, have }) => `<div class="shopi"><span class="sname">${esc(f.name)}<small class="sub">besoin ${esc(haveTxt(f, need))} · en stock ${esc(haveTxt(f, have))}</small></span></div>`).join('')}</details>` : '';
   const range = dates.length ? `${fmtDM(dates[0])} → ${fmtDM(dates[dates.length - 1])} · ${dates.length} jour${dates.length > 1 ? 's' : ''}` : 'aucun jour choisi';
@@ -3090,6 +3099,7 @@ const actions3 = {
   thpal: el => mut(s => { s.meta.theme = { ...(s.meta.theme || {}), palette: el.dataset.k }; }),
   thmode: el => mut(s => { s.meta.theme = { ...(s.meta.theme || {}), mode: el.dataset.m }; }),
   shopcfgt: () => { ui.cfgOpen = !ui.cfgOpen; render(); },
+  shoprect: () => { ui.recOpen = !ui.recOpen; render(); },
   shopgoadd: () => { const e = document.querySelector('.shopadd'); e?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => $('#shopfin')?.focus({ preventScroll: true }), 350); },
   shopfset: el => { ui.shop.fqty = el.dataset.q; render(); },
   shopfcancel: () => { ui.shop.fpick = null; ui.shop.fq = ''; render(); },
