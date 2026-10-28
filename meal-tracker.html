@@ -1087,6 +1087,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
   .fclose,.dh2 .ib{border:1px solid var(--line);background:var(--surface);border-radius:12px;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
   .fclose{font-size:20px}.dh2 .ib{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center}
 }
+/* le bandeau (toast) ne bloque plus les clics sous lui : seul son bouton « Annuler » réagit ; sur ordinateur il se place à gauche, loin du bouton « Ranger les achats » */
+#toast.act{pointer-events:none}#toast.act .tb{pointer-events:auto}
+@media (min-width:641px){#toast{left:210px;transform:translate(0,20px)}#toast.show{transform:none}}
 </style>
 </head>
 <body>
@@ -2111,7 +2114,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 07:37 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 07:39 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2393,7 +2396,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 07:37';
+const BUILD_ID = '28/10/2026 à 07:39';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
