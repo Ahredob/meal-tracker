@@ -1107,6 +1107,12 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .u2{display:inline-flex;flex:none;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .fform .u2 button{padding:0 12px;min-height:40px;min-width:44px;font-weight:600;font-size:14px;background:var(--bg);color:var(--ink);border:0}
 .fform .u2 button.on{background:var(--accent);color:var(--on,#fff)}
+
+.fform .fmrow{display:flex;align-items:center;gap:6px}
+.fform .fmrow input{width:64px;flex:none;text-align:center;font-size:18px;font-weight:700;min-height:44px}
+.fform .fmrow .stp{width:44px;height:44px;flex:none;border-radius:12px;border:1px solid var(--line);background:var(--bg);font-size:22px;font-weight:700;color:var(--ink);text-align:center}
+.fform .fmrow select{flex:1;min-width:0;min-height:44px}
+.fform .fmtot{margin:6px 0 0;font-size:15px;color:var(--accent);min-height:20px}
 </style>
 </head>
 <body>
@@ -1888,7 +1894,20 @@ function unitSel(d, k, suffix = '') {
   const big = !!(d.big && d.big[k]);
   return `<div class="u2" role="group" aria-label="Unité"><button type="button" class="${big ? '' : 'on'}" data-a="fu" data-k="${k}" data-b="0">${bp[0]}</button><button type="button" class="${big ? 'on' : ''}" data-a="fu" data-k="${k}" data-b="1">${bp[1]}</button></div>${suffix ? `<span class="u">${suffix.trim()}</span>` : ''}`;
 }
-function draftFrom(f) { ui.ocr = null; const o = bigInit(draftFrom0(f)); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
+// seuil exprimé en nombre de formats d'achat : d.fm[k] = { n: taille du format, c: nombre }
+const packLbl2 = (d, n) => { const l = d.lots && d.lots[String(n)]; return d.unit === 'portion' ? `${qtxt(n)} ${d.ulbl || 'parts'}` : l ? `lot de ${l.n} × ${packSz({ unit: d.unit }, l.s)}` : packSz({ unit: d.unit }, n); };
+const fmTot = (d, k) => { const m = d.fm && d.fm[k]; return m && num(m.c) > 0 ? num(m.c) * m.n : 0; };
+function fmInit(o) {
+  if (o.recipe) return o; const pk = getPacks(o); if (!pk.length) return o;
+  for (const k of ['min', 'max']) {
+    if (o.fm && o.fm[k] && pk.includes(o.fm[k].n)) continue;
+    const raw = fv(o, k);
+    if (raw > 0) { const n = [...pk].reverse().find(n => Math.abs(raw / n - Math.round(raw / n)) < 1e-6); if (n) { (o.fm ||= {})[k] = { n, c: fnum(raw / n) }; if (o.big) delete o.big[k]; o[k] = fnum(raw); } }
+    else (o.fm ||= {})[k] = { n: [...pk].reverse().find(n => o.lots && o.lots[String(n)]) || pk[pk.length - 1], c: '' };
+  }
+  return o;
+}
+function draftFrom(f) { ui.ocr = null; const o = fmInit(bigInit(draftFrom0(f))); Object.defineProperty(o, '_s', { value: fsnap(o), writable: true, enumerable: false }); return o; }
 function leaveForm(fn) { if (ui.form && fdirty(ui.form)) { openModal({ type: 'fguard', fn }); return; } fn(); }
 function fsyncBtn() { const b = document.querySelector('[data-a=savefood]'); if (b && ui.form) { const d = fdirty(ui.form); b.disabled = !d; } }
 function draftFrom0(f) {
@@ -1969,6 +1988,13 @@ function minHint(d) {
   const fu = { unit: d.unit, packs: getPacks(d), lots: d.lots }, pl = packPlan(fu, m);
   return `<p class="mini minh">Alerte sous <b>${esc(d.unit === 'portion' ? qtxt(m) + ' parts' : packSz(fu, m))}</b>${pl && pl.parts.length ? ` (≈ ${esc(packTxt(fu, pl.parts))})` : ''}.</p>`;
 }
+function fmField(d, k) {
+  const pk = getPacks(d), m = d.fm && d.fm[k];
+  if (!m || !pk.includes(m.n)) return null;
+  const tot = fmTot(d, k), opts = pk.map(n => `<option value="${n}" ${n === m.n ? 'selected' : ''}>${esc(packLbl2(d, n))}</option>`).join('') + '<option value="__free">Quantité libre…</option>';
+  return `<div class="fmrow"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="-1" aria-label="Moins">−</button><input id="ff-${k}-c" type="text" inputmode="decimal" placeholder="1" value="${esc(m.c || '')}" data-i="fmc" data-k="${k}" data-fk="ff-${k}-c" aria-label="Nombre de formats"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="1" aria-label="Plus">+</button><select data-i="fmsel" data-k="${k}" aria-label="Format">${opts}</select></div><div class="fmtot" id="fmt-${k}">${fmTotTxt(d, k)}</div>`;
+}
+const fmTotTxt = (d, k) => { const t = fmTot(d, k); return t > 0 ? `= <b>${esc(d.unit === 'portion' ? qtxt(t) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, t))}</b>` : ''; };
 function packTab(d) {
   const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? (d.ulbl || 'parts') : d.unit, lot = d.packmode === 'l', lt = n => d.lots && d.lots[String(n)];
   const quick = d.unit === 'portion' ? [4, 6, 10, 12].filter(n => !pk.includes(n)) : [];
@@ -1983,8 +2009,8 @@ ${d.unit === 'portion' ? `<label for="ff-ulsel" style="margin-top:12px">Nom de l
       <div class="padd"><input id="ff-usq" type="text" inputmode="decimal" placeholder="ex. 1" value="${esc(d.usq || '')}" data-i="ff" data-k="usq" data-fk="ff-usq" aria-label="Quantité consommée">${unitSel(d, 'usq')}<span class="u">par</span><div class="seg useper">${['day', 'week', 'month'].map(k => `<button class="${d.usper === k ? 'on' : ''}" data-a="useper" data-m="${k}">${USE_LBL[k]}</button>`).join('')}</div></div><div id="useh">${useHint(d)}</div></div>
         <div class="minbox"><div class="lbl">Stock minimum</div>
       <p class="mini">Seuil d'alerte : quand il t'en reste <b>moins que cette quantité</b>, l'aliment apparaît dans « À racheter » (onglet Stock). Laisse vide si tu n'en as pas besoin.</p>
-      <div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum">${unitSel(d, 'min')}</div><div id="minh">${minHint(d)}</div>
-      <label for="ff-max" style="margin-top:12px">Racheter pour remonter à <span class="mini">(facultatif)</span></label><div class="padd"><input id="ff-max" type="text" inputmode="decimal" placeholder="= le minimum" value="${esc(d.max || '')}" data-i="ff" data-k="max" data-fk="ff-max">${unitSel(d, 'max')}</div></div>
+      ${fmField(d, 'min') || `<div class="padd"><input id="ff-min" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d.min || '')}" data-i="ff" data-k="min" data-fk="ff-min" aria-label="Stock minimum">${unitSel(d, 'min')}</div>`}<div id="minh">${minHint(d)}</div>
+      <label for="ff-max" style="margin-top:12px">Racheter pour remonter à <span class="mini">(facultatif)</span></label>${fmField(d, 'max') || `<div class="padd"><input id="ff-max" type="text" inputmode="decimal" placeholder="= le minimum" value="${esc(d.max || '')}" data-i="ff" data-k="max" data-fk="ff-max">${unitSel(d, 'max')}</div>`}</div>
     ${quick.length && !lot ? `<div class="mini" style="margin-top:8px">Raccourcis</div><div class="pchips">${quick.map(n => `<button class="chip" data-a="packquick" data-n="${n}">+ ${n}</button>`).join('')}</div>` : ''}`;
 }
 const pgRes = d => num(d.ck) > 0 && num(d.cn) > 0 ? `1 portion = <b>${f1(num(d.ck) / num(d.cn))} g</b> <span class="mini">(${f1(num(d.ck))} g ÷ ${f1(num(d.cn))} parts)</span>` : '<span class="mini">Renseigne le poids du paquet et le nombre de parts : le poids d\'une portion est calculé pour toi.</span>';
@@ -2143,7 +2169,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 17:45 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 22:41 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2277,11 +2303,12 @@ const actions = {
   foodsort: el => { const k = el.dataset.k, s = ui.foodSort; ui.scrollReset = true; ui.foodSort = s.k === k ? (k === 'name' && s.d === -1 ? { k: 'name', d: 1 } : { k, d: -s.d }) : { k, d: (k === 'name' || k === 'cat') ? 1 : -1 }; render(); },
   ffmode: el => { const d = ui.form, to = el.dataset.m; if (d.mode === to) return;  const from = draftMult(d), ok = x => x > 0 && isFinite(x); const save = d.mode; d.mode = to; const mt = draftMult(d); d.mode = save; if (ok(from) && ok(mt)) { const conv = x => (x === '' || x == null) ? x : String(Math.round(num(x) * from / mt * 1000) / 1000).replace('.', ','); for (const k of ['p', 'c', 'l', 'f']) d[k] = conv(d[k]); if (!d.auto) d.k = conv(d.k); } d.mode = to; d.calc = false; render(); },
   fftab: el => { ui.form.tab = el.dataset.t; render(); },
-  packadd: () => { const d = ui.form; if (!addPackDraft(d)) { toast('Indique la taille du paquet'); return; } render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
+  packadd: () => { const d = ui.form; if (!addPackDraft(d)) { toast('Indique la taille du paquet'); return; } fmInit(d); render(); setTimeout(() => { const i = $('#ff-packnew'); if (i) i.focus(); }, 0); },
+  fmstep: el => { const d = ui.form, k = el.dataset.k, m = d.fm && d.fm[k]; if (!m) return; const c = Math.max(0, Math.round((num(m.c) + +el.dataset.d) * 100) / 100); m.c = c ? fnum(c) : ''; fmApply(d, k); render(); },
   fu: el => { const d = ui.form, k = el.dataset.k, b = el.dataset.b === '1', was = !!(d.big && d.big[k]); if (b === was) return; (d.big ||= {})[k] = b; if (num(d[k]) > 0) d[k] = fnum(num(d[k]) * (b ? 0.001 : 1000)); render(); },
   useper: el => { ui.form.usper = el.dataset.m; render(); },
   packmode: el => { ui.form.packmode = el.dataset.m; render(); },
-  packquick: el => { const d = ui.form; setPacks(d, [...getPacks(d), +el.dataset.n]); render(); },
+  packquick: el => { const d = ui.form; setPacks(d, [...getPacks(d), +el.dataset.n]); fmInit(d); render(); },
   packdel: el => { const d = ui.form; setPacks(d, getPacks(d).filter(n => n !== +el.dataset.n)); if (d.lots) delete d.lots[String(+el.dataset.n)]; render(); },
   ffcalc: el => { ui.form.calc = el?.dataset?.v ? el.dataset.v === '1' : !ui.form.calc; render(); },
   mergefood: el => { const src = foodMap.get(el.dataset.id), dst = ui.form?.id && foodMap.get(ui.form.id); if (!src || !dst) return; const bs = perBasis(src), bd = perBasis(dst), same = ['p', 'c', 'l', 'f', 'k'].every(k => Math.abs(src[k] * bs.fac - dst[k] * bd.fac) < 0.05); openModal({ type: 'confirm', title: 'Fusionner ces deux aliments ?', text: `« ${src.name} » sera remplacé par « ${dst.name} » partout (journées, repas types, recettes, stock), puis supprimé. ${same ? 'Les valeurs nutritionnelles sont identiques.' : `Attention : les valeurs diffèrent (${f0(src.k * bs.fac)} kcal contre ${f0(dst.k * bd.fac)} kcal ${bd.txt.startsWith('1') ? 'par part' : 'pour 100 ' + dst.unit}) : celles de « ${dst.name} » seront utilisées.`} Tu pourras annuler juste après avec le bouton Annuler.`, ok: 'Fusionner', onOk: () => { mergeFoods(src.id, dst.id); ui.form = draftFrom(foodMap.get(dst.id)); toast('Aliments fusionnés', [{ a: 'gundo', l: 'Annuler' }], 6000); } }); },
@@ -2307,6 +2334,7 @@ function onInput(e) {
   setTimeout(fsyncBtn, 0);
   if (extraInput(e)) return;
   const el = e.target, k = el.dataset.i; if (!k) return;
+  if (k === 'fmc') { const d = ui.form, m = d.fm[el.dataset.k]; m.c = el.value; fmApply(d, el.dataset.k); const t = $('#fmt-' + el.dataset.k); if (t) t.innerHTML = fmTotTxt(d, el.dataset.k); refreshForm(); return; }
   if (k === 'qty') setQty(el.dataset.d || ui.date, el.dataset.meal, +el.dataset.idx, num(el.value));
   else if (k === 'title') setTitle(ui.date, el.value);
   else if (k === 'note') setNote(ui.date, el.value);
@@ -2317,6 +2345,7 @@ function onInput(e) {
   else if (k === 'ff') { ui.form[el.dataset.k] = el.value; refreshForm(); }
   else if (k === 'tgt') { const t = { ...targetForLabel(el.dataset.l) }; t[el.dataset.k] = num(el.value); setTarget(el.dataset.l, t); }
 }
+function fmApply(d, k) { const m = d.fm && d.fm[k]; if (!m) return; const t = fmTot(d, k); d[k] = t > 0 ? fnum(t) : ''; if (d.big) delete d.big[k]; }
 function refreshForm() { const d = ui.form; if (!d) return; if (d.mode === '100' && d.calc && num(d.ck) > 0 && num(d.cn) > 0) { d.pg = String(Math.round(num(d.ck) / num(d.cn) * 100) / 100).replace('.', ','); const e = $('#ff-pg'); if (e) e.value = d.pg; }
   if ($('#pgres')) $('#pgres').innerHTML = pgRes(d); if ($('#dup')) $('#dup').innerHTML = dupHint(d); if ($('#minh')) $('#minh').innerHTML = minHint(d); if ($('#useh')) $('#useh').innerHTML = useHint(d); if ($('#kh')) $('#kh').innerHTML = kcalHint(d); if ($('#pv')) $('#pv').innerHTML = portionPreview(d); if (d.auto && $('#ff-k')) $('#ff-k').value = String(Math.round(draftCalc(d))); }
 function onChange(e) {
@@ -2326,6 +2355,7 @@ function onChange(e) {
   const el = e.target, k = el.dataset.i; if (!k) return;
   if (k === 'qty') { ui.noKeep = true; render(); ui.noKeep = false; return; }
   if (k === 'date') { if (el.value) { ui.date = el.value; render(); } }
+  else if (k === 'fmsel') { const d = ui.form, kk = el.dataset.k, m = d.fm[kk]; if (el.value === '__free') { const t = fmTot(d, kk); delete d.fm[kk]; d[kk] = t > 0 ? fnum(t) : ''; if (t >= 1000 && bigPair(d)) { (d.big ||= {})[kk] = true; d[kk] = fnum(t / 1000); } } else { m.n = +el.value; fmApply(d, kk); } render(); }
   else if (k === 'ulsel') { const v = el.value, d = ui.form; if (v === '__new') { d.ulnew = true; d.ulbl = ''; } else { d.ulnew = false; d.ulbl = v; } render(); if (d.ulnew) setTimeout(() => $('#ff-ulbl')?.focus(), 0); }
   else if (k === 'ffunit') { ui.form.unit = el.value; if (el.value !== 'portion') { Object.assign(ui.form, { mode: 'port', pg: '', ck: '', cn: '', calc: false }); } render(); }
   else if (k === 'ffauto') { ui.form.auto = el.checked; if (!el.checked) ui.form.k = String(Math.round(draftCalc(ui.form))); render(); }
@@ -2426,7 +2456,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 17:45';
+const BUILD_ID = '28/10/2026 à 22:41';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
