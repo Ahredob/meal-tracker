@@ -2114,7 +2114,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 07:39 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 07:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2396,7 +2396,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 07:39';
+const BUILD_ID = '28/10/2026 à 07:42';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3430,12 +3430,13 @@ const tplFind = key => [...tplItems(tplMom()), ...tplItems(tplMom(), true)].find
 const recOkCount = () => S.foods.filter(f => f.recipe && !f.hidden && !recStock(f).length).length;
 function viewRecipes() {
   const words = qwords(ui.rec.q);
-  const nArch = S.foods.filter(f => f.recipe && f.hidden).length, list = S.foods.filter(f => f.recipe && (ui.rec.arch ? f.hidden : !f.hidden) && (ui.rec.cat === 'all' || (ui.rec.cat === '_none' ? !f.recipe.cat : f.recipe.cat === ui.rec.cat)) && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  const nNews = newsCount(true), onNews = !!ui.rec.news && nNews > 0;
+  const nArch = S.foods.filter(f => f.recipe && f.hidden).length, list = S.foods.filter(f => f.recipe && (onNews ? (!f.hidden && newsOf(f.id)) : ((ui.rec.arch ? f.hidden : !f.hidden) && (ui.rec.cat === 'all' || (ui.rec.cat === '_none' ? !f.recipe.cat : f.recipe.cat === ui.rec.cat)))) && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   return `<main class="main wide2"><div class="dh"><h1>Recettes</h1><span class="mini">${list.length} recette${list.length > 1 ? 's' : ''}</span><div class="sp"><button class="btn pri" data-a="recnew">Nouvelle recette</button></div></div>
     ${recSwitch('recettes')}
     <p class="mini">Tu prépares la recette entière, mais tu ne notes que tes parts dans la Journée (ex. « Cookies (1 part) » × 1) : les calories et macros sont celles d'une part. Dans Courses, les ingrédients de la recette entière sont ajoutés automatiquement.</p>
-    ${nArch || ui.rec.arch ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.arch ? '' : 'on'}" data-a="recarch" data-v="0">Actives</button><button class="chip ${ui.rec.arch ? 'on' : ''}" data-a="recarch" data-v="1">Archivées (${nArch})</button></div>` : ''}${recCats().length ? `<div class="chips" style="margin-bottom:8px">${[['all', 'Toutes'], ...recCats().map(c => [c, c]), ['_none', 'Sans catégorie']].map(([k, l]) => `<button class="chip ${ui.rec.cat === k ? 'on' : ''}" data-a="reccat" data-k="${esc(k)}">${esc(l)}</button>`).join('')}</div>` : ''}<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.stock ? '' : 'on'}" data-a="recstk" data-v="0">Toutes les recettes</button><button class="chip ${ui.rec.stock ? 'on' : ''}" data-a="recstk" data-v="1">Avec mon stock <small>${recOkCount()}</small></button></div><div class="search">${icon('search')}<input type="search" placeholder="Rechercher une recette…" value="${esc(ui.rec.q)}" data-i="rq" data-fk="rq"></div>
-    ${ui.rec.stock ? recStockHtml(list) : `<div class="xgrid xg-t">${list.map(recCard).join('') || '<p class="mu">Aucune recette.</p>'}</div>`}</main>`;
+    ${nArch || ui.rec.arch ? `<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.arch ? '' : 'on'}" data-a="recarch" data-v="0">Actives</button><button class="chip ${ui.rec.arch ? 'on' : ''}" data-a="recarch" data-v="1">Archivées (${nArch})</button></div>` : ''}${recCats().length ? `<div class="chips" style="margin-bottom:8px">${[['all', 'Toutes'], ...recCats().map(c => [c, c]), ['_none', 'Sans catégorie']].map(([k, l]) => `<button class="chip ${ui.rec.cat === k ? 'on' : ''}" data-a="reccat" data-k="${esc(k)}">${esc(l)}</button>`).join('')}</div>` : ''}<div class="chips" style="margin-bottom:8px"><button class="chip ${ui.rec.stock || onNews ? '' : 'on'}" data-a="recstk" data-v="0">Toutes les recettes</button><button class="chip ${ui.rec.stock && !onNews ? 'on' : ''}" data-a="recstk" data-v="1">Avec mon stock <small>${recOkCount()}</small></button>${nNews ? `<button class="chip ${onNews ? 'on' : ''}" data-a="recnews" title="Recettes ajoutées ou modifiées par l'autre personne">Nouveautés (${nNews})</button>` : ''}</div>${onNews ? '<p class="mini">Recettes ajoutées ou modifiées par l\'autre personne. <button class="lnk" style="margin:0" data-a="recnewsall">Tout marquer comme vu</button></p>' : ''}<div class="search">${icon('search')}<input type="search" placeholder="Rechercher une recette…" value="${esc(ui.rec.q)}" data-i="rq" data-fk="rq"></div>
+    ${ui.rec.stock && !onNews ? recStockHtml(list) : `<div class="xgrid xg-t">${list.map(recCard).join('') || '<p class="mu">Aucune recette.</p>'}</div>`}</main>`;
 }
 function recTotals(m) {
   const t = { p: 0, c: 0, l: 0, f: 0, k: 0 };
@@ -3528,7 +3529,9 @@ Object.assign(actions, {
   },
   rccatset: el => { const m = ui.modal; m.cat = (m.cat || '').trim() === el.dataset.k ? '' : el.dataset.k; renderModal(); },
   reccat: el => { ui.rec.cat = el.dataset.k; render(); },
-  recstk: el => { ui.rec.stock = el.dataset.v === '1'; render(); },
+  recstk: el => { ui.rec.stock = el.dataset.v === '1'; ui.rec.news = false; render(); },
+  recnews: () => { ui.rec.news = !ui.rec.news; if (ui.rec.news) ui.rec.stock = false; render(); },
+  recnewsall: () => { shareSeen(S.foods.filter(f => f.recipe && newsOf(f.id)).map(f => f.id)); ui.rec.news = false; render(); },
   recmisscart: el => { const f = foodMap.get(el.dataset.id); if (!f) return; const ms = recStock(f).filter(x => !inCart(x.id)); if (!ms.length) { toast('Déjà dans les courses'); return; }
     mut(s => { for (const x of ms) { const g = foodMap.get(x.id); (s.meta.shopx ||= []).push({ k: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: g.name, fid: x.id, q: x.short }); } });
     if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ms.length} ingrédient${ms.length > 1 ? 's' : ''} ajouté${ms.length > 1 ? 's' : ''} aux courses`); },
