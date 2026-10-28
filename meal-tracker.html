@@ -1093,6 +1093,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 @media (max-width:640px){.side,#totop{-webkit-transform:translateZ(0);will-change:transform}}
 
 .shopbar{position:static;justify-content:flex-start;padding:0;margin:0 0 12px;background:none}
+@media (max-width:640px){.dh .sp [data-a=shopstock],.dh .sp [data-a=shopreset]{grid-column:1/-1}.dh .sp [data-a=shopstock]{min-height:44px;font-size:15px}}
 </style>
 </head>
 <body>
@@ -2119,7 +2120,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 28/10/2026 à 12:52 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 12:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2401,7 +2402,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '28/10/2026 à 12:52';
+const BUILD_ID = '28/10/2026 à 12:56';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2889,13 +2890,12 @@ function viewShop() {
   const range = dates.length ? `${fmtDM(dates[0])} → ${fmtDM(dates[dates.length - 1])} · ${dates.length} jour${dates.length > 1 ? 's' : ''}` : 'aucun jour choisi';
   const sw = (a, on, t, d) => `<label class="swr"><input type="checkbox" data-a="${a}" ${on ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`;
   const empty = !total ? `<section class="card"><p>Rien à acheter : aucun repas n'est planifié pour les jours choisis.</p></section>` : '';
-  return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Courses</h1><span class="mini">${esc(range)}</span>${shareLine()}</div><div class="sp"><button class="btn sm pri" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
+  return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Courses</h1><span class="mini">${esc(range)}</span>${shareLine()}</div><div class="sp">${total ? `<button class="btn sm pri" data-a="shopstock" title="Choisis ce que tu as acheté : le stock est mis à jour">Ranger dans le stock${done ? ` · ${done}` : ''}</button>` : ''}<button class="btn sm" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
     <section class="card shopcfg${ui.cfgOpen ? ' open' : ''}"><button class="shopsum" data-a="shopcfgt" aria-expanded="${!!ui.cfgOpen}"><span>${mode === 'sun' ? '1 semaine' : mode === 'two' ? '2 semaines' : 'Jours choisis'} · ${useStock ? 'stock retiré' : 'stock ignoré'}${shopExpand() ? ' · recettes en ingrédients' : ''}</span><b>${ui.cfgOpen ? 'Fermer ▴' : 'Modifier ▾'}</b></button><div class="lbl">Période</div><div class="seg"><button class="${mode === 'sun' ? 'on' : ''}" data-a="shopmode" data-m="sun">1 semaine</button><button class="${mode === 'two' ? 'on' : ''}" data-a="shopmode" data-m="two">2 semaines</button><button class="${mode === 'custom' ? 'on' : ''}" data-a="shopmode" data-m="custom">Choisir les jours</button></div>
     ${remote && shareOn() ? `<div class="lbl" style="margin-top:12px">Pour qui</div><div class="seg"><button class="${shopWho() === 'all' ? 'on' : ''}" data-a="shopwho" data-w="all">Tout le monde</button><button class="${shopWho() === 'me' ? 'on' : ''}" data-a="shopwho" data-w="me">${esc(S.meta.share.me.name)}</button><button class="${shopWho() === 'other' ? 'on' : ''}" data-a="shopwho" data-w="other">${esc(remote.name)}</button></div>` : ''}
     ${mode === 'custom' ? `<div class="shopdays">${row(all.slice(0, 7), '7 prochains jours')}${row(all.slice(7), '7 jours suivants')}</div>` : ''}
     <div class="swrs">${sw('shopstk', useStock, 'Retirer ce que j\'ai en stock', stockN ? `${stockN} produit${stockN > 1 ? 's' : ''} en stock` : 'ton stock est vide pour le moment')}${sw('shopexp', shopExpand(), 'Remplacer les recettes par leurs ingrédients', 'on cuisine toujours des recettes entières')}</div></section>
     ${total ? `<div class="shprog"><div><i style="width:${Math.round(done / total * 100)}%"></i></div><span class="mini">${done} / ${total} article${total > 1 ? 's' : ''} dans le panier</span></div>` : ''}
-    ${total ? `<div class="shopbar"><button class="btn pri" data-a="shopstock" title="Choisis ce que tu as acheté : le stock est mis à jour">Ranger les achats dans le stock${done ? ` · ${done} coché${done > 1 ? 's' : ''}` : ''}</button></div>` : ''}
     ${empty}<div class="shopgrid">${recHtml}${todoHtml}${todoXHtml}</div><div class="shopbot">${xHtml}${cartHtml || '<section class="card shopc cart empty"><h2>🛒 Dans le panier <span class="mini">0</span></h2><p class="mini">Coche les articles au fil des courses.</p></section>'}${covHtml || '<section class="card shopc cov"><h2>Déjà à la maison</h2><p class="mini">Rien de ta liste n\'est déjà en stock.</p></section>'}</div>
     </main>`;
 }
