@@ -2110,7 +2110,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 27/10/2026 à 22:30 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 28/10/2026 à 07:35 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2392,7 +2392,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '27/10/2026 à 22:30';
+const BUILD_ID = '28/10/2026 à 07:35';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4397,7 +4397,8 @@ function shareLine() {
   else if (s.busy && !stuck(s)) txt = 'Synchronisation…';
   else if (s.err) txt = `<span class="warn">${esc(s.err)}</span>`;
   else if (!c.otherGist) txt = 'En attente du code de l\'autre personne.';
-  else { let at = ''; try { if (remote?.at) { const d = new Date(remote.at); at = `${fmtShort(iso(d))} à ${hm(d)}`; } } catch { } txt = remote ? `Données de <b>${esc(remote.name)}</b> du ${esc(at || '?')}${c.last ? ` · vérifié à ${hm(c.last)}` : ''}` : 'Aucune donnée reçue de l\'autre personne pour l\'instant.'; }
+  else if (!remote) txt = 'Aucune donnée reçue de l\'autre personne pour l\'instant.';
+  else { const age = c.last ? Math.round((Date.now() - c.last) / 60000) : null; txt = age === null || age >= 10 ? `<span class="warn">Pas de vérification récente${age === null ? '' : ' (il y a ' + (age >= 60 ? Math.round(age / 60) + ' h' : age + ' min') + ')'} · partage avec ${esc(remote.name)}</span>` : `Partage avec ${esc(remote.name)} · à jour ${hm(c.last)}`; }
   return `<div class="shline mini">${txt} <button class="lnk" style="margin:0" data-a="shareref">Actualiser</button></div>`;
 }
 function shareCard() {
