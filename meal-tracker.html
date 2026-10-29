@@ -1990,7 +1990,7 @@ function addPackDraft(d) {
 }
 const setPacks = (d, arr) => { d.packs = [...new Set(arr)].sort((a, b) => a - b).map(n => String(n).replace('.', ',')).join(' '); };
 // liste d'unités proposées : usuelles + celles déjà utilisées dans tes aliments
-const UL_BASE = ['paquets', 'boîtes', 'pots', 'sachets', 'bouteilles', 'rouleaux', 'tubes', 'barquettes'];
+const UL_BASE = ['paquets', 'boîtes', 'pots', 'sachets', 'bouteilles', 'flacons', 'briques', 'canettes', 'rouleaux', 'tubes', 'barquettes'];
 function ulList(cur) {
   const set = new Set(UL_BASE); for (const f of S.foods) if (f.ulbl) set.add(f.ulbl); if (cur) set.add(cur);
   return [['', 'part (par défaut)'], ...[...set].sort((a, b) => a.localeCompare(b, 'fr')).map(x => [x, x]), ['__new', '+ Nouvelle unité…']];
@@ -2065,7 +2065,7 @@ function packTab(d) {
   return `${packSummary(d)}<div class="lbl">Formats d'achat <button type="button" class="hq" data-a="hq" title="Comment tu l'achètes : à l'unité ou en lot. Sert au stock (boutons « + ») et à la liste de courses. Pour un article seul, laisse le premier champ à 1.">?</button></div>
     <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip${d.defp === n ? ' dflt' : ''}"><button type="button" class="star${d.defp === n ? ' on' : ''}" data-a="packdef" data-n="${n}" aria-label="Format proposé en premier dans le stock" title="Format proposé en premier dans le stock">${d.defp === n ? '★' : '☆'}</button>${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="padd lotl"><input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="1" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'articles (1 = un seul)"><span class="u">×</span><input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 1,5'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew" aria-label="Taille d'un article">${unitSel(d, 'packnew')}<button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
-${d.unit === 'portion' ? `<label for="ff-ulsel" style="margin-top:12px">Nom de l'unité</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom de l'unité">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">Affiché dans le stock à la place de « part ».</p>` : ''}
+${d.unit === 'portion' || pk.length ? `<label for="ff-ulsel" style="margin-top:12px">${d.unit === 'portion' ? 'Nom de l\'unité' : 'Nom d\'un article'}</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom de l'unité">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(v === '' && d.unit !== 'portion' ? 'paquet (par défaut)' : l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">${d.unit === 'portion' ? 'Affiché dans le stock à la place de « part ».' : 'Sert à compter ce que tu as : « 9 bouteilles », « 4 pots »…'}</p>` : ''}
     ${stkBlock(d)}
     <div class="minbox"><div class="lbl">Alerte « À racheter » <button type="button" class="hq" data-a="hq" title="Sous le seuil, l'aliment apparaît dans « À racheter » (onglet Stock). « Remonter à » = jusqu'où racheter ; vide = jusqu'au seuil.">?</button></div>
       ${thrBox(d, 'min')}${fv(d, 'min') > 0 ? thrBox(d, 'max') : ''}</div>
@@ -2110,7 +2110,7 @@ function draftToFood(d) {
   const lo = {}; for (const n of pk) { const l = d.lots && d.lots[String(n)]; if (l && l.n > 1 && l.s > 0) lo[String(n)] = { n: l.n, s: l.s }; }
   if (Object.keys(lo).length && !d.recipe) o.lots = lo; else delete o.lots;
   if (fv(d, 'min') > 0 && !d.recipe) o.min = fv(d, 'min'); else delete o.min;
-  if (d.unit === 'portion' && !d.recipe && (d.ulbl || '').trim()) o.ulbl = d.ulbl.trim().slice(0, 20); else delete o.ulbl;
+  if ((d.unit === 'portion' || pk.length) && !d.recipe && (d.ulbl || '').trim()) o.ulbl = d.ulbl.trim().slice(0, 20); else delete o.ulbl;
   if (fv(d, 'max') > 0 && fv(d, 'min') > 0 && !d.recipe) o.max = fv(d, 'max'); else delete o.max;
   if (d.usOn && fv(d, 'usq') > 0 && USE_DAYS[d.usper] && !d.recipe) o.use = { q: fv(d, 'usq'), per: d.usper }; else delete o.use;
   return o;
@@ -2230,7 +2230,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 29/10/2026 à 21:34 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 29/10/2026 à 21:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2522,7 +2522,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '29/10/2026 à 21:34';
+const BUILD_ID = '29/10/2026 à 21:56';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
