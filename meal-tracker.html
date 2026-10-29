@@ -1141,6 +1141,17 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .fform .stkb2{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px dashed var(--accent);border-radius:12px;margin:8px 0}
 .fform .stkb2 b{font-size:15px}.fform .stkb2 .s{font-size:12.5px;color:var(--mute)}
 .fform .stkb2 .lnk{margin:0;font-weight:650;color:var(--accent);white-space:nowrap;min-height:36px}
+
+.stk2{padding:12px 14px;border-top:1px solid var(--line)}.stk2:first-of-type{border-top:0}
+.stk2 .s2t{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.stk2 .s2n{font-weight:650;font-size:16px;line-height:1.2}
+.stk2 .s2b{font-weight:800;font-size:19px;white-space:nowrap}.stk2 .s2b small{font-size:13.5px;font-weight:600;color:var(--mute)}.stk2 .s2b.zero{color:var(--warn,#b0342f)}
+.stk2 .s2s{font-size:13px;color:var(--mute);margin-top:2px}
+.stk2 .s2h{font-size:12.5px;color:var(--mute);margin-top:6px;display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}.stk2 .s2h .neg{color:var(--warn,#b0342f);font-weight:650}.stk2 .s2h .ar{opacity:.6}
+.stk2 .s2a{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.stk2 .s2e{margin-top:10px;padding:10px;border:1px solid var(--accent);border-radius:12px;display:flex;flex-direction:column;gap:10px}
+.stk2 .s2e .qc{display:flex;align-items:center;gap:6px}.stk2 .s2r{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stk2 .s2r select{flex:1;max-width:220px}.stk2 .lnk.dng{color:var(--warn,#b0342f);font-weight:650;margin:0}
 </style>
 </head>
 <body>
@@ -2065,7 +2076,7 @@ function packTab(d) {
   return `${packSummary(d)}<div class="lbl">Formats d'achat <button type="button" class="hq" data-a="hq" title="Comment tu l'achètes : à l'unité ou en lot. Sert au stock (boutons « + ») et à la liste de courses. Pour un article seul, laisse le premier champ à 1.">?</button></div>
     <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip${d.defp === n ? ' dflt' : ''}"><button type="button" class="star${d.defp === n ? ' on' : ''}" data-a="packdef" data-n="${n}" aria-label="Format proposé en premier dans le stock" title="Format proposé en premier dans le stock">${d.defp === n ? '★' : '☆'}</button>${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="padd lotl"><input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="1" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'articles (1 = un seul)"><span class="u">×</span><input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 1,5'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew" aria-label="Taille d'un article">${unitSel(d, 'packnew')}<button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
-${d.unit === 'portion' || pk.length ? `<label for="ff-ulsel" style="margin-top:12px">${d.unit === 'portion' ? 'Nom de l\'unité' : 'Nom d\'un article'}</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom de l'unité">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(v === '' && d.unit !== 'portion' ? 'paquet (par défaut)' : l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">${d.unit === 'portion' ? 'Affiché dans le stock à la place de « part ».' : 'Sert à compter ce que tu as : « 9 bouteilles », « 4 pots »…'}</p>` : ''}
+${d.unit === 'portion' || pk.length ? `<label for="ff-ulsel" style="margin-top:12px">Nom d\'un article</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom d'un article">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(v === '' ? (d.unit === 'portion' ? 'part (par défaut)' : 'paquet (par défaut)') : l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">Sert à compter ce que tu as : « 9 bouteilles », « 4 pots »…</p>` : ''}
     ${stkBlock(d)}
     <div class="minbox"><div class="lbl">Alerte « À racheter » <button type="button" class="hq" data-a="hq" title="Sous le seuil, l'aliment apparaît dans « À racheter » (onglet Stock). « Remonter à » = jusqu'où racheter ; vide = jusqu'au seuil.">?</button></div>
       ${thrBox(d, 'min')}${fv(d, 'min') > 0 ? thrBox(d, 'max') : ''}</div>
@@ -2230,7 +2241,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 29/10/2026 à 21:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 29/10/2026 à 22:04 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2522,7 +2533,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '29/10/2026 à 21:56';
+const BUILD_ID = '29/10/2026 à 22:04';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -2947,8 +2958,9 @@ const shopStock = () => ui.shop.stock !== false;
 const haveTxt = (f, q) => f.unit === 'portion' ? `${qtxt(Math.round(q * 2) / 2)} ×` : `${qtxt(Math.round(q))} ${f.unit}`;
 const packSz = (f, n) => f.unit === 'portion' ? qtxt(n) : n >= 1000 ? `${nf(n / 1000, 2)} ${f.unit === 'g' ? 'kg' : 'l'}` : `${qtxt(n)} ${f.unit}`;
 const lotTxt = (f, l) => `lot de ${l.n} × ${packSz(f, l.s)}`;
-const packLbl = (f, n) => { const l = lotOf(f, n); return l ? lotTxt(f, l) : `paquet de ${packSz(f, n)}`; };
-const packTxt = (f, parts) => parts.map(([n, c]) => { const l = lotOf(f, n); return l ? `${c} lot${c > 1 ? 's' : ''} de ${l.n} × ${packSz(f, l.s)}` : `${c} paquet${c > 1 ? 's' : ''} de ${packSz(f, n)}`; }).join(' + ');
+const artN = (f, c) => f.ulbl && f.unit !== 'portion' ? (c > 1 ? f.ulbl : f.ulbl.replace(/[sx]$/, '')) : (c > 1 ? 'paquets' : 'paquet');
+const packLbl = (f, n) => { const l = lotOf(f, n); return l ? lotTxt(f, l) : `${artN(f, 1)} de ${packSz(f, n)}`; };
+const packTxt = (f, parts) => parts.map(([n, c]) => { const l = lotOf(f, n); return l ? `${c} lot${c > 1 ? 's' : ''} de ${l.n} × ${packSz(f, l.s)}` : `${c} ${artN(f, c)} de ${packSz(f, n)}`; }).join(' + ');
 function shopQty0(f, q) {
   if (f.unit === 'portion') { const r = Math.ceil(q * 2 - 1e-9) / 2; return `${String(r).replace('.', ',')} ×`; }
   const r = Math.ceil(q / 5 - 1e-9) * 5;
@@ -3716,14 +3728,33 @@ function viewStock() {
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
-    const f = x.f, pk = packsOf(f); let rem = x.have; const pcs = [];
+    const f = x.f, pk = packsOf(f), por = f.unit === 'portion', nm = f.ulbl || (por ? 'parts' : 'paquets'), sing = nm.replace(/[sx]$/, '');
+    const szf = v => por ? `${qtxt(Math.round(v * 100) / 100)} ${f.ulbl || 'part' + (v >= 2 ? 's' : '')}` : packSz(f, v);
+    const sizes = [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 0), isz = por ? 1 : sizes.length ? Math.min(...sizes) : 0;
+    let head = '', sub = '', zero = x.have <= 0.05;
+    if (por) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${esc(n >= 2 || n === 0 ? nm : sing)}</small>`; }
+    else if (isz > 0) {
+      const full = Math.floor(x.have / isz + 1e-9);
+      if (full >= 1) head = `${full} <small>${esc(full >= 2 ? nm : sing)}</small>`;
+      else if (x.have > 0.05) { head = `${esc(packSz(f, x.have))}`.replace(/^(\S+) (.*)$/, '$1 <small>$2</small>'); sub = `reste d'un ${esc(sing)} de ${esc(packSz(f, isz))}`; }
+      else head = `0 <small>${esc(nm)}</small>`;
+    } else head = esc(packSz(f, Math.max(0, x.have))).replace(/^(\S+) (.*)$/, '$1 <small>$2</small>');
+    let rem = x.have; const pcs = [];
     for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; } }
-    if (f.lots) for (const s of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / s + 1e-9); if (c >= 1 && !pk.includes(s)) { pcs.push(`${c} paquet${c > 1 ? 's' : ''} de ${esc(packSz(f, s))}`); rem -= c * s; } }
-    const rest = rem, nP = pcs.length, parts = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '', nP >= 1 ? `<span class="stp">≈ ${pcs.join(' + ')}${rest > 0.05 ? ` + ${qtxt(Math.round(rest * 10) / 10)}${f.unit === 'portion' ? '' : ' ' + f.unit}` : ''}</span>` : '', x.ate > 0.5 || x.reg > 0.5 ? `<span class="stc" title="Dernier comptage">compté ${esc(haveTxt(f, x.q))} <em>le ${esc(fmtDM(x.asof))}</em></span>` : '', x.reg > 0.05 ? `<span class="ste" title="Retiré automatiquement">−${esc(haveTxt(f, x.reg))} usage régulier <em>(${esc(qtxt(f.use.q))} / ${USE_LBL[f.use.per]})</em></span>` : '', x.ate > 0.5 ? `<span class="ste" title="Mangé depuis le comptage">−${esc(haveTxt(f, x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` <em>(${x.ate - x.ateO > 0.05 ? esc(haveTxt(f, x.ate - x.ateO)) + ' toi, ' : ''}${esc(haveTxt(f, x.ateO))} ${esc(remote?.name || 'l\'autre')})</em>` : ''}</span>` : '', shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean), note = parts.length ? `<small class="stm">${parts.join('')}</small>` : '';
-    return `<div class="stk"><div class="stn"><b>${esc(f.name)}</b>${note}${pk.length ? `<div class="pkb">${(f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk).map(n => `<button class="btn sm" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}</div>` : ''}</div>
-      <div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>
-      <select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select>
-      <button class="x stkx" data-a="stkdel" data-id="${x.id}" aria-label="Retirer du stock" title="Retirer du stock">${icon('x')}</button></div>`;
+    if (f.lots) for (const sz of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / sz + 1e-9); if (c >= 1 && !pk.includes(sz)) { pcs.push(`${c} ${c > 1 ? esc(nm) : esc(sing)} de ${esc(packSz(f, sz))}`); rem -= c * sz; } }
+    const full = isz > 0 ? Math.floor(x.have / isz + 1e-9) : 0, detail = pcs.length > 1 || (pcs.length === 1 && !(pk.length <= 1 && !f.lots));
+    if (full >= 1 && !por && (detail || rem > 0.05)) sub = `${detail ? 'dont ' + pcs.join(' + ') : ''}${rem > 0.05 ? `${detail ? ' ' : ''}+ un reste de ${esc(packSz(f, Math.round(rem * 10) / 10))}` : ''} · ${esc(packSz(f, x.have))}`;
+    else if (por && pcs.length && (pcs.length > 1 || pk.length)) sub = `dont ${pcs.join(' + ')}`;
+    const hist = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '',
+      (x.ate > 0.5 || x.reg > 0.05) ? `<span>${esc(szf(x.q))} le ${esc(fmtDM(x.asof))}</span><span class="ar">→</span>` : '',
+      x.reg > 0.05 ? `<span class="neg" title="Retiré automatiquement">−${esc(szf(x.reg))} usage régulier (${esc(szf(f.use.q))} / ${USE_LBL[f.use.per]})</span>` : '',
+      x.ate > 0.5 ? `<span class="neg" title="Mangé depuis le comptage">−${esc(szf(x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` (${x.ate - x.ateO > 0.05 ? esc(szf(x.ate - x.ateO)) + ' toi, ' : ''}${esc(szf(x.ateO))} ${esc(remote?.name || 'l\'autre')})` : ''}</span>` : '',
+      shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean).join(' ');
+    const op = !!(ui.stock.edit && ui.stock.edit[x.id]), pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk;
+    return `<div class="stk2"><div class="s2t"><b class="s2n">${esc(f.name)}</b><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub ? `<div class="s2s">${sub}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
+      <div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}<button class="btn sm" data-a="stkedit" data-id="${x.id}" aria-expanded="${op}">${op ? 'Fermer' : 'Modifier'}</button></div>
+      ${op ? `<div class="s2e"><div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>
+        <div class="s2r"><select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : ''}</div>`;
   };
   if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt);
   const flt = st.loc === 'eaten' || st.loc === 'old', fp = st.loc === 'old' ? oldF : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
@@ -3822,10 +3853,12 @@ Object.assign(actions, {
   stkloc: el => { ui.stock.loc = el.dataset.l; render(); },
   stkadd: el => {
     const id = el.dataset.id, f = foodMap.get(id); if (!f) return;
+    (ui.stock.edit ||= {})[id] = true;
     if (!S.stock.items[id]) stockSet(id, packsOf(f).length ? 0 : f.unit === 'portion' ? 1 : 100);
     ui.stock.q = ''; ui.stock.loc = 'all'; render();
     setTimeout(() => { const i = document.querySelector(`[data-fk="sq-${id}"]`); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); i.select(); } }, 0);
   },
+  stkedit: el => { const e = (ui.stock.edit ||= {}); e[el.dataset.id] = !e[el.dataset.id]; render(); },
   stkpack: el => { const id = el.dataset.id, f = foodMap.get(id), n = +el.dataset.n; if (f) { stockSet(id, stockHave(id) + n); toast(`+ ${packLbl(f, n)} · ${f.name}`, [{ a: 'gundo', l: 'Annuler' }], 3500); } },
   stkstep: el => { const id = el.dataset.id, f = foodMap.get(id); if (f) stockSet(id, stockHave(id) + stkStep(f) * +el.dataset.dir); },
   stkdel: el => { stockRemove(el.dataset.id); toast('Retiré du stock', [{ a: 'gundo', l: 'Annuler' }], 5000); },
