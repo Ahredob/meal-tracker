@@ -1192,6 +1192,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stk2 .s2c .cvi{width:56px;height:40px;text-align:center;font-size:19px;font-weight:800;padding:0 4px}
 
 .stkbd{font-size:13px;font-weight:700;color:var(--accent,#c2417b);white-space:nowrap}.stkb .stkbd{padding:0 6px}.s2a .stkbd{align-self:center;padding:0 4px}
+
+.stkall{margin:0 0 10px}
 </style>
 </head>
 <body>
@@ -2283,7 +2285,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 19:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 19:46 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2575,7 +2577,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 19:42';
+const BUILD_ID = '30/10/2026 à 19:46';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3820,18 +3822,18 @@ function viewStock() {
       shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean).join(' ');
     const op = !!(ui.stock.edit && ui.stock.edit[x.id]), pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk;
     return `<div class="stk2" id="stk-${x.id}"><div class="s2t">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub ? `<div class="s2s">${sub}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
-      <div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}<button class="btn sm" data-a="stkedit" data-id="${x.id}" aria-expanded="${op}">${op ? 'Fermer' : 'Modifier'}</button>${ui.stock.loc === 'soon' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm" data-a="stkcart" data-id="${x.id}" data-v="soon">+ Aux courses</button>`) : ''}</div>
+      <div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}<button class="btn sm" data-a="stkedit" data-id="${x.id}" aria-expanded="${op}">${op ? 'Fermer' : 'Modifier'}</button>${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">+ Aux courses</button>`) : ''}</div>
       ${op ? `<div class="s2e">${(!por || stkPor(f)) && stkFmts(f).length ? stkEditor(x) : `<div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>`}
         <div class="s2r"><select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : ''}</div>`;
   };
-  if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt, catOk);
-  const flt = ['eaten', 'old', 'soon'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
+  const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
   const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
     ${stkChips(all, st, cnt)}
-    ${body || (flt && all.length ? `<section class="card"><p style="padding:14px">${st.loc === 'old' ? 'Tout a été compté il y a moins de 4 semaines.' : st.loc === 'soon' ? 'Aucun produit n\'est presque fini : il ne reste de paquet entamé nulle part.' : 'Rien n\'a été mangé depuis tes derniers comptages.'}</p></section>` : `<section class="card"><p style="padding:14px">Ton stock est vide. Cherche un produit ci-dessus pour l'ajouter, avec sa quantité.</p></section>`)}</main>`;
+    ${(st.loc === 'soon' || st.loc === 'buy') && all.some(x => catOk(x) && fp(x) && !inCart(x.id)) ? `<div class="stkall"><button class="btn sm" data-a="stkallv" data-v="${st.loc}">Tout ajouter aux courses (${all.filter(x => catOk(x) && fp(x) && !inCart(x.id)).length})</button></div>` : ''}
+    ${body || (flt && all.length ? `<section class="card"><p style="padding:14px">${st.loc === 'old' ? 'Tout a été compté il y a moins de 4 semaines.' : st.loc === 'soon' ? 'Aucun produit n\'est presque fini : il ne reste de paquet entamé nulle part.' : st.loc === 'buy' ? 'Aucun produit n\'est à 0 dans ton stock.' : 'Rien n\'a été mangé depuis tes derniers comptages.'}</p></section>` : `<section class="card"><p style="padding:14px">Ton stock est vide. Cherche un produit ci-dessus pour l'ajouter, avec sa quantité.</p></section>`)}</main>`;
 }
 // ---- vue « À racheter » : produits à 0, on coche ce qu'on veut ajouter à la liste de courses ----
 const inCart = id => (S.meta.shopx || []).some(x => x.fid === id);
@@ -3855,18 +3857,7 @@ function stkBuyAll() {
   const out = Object.keys(items).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f);
   return out.filter(stkLow).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
 }
-const buySug = x => { const f = x.f, pk = packsOf(f), tg = f.max > f.min ? f.max : f.min; if (x.virtual) return tg; if (f.min > 0 && x.have > 0.05) return Math.round((tg - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
-function stockBuyView(all, st, resHtml, cnt, catOk = () => true) {
-  const xs = stkBuyAll().filter(catOk); st.sel ||= {}; st.rq ||= {};
-  const chips = stkChips(all, st, cnt);
-    const row = x => { const f = x.f, inc = inCart(x.id), q = st.rq[x.id] ?? buySug(x);
-    return `<div class="stkb ${inc ? 'inc' : ''}">${inc ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm pri stkbadd1" data-a="stkcart" data-id="${x.id}" data-v="buy">Ajouter</button>`}
-      <div class="stkbn"><b>${esc(f.name)}</b><small>${inc ? 'déjà dans les courses' : x.virtual ? `pas dans ton stock · minimum ${esc(haveTxt(f, f.min))}` : x.have > 0.05 ? `sous ton minimum : ${esc(haveTxt(f, x.have))} sur ${esc(haveTxt(f, f.min))}` : x.ate > 0.05 ? `plus en stock · ${esc(haveTxt(f, x.q))} comptés le ${esc(fmtDM(x.asof))}` : 'plus en stock'}</small></div>
-      <div class="qc"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(q * 100) / 100)}" data-i="stkbq" data-id="${x.id}" aria-label="Quantité à racheter"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${f.unit === 'portion' ? 'part' : esc(f.unit)}</span></div></div>`; };
-  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
-    <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}${chips}
-    ${xs.length ? `<section class="card stkbuy"><div class="stkbh"><b>Vides</b>${xs.some(x => !inCart(x.id)) ? '<button class="lnk" data-a="stkball">Tout ajouter</button>' : ''}</div><p class="mini" style="padding:0 14px 6px">Ajoute les produits à la liste de courses un par un, ou tous d'un coup.</p>${xs.map(row).join('')}</section>` : `<section class="card"><p style="padding:14px">Aucun produit n'est à 0 dans ton stock.</p></section>`}</main>`;
-}
+const buySug = x => { const f = x.f, pk = packsOf(f), tg = f.max > f.min ? f.max : f.min; if (x.virtual) return tg; if (f.min > 0) return Math.round((tg - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
 function rangeStock(ov, clearX) {
   const bought = Object.entries(ov).filter(([, v]) => v > 0).map(([id, buy]) => ({ id, have: stockHave(id), buy }));
   if (!bought.length && !clearX) { toast('Rien à ajouter au stock'); return; }
@@ -3922,8 +3913,8 @@ Object.assign(actions, {
   rgstep: el => { const r = ui.modal.rows[+el.dataset.r], n = el.dataset.s; r.counts[n] = Math.max(0, (r.counts[n] || 0) + +el.dataset.d); renderModal(); },
   rgdo: () => { const m = ui.modal, ov = {}; for (const r of m.rows) if (r.on) ov[r.id] = r.counts ? Object.entries(r.counts).reduce((t, [n, c]) => t + n * c, 0) : r.buy; const cx = m.clearX; closeModal(); rangeStock(ov, cx); },
   stkbstep: el => { const id = el.dataset.id, x = stkBuyAll().find(y => y.id === id), f = foodMap.get(id); if (!f || !x) return; const st = ui.stock; st.rq ||= {}; const cur = st.rq[id] ?? buySug(x); st.rq[id] = Math.max(stkStep(f) / (f.unit === 'portion' ? 1 : 1), Math.round((cur + stkStep(f) * +el.dataset.dir) * 100) / 100); render(); },
-  stkball: () => { const xs = stkBuyAll().filter(x => !inCart(x.id)); if (!xs.length) return; stkCartAdd(xs.map(x => [x, ui.stock.rq?.[x.id] ?? buySug(x)])); },
-  stkcart: el => { const id = el.dataset.id, x = { id, f: foodMap.get(id), ...stockMap().get(id) }; if (!x.f || inCart(id)) return; stkCartAdd([[x, el.dataset.v === 'soon' ? soonSug(x) : (ui.stock.rq?.[id] ?? buySug(x))]]); },
+  stkallv: el => { const v = el.dataset.v, st = ui.stock, all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...stockMap().get(id) })).filter(x => x.f && (!st.cat || x.f.cat === st.cat) && !inCart(x.id) && (v === 'soon' ? stkSoon(x) : x.have <= 0.05)); if (!all.length) return; stkCartAdd(all.map(x => [x, v === 'soon' ? soonSug(x) : buySug(x)])); },
+  stkcart: el => { const id = el.dataset.id, x = { id, f: foodMap.get(id), ...stockMap().get(id) }; if (!x.f || inCart(id)) return; stkCartAdd([[x, el.dataset.v === 'soon' ? soonSug(x) : buySug(x)]]); },
   stkloc: el => { ui.stock.loc = el.dataset.l; render(); },
   stkcatopen: () => { ui.stock.catOpen = !ui.stock.catOpen; render(); },
   stkcat: el => { ui.stock.cat = ui.stock.cat === el.dataset.k ? '' : el.dataset.k; render(); },
