@@ -2281,7 +2281,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 12:54 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 13:04 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2573,7 +2573,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 12:54';
+const BUILD_ID = '30/10/2026 à 13:04';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3778,7 +3778,13 @@ function stkHeadSub(x) {
     const szf = v => por ? `${qtxt(Math.round(v * 100) / 100)} ${f.ulbl || 'part' + (v >= 2 ? 's' : '')}` : packSz(f, v);
     const sizes = [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 0), isz = por ? 1 : sizes.length ? Math.min(...sizes) : 0;
     let head = '', sub = '', zero = x.have <= 0.05;
-    if (por) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${esc(n >= 2 || n === 0 ? nm : sing)}</small>`; }
+    const pszs = por && !f.ulbl ? [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 1) : [], psz = pszs.length ? Math.min(...pszs) : 0;   // portions comptées en paquets (« paquets de 12 »)
+    if (psz) {
+      const full = Math.floor(x.have / psz + 1e-9);
+      if (full >= 1) head = `${full} <small>${full >= 2 ? 'paquets' : 'paquet'}</small>`;
+      else if (x.have > 0.05) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${n >= 2 ? 'parts' : 'part'}</small>`; sub = `reste d'un paquet de ${qtxt(psz)}`; }
+      else head = `0 <small>paquet</small>`;
+    } else if (por) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${esc(n >= 2 || n === 0 ? nm : sing)}</small>`; }
     else if (isz > 0) {
       const full = Math.floor(x.have / isz + 1e-9);
       if (full >= 1) head = `${full} <small>${esc(full >= 2 ? nm : sing)}</small>`;
@@ -3789,7 +3795,9 @@ function stkHeadSub(x) {
     for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; } }
     if (f.lots) for (const sz of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / sz + 1e-9); if (c >= 1 && !pk.includes(sz)) { pcs.push(`${c} ${c > 1 ? esc(nm) : esc(sing)} de ${esc(packSz(f, sz))}`); rem -= c * sz; } }
     const full = isz > 0 ? Math.floor(x.have / isz + 1e-9) : 0, detail = pcs.length > 1 || (pcs.length === 1 && !(pk.length <= 1 && !f.lots));
-    if (full >= 1 && !por && (detail || rem > 0.05)) sub = `${detail ? 'dont ' + pcs.join(' + ') : ''}${rem > 0.05 ? `${detail ? ' ' : ''}+ un reste de ${esc(packSz(f, Math.round(rem * 10) / 10))}` : ''} · ${esc(packSz(f, x.have))}`;
+    const rest = r => psz ? `${qtxt(Math.round(r * 100) / 100)} ${r >= 2 ? 'parts' : 'part'} sur ${qtxt(psz)}` : `${esc(packSz(f, Math.round(r * 10) / 10))} sur ${esc(packSz(f, isz))}`;
+    if (psz) { const f1 = Math.floor(x.have / psz + 1e-9); if (f1 >= 1) sub = [pcs.length > 1 ? 'dont ' + pcs.join(' + ') : '', rem > 0.05 ? `+ 1 entamé : ${rest(rem)}` : ''].filter(Boolean).join(' '); }
+    else if (full >= 1 && !por && (detail || rem > 0.05)) sub = [detail ? 'dont ' + pcs.join(' + ') : '', rem > 0.05 ? `+ 1 entamé : ${rest(rem)}` : ''].filter(Boolean).join(' ');
     else if (por && pcs.length && (pcs.length > 1 || (pk.length && !(pcs.length === 1 && pk.length === 1 && pk[0] === 1)))) sub = `dont ${pcs.join(' + ')}`;
   return { head, sub, zero, szf };
 }
