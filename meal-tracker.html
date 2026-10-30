@@ -2279,7 +2279,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 12:48 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 12:49 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2374,7 +2374,7 @@ function trySaveFood() {
 }
 const actions = {
   navmore: () => { ui.moreOpen = !ui.moreOpen; render(); },
-  nav: el => { ui.moreOpen = false; if (el.dataset.v === 'recettes' && ui.view !== 'recettes' && ui.view !== 'modeles' && ui.lastRec === 'modeles') el = { dataset: { v: 'modeles' } }; if (el.dataset.v === 'semaine' && ui.view !== 'semaine') ui.wdate = ui.date; ui.view = el.dataset.v; render(); window.scrollTo(0, 0); },
+  nav: el => { ui.moreOpen = false; if (el.dataset.v === 'recettes' && ui.view !== 'recettes' && ui.view !== 'modeles' && ui.lastRec === 'modeles') el = { dataset: { v: 'modeles' } }; if (el.dataset.v === 'semaine' && ui.view !== 'semaine') ui.wdate = ui.date; const back = el.dataset.v === 'stock' && ui.stkRet && ui.view === 'aliments' ? ui.stkRet : null; if (!back && el.dataset.v !== 'aliments') ui.stkRet = null; ui.view = el.dataset.v; render(); if (back) { ui.stkRet = null; const y = back.y; window.scrollTo(0, y); setTimeout(() => window.scrollTo(0, y), 60); } else window.scrollTo(0, 0); },
   day: el => { ui.date = addDays(ui.date, +el.dataset.n); render(); },
   today: () => { ui.date = today(); render(); },
   weeklabel: () => openModal({ type: 'label' }),
@@ -2571,7 +2571,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 12:48';
+const BUILD_ID = '30/10/2026 à 12:49';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3915,7 +3915,7 @@ Object.assign(actions, {
   stkcnt: el => { const id = el.dataset.id, h = stockHave(id); stockSet(id, Math.max(0, h + (+el.dataset.dir) * (+el.dataset.n))); },
   stkuse: el => { const id = el.dataset.id; stockSet(id, Math.max(0, stockHave(id) - (+el.dataset.n))); },
   stkrb: el => { (ui.stock.rb ||= {})[el.dataset.id] = el.dataset.b === '1'; render(); },
-  stkfiche: el => { const id = el.dataset.id; actions.nav({ dataset: { v: 'aliments' } }); actions.editfood({ dataset: { id } }, { preventDefault() { } }); if (ui.form && ui.form.id === id) { ui.form.tab = 'achat'; render(); } },
+  stkfiche: el => { const id = el.dataset.id, y = window.scrollY; actions.nav({ dataset: { v: 'aliments' } }); actions.editfood({ dataset: { id } }, { preventDefault() { } }); if (ui.form && ui.form.id === id) { ui.form.tab = 'achat'; render(); } ui.stkRet = { y }; },
   stkedit: el => { const e = (ui.stock.edit ||= {}); e[el.dataset.id] = !e[el.dataset.id]; render(); },
   stkpack: el => { const id = el.dataset.id, f = foodMap.get(id), n = +el.dataset.n; if (f) { stockSet(id, stockHave(id) + n); toast(`+ ${packLbl(f, n)} · ${f.name}`, [{ a: 'gundo', l: 'Annuler' }], 3500); } },
   stkstep: el => { const id = el.dataset.id, f = foodMap.get(id); if (f) stockSet(id, stockHave(id) + stkStep(f) * +el.dataset.dir); },
