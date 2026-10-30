@@ -1647,10 +1647,10 @@ function shoppingRecipes(dates, withStock = true) {
 function shoppingList(dates, expand = true, withStock = true) {
   const agg = shopAgg(dates);
   if (expand) for (const r of shoppingRecipes(dates, withStock)) { agg.delete(r.f.id); if (r.batches > 0) for (const [iid, iq] of r.f.recipe.items) if (iq > 0) agg.set(iid, (agg.get(iid) || 0) + iq * r.batches); }
-  // consommation régulière : si le stock prévu en fin de période passe sous le minimum, on ajoute de quoi remonter à la cible
+  // stock minimum (et consommation régulière si elle existe) : si le stock prévu en fin de période passe sous le minimum, on ajoute de quoi remonter à la cible
   const reg = new Map(), last = typeof shopHorizon === 'function' ? shopHorizon(dates) : (dates.length ? dates.reduce((m, d) => d > m ? d : m, dates[0]) : null);
   if (last) for (const f of S.foods) {
-    const r = useRate(f); if (!(r > 0) || !(f.min > 0) || f.hidden || f.recipe) continue;
+    const r = useRate(f); if (!(f.min > 0) || f.hidden || f.recipe) continue;   // tout aliment avec un stock minimum, consommation régulière ou non
     const have = withStock ? stockHave(f.id) : 0, meals = agg.get(f.id) || 0, dd = Math.max(0, diffDays(last, today())), proj = have - r * dd - meals, tg = f.max > f.min ? f.max : f.min;
     if (proj < f.min - 1e-9) { agg.set(f.id, meals + r * dd + tg); reg.set(f.id, { proj: Math.max(0, proj), min: f.min }); }
   }
@@ -2281,7 +2281,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 13:14 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 19:02 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2573,7 +2573,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 13:14';
+const BUILD_ID = '30/10/2026 à 19:02';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
