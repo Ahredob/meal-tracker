@@ -1170,6 +1170,9 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 
 .stk2 .s2lk{background:none;border:0;padding:0;text-align:left;color:var(--ink);font:inherit;font-weight:650;font-size:16px;line-height:1.2;cursor:pointer}
 .stk2 .s2lk span{color:var(--accent);font-weight:700;margin-left:2px}.stk2 .s2lk:hover{text-decoration:underline}
+
+.fform .stkb2 .sm{font-weight:600;color:var(--mute);font-size:13px}
+.fform .lotl input#ff-packnew{flex:1 1 90px;min-width:90px}.fform .lotl .u{flex:none;max-width:100%}.fform .lotl .btn{flex:none}
 </style>
 </head>
 <body>
@@ -1952,7 +1955,8 @@ function unitSel(d, k, suffix = '') {
   return `<div class="u2" role="group" aria-label="Unité"><button type="button" class="${big ? '' : 'on'}" data-a="fu" data-k="${k}" data-b="0">${bp[0]}</button><button type="button" class="${big ? 'on' : ''}" data-a="fu" data-k="${k}" data-b="1">${bp[1]}</button></div>${suffix ? `<span class="u">${suffix.trim()}</span>` : ''}`;
 }
 // seuil exprimé en nombre de formats d'achat : d.fm[k] = { n: taille du format, c: nombre }
-const packLbl2 = (d, n) => { const l = d.lots && d.lots[String(n)]; return d.unit === 'portion' ? `${qtxt(n)} ${d.ulbl || 'parts'}` : l ? `lot de ${l.n} × ${packSz({ unit: d.unit }, l.s)}` : packSz({ unit: d.unit }, n); };
+const ulN = (d, n) => { const nm = d.ulbl || 'parts'; return n >= 2 ? nm : nm.replace(/[sx]$/, ''); };
+const packLbl2 = (d, n) => { const l = d.lots && d.lots[String(n)]; return d.unit === 'portion' ? `${qtxt(n)} ${ulN(d, n)}` : l ? `lot de ${l.n} × ${packSz({ unit: d.unit }, l.s)}` : packSz({ unit: d.unit }, n); };
 const fmTot = (d, k) => { const m = d.fm && d.fm[k]; return m && num(m.c) > 0 ? num(m.c) * m.n : 0; };
 function fmInit(o) {
   if (o.recipe) return o; const pk = getPacks(o); if (!pk.length) return o;
@@ -2054,7 +2058,7 @@ function fmField(d, k) {
   const opts = pk.map(n => `<option value="${n}" ${n === m.n ? 'selected' : ''}>${esc(packLbl2(d, n))}</option>`).join('') + '<option value="__free">Quantité libre…</option>';
   return `<div class="fmbox"><div class="fmrow"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="-1" aria-label="Moins">−</button><input id="ff-${k}-c" type="text" inputmode="decimal" placeholder="0" value="${esc(m.c || '')}" data-i="fmc" data-k="${k}" data-fk="ff-${k}-c" aria-label="Nombre de formats"><button type="button" class="stp" data-a="fmstep" data-k="${k}" data-d="1" aria-label="Plus">+</button><span class="fmtot" id="fmt-${k}">${fmTotTxt(d, k)}</span></div><select class="fmsel" data-i="fmsel" data-k="${k}" aria-label="Format">${opts}</select></div>`;
 }
-const fmTotTxt = (d, k) => { const t = fmTot(d, k), sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, x); if (t > 0) return `= <b>${esc(sz(t))}</b>`; if (k === 'max') { const mi = fv(d, 'min'); return mi > 0 ? `<span class="mini">vide = remonter à ${esc(sz(mi))}</span>` : ''; } return ''; };
+const fmTotTxt = (d, k) => { const t = fmTot(d, k), sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + ulN(d, x) : packSz({ unit: d.unit }, x); if (t > 0) return `= <b>${esc(sz(t))}</b>`; if (k === 'max') { const mi = fv(d, 'min'); return mi > 0 ? `<span class="mini">vide = remonter à ${esc(sz(mi))}</span>` : ''; } return ''; };
 // seuil « À racheter » : résumé + Modifier
 function thrSub(d, k) {
   const v = fv(d, k); if (!(v > 0)) return ''; const m = d.fm && d.fm[k], pk = getPacks(d);
@@ -2063,7 +2067,7 @@ function thrSub(d, k) {
   return pl && pl.parts.length ? '≈ ' + packTxt(fu, pl.parts) : '';
 }
 function thrBox(d, k) {
-  const sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, x), v = fv(d, k), ed = !!(d.ed && d.ed[k]);
+  const sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + ulN(d, x) : packSz({ unit: d.unit }, x), v = fv(d, k), ed = !!(d.ed && d.ed[k]);
   const lab = k === 'min' ? 'Alerte sous' : 'Remonter à';
   if (ed) {
     const field = fmField(d, k) || `<div class="padd"><input id="ff-${k}" type="text" inputmode="decimal" placeholder="${k === 'max' ? '= le seuil' : d.unit === 'portion' ? 'ex. 6' : 'ex. 500'}" value="${esc(d[k] || '')}" data-i="ff" data-k="${k}" data-fk="ff-${k}" aria-label="${lab}">${unitSel(d, k)}</div>`;
@@ -2073,7 +2077,7 @@ function thrBox(d, k) {
   return `<div class="thr"><div><b>${main}</b>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div><button type="button" class="lnk" data-a="thred" data-k="${k}">${v > 0 || k === 'max' ? 'Modifier' : 'Définir'}</button></div>`;
 }
 function packSummary(d) {
-  const pk = getPacks(d), sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + (d.ulbl || 'parts') : packSz({ unit: d.unit }, x), parts = [];
+  const pk = getPacks(d), sz = x => d.unit === 'portion' ? qtxt(x) + ' ' + ulN(d, x) : packSz({ unit: d.unit }, x), parts = [];
   if (pk.length) { const pn = [...pk].reverse().find(n => d.lots && d.lots[String(n)]) || pk[pk.length - 1], t = packLbl2(d, pn); parts.push(t.charAt(0).toUpperCase() + t.slice(1) + (pk.length > 1 ? ` (+${pk.length - 1})` : '')); }
   if (fv(d, 'min') > 0 && !d.recipe) parts.push('alerte sous ' + sz(fv(d, 'min')));
   if (d.usOn && fv(d, 'usq') > 0) parts.push('consomme ' + sz(fv(d, 'usq')) + ' par ' + USE_LBL[d.usper]);
@@ -2083,16 +2087,16 @@ function stkBlock(d) {
   if (!d.id || d.recipe) return '';
   const it = S.stock?.items?.[d.id], f = foodMap.get(d.id); if (!f) return '';
   if (!it) return `<div class="lbl" style="margin-top:14px">Stock</div><div class="stkb2"><div><b>Pas dans ton stock</b><div class="s">${d.usOn ? 'la consommation régulière a besoin d\'un premier comptage' : 'ajoute-le pour suivre ce qu\'il te reste'}</div></div><button type="button" class="lnk" data-a="foodcount" data-id="${d.id}">Ajouter</button></div>`;
-  const have = stockHave(d.id), days = diffDays(today(), it.asof), when = days < 1 ? 'compté aujourd\'hui' : days < 14 ? `compté il y a ${days} j` : `compté il y a ${Math.round(days / 7)} sem.`;
-  const sz = f.unit === 'portion' ? `${qtxt(Math.round(have * 2) / 2)} ${f.ulbl || 'parts'}` : packSz(f, Math.max(0, have));
-  return `<div class="lbl" style="margin-top:14px">Stock</div><div class="stkb2"><div><b>${esc(sz)} en stock</b><div class="s">${when}</div></div><button type="button" class="lnk" data-a="foodcount" data-id="${d.id}">Compter</button></div>`;
+  const map = stockMap(), x = { id: d.id, f, ...map.get(d.id) }, hs = stkHeadSub(x), days = diffDays(today(), it.asof), when = days < 1 ? 'compté aujourd\'hui' : days < 14 ? `compté il y a ${days} j` : `compté il y a ${Math.round(days / 7)} sem.`;
+  const total = f.unit === 'portion' ? '' : packSz(f, Math.max(0, x.have));
+  return `<div class="lbl" style="margin-top:14px">Stock</div><div class="stkb2"><div><b>${hs.head.replace(/<small>/g, '<span class="sm">').replace(/<\/small>/g, '</span>')} en stock</b>${hs.sub ? `<div class="s">${hs.sub}</div>` : ''}<div class="s">${when}${hs.sub || !total ? '' : ' · ' + esc(total)}</div></div><button type="button" class="lnk" data-a="foodcount" data-id="${d.id}">Compter</button></div>`;
 }
 function packTab(d) {
   const pk = getPacks(d), fu = { unit: d.unit }, u = d.unit === 'portion' ? (d.ulbl || 'parts') : d.unit, lt = n => d.lots && d.lots[String(n)];
   const quick = d.unit === 'portion' ? [4, 6, 10, 12].filter(n => !pk.includes(n)) : [], lot = num(d.packn) > 1;
   const tot = lot && num(d.packn) > 1 && fv(d, 'packnew') > 0 ? `<p class="mini">= lot de <b>${esc(packSz(fu, Math.round(num(d.packn)) * fv(d, 'packnew')))}</b></p>` : '';
   return `${packSummary(d)}<div class="lbl">Formats d'achat <button type="button" class="hq" data-a="hq" title="Comment tu l'achètes : à l'unité ou en lot. Sert au stock (boutons « + ») et à la liste de courses. Pour un article seul, laisse le premier champ à 1.">?</button></div>
-    <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip${d.defp === n ? ' dflt' : ''}"><button type="button" class="star${d.defp === n ? ' on' : ''}" data-a="packdef" data-n="${n}" aria-label="Format proposé en premier dans le stock" title="Format proposé en premier dans le stock">${d.defp === n ? '★' : '☆'}</button>${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' parts' : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
+    <div class="pchips">${pk.length ? pk.map(n => { const l = lt(n); return `<span class="pchip${d.defp === n ? ' dflt' : ''}"><button type="button" class="star${d.defp === n ? ' on' : ''}" data-a="packdef" data-n="${n}" aria-label="Format proposé en premier dans le stock" title="Format proposé en premier dans le stock">${d.defp === n ? '★' : '☆'}</button>${l ? `Lot de ${l.n} × ${esc(packSz(fu, l.s))} <em>· ${esc(packSz(fu, n))}</em>` : esc(packSz(fu, n)) + (d.unit === 'portion' ? ' ' + ulN(d, n) : '')}<button data-a="packdel" data-n="${n}" aria-label="Retirer ce format" title="Retirer">×</button></span>`; }).join('') : '<span class="mini">Aucun format pour le moment.</span>'}</div>
     <div class="padd lotl"><input id="ff-packn" class="pn" type="text" inputmode="numeric" placeholder="1" value="${esc(d.packn || '')}" data-i="ff" data-k="packn" data-fk="ff-packn" aria-label="Nombre d'articles (1 = un seul)"><span class="u">×</span><input id="ff-packnew" type="text" inputmode="decimal" placeholder="${d.unit === 'portion' ? 'ex. 6' : 'ex. 1,5'}" value="${esc(d.packnew || '')}" data-i="ff" data-k="packnew" data-fk="ff-packnew" aria-label="Taille d'un article">${unitSel(d, 'packnew')}<button class="btn sm" data-a="packadd">Ajouter</button></div>${tot}
 ${d.unit === 'portion' || pk.length ? `<label for="ff-ulsel" style="margin-top:12px">Nom d\'un article</label><div class="padd"><select id="ff-ulsel" data-i="ulsel" aria-label="Nom d'un article">${ulList(d.ulnew ? '' : d.ulbl).map(([v, l]) => `<option value="${esc(v)}" ${(d.ulnew ? '__new' : d.ulbl || '') === v ? 'selected' : ''}>${esc(v === '' ? (d.unit === 'portion' ? 'part (par défaut)' : 'paquet (par défaut)') : l)}</option>`).join('')}</select>${d.ulnew ? `<input id="ff-ulbl" type="text" maxlength="20" placeholder="ex. rouleaux" value="${esc(d.ulbl || '')}" data-i="ff" data-k="ulbl" data-fk="ff-ulbl">` : ''}</div><p class="mini">Sert à compter ce que tu as : « 9 bouteilles », « 4 pots »…</p>` : ''}
     ${stkBlock(d)}
@@ -2259,7 +2263,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 07:59 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 08:07 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2551,7 +2555,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 07:59';
+const BUILD_ID = '30/10/2026 à 08:07';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3751,13 +3755,7 @@ function stkEditor(x) {
   return `${rows}<div class="s2c"><span class="lb">Reste entamé</span><div class="rst"><input class="qin" type="text" inputmode="decimal" value="${rv}" data-i="stkrest" data-id="${x.id}" data-fk="sr-${x.id}" aria-label="Reste entamé"><span class="u3"><button class="${big ? '' : 'on'}" data-a="stkrb" data-id="${x.id}" data-b="0">${pair[0]}</button><button class="${big ? 'on' : ''}" data-a="stkrb" data-id="${x.id}" data-b="1">${pair[1]}</button></span></div></div>
     <div class="s2tt"><span>Ça fait</span><span><b>${esc(packSz(f, Math.max(0, x.have)))}</b></span></div>${isz ? `<div class="s2q"><button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${isz}">J'en ai utilisé 1 (− ${esc(packSz(f, isz))})</button></div>` : ''}`;
 }
-function viewStock() {
-  const st = ui.stock, map = stockMap(), words = qwords(st.q);
-  const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
-  const eatenF = x => x.ate > 0.05, oldF = x => diffDays(today(), x.asof) >= 28, cnt = loc => loc === 'buy' ? stkBuyAll().length : all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : x.loc === loc)).length;
-  const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
-  const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
-  const row = x => {
+function stkHeadSub(x) {
     const f = x.f, pk = packsOf(f), por = f.unit === 'portion', nm = f.ulbl || (por ? 'parts' : 'paquets'), sing = nm.replace(/[sx]$/, '');
     const szf = v => por ? `${qtxt(Math.round(v * 100) / 100)} ${f.ulbl || 'part' + (v >= 2 ? 's' : '')}` : packSz(f, v);
     const sizes = [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 0), isz = por ? 1 : sizes.length ? Math.min(...sizes) : 0;
@@ -3775,13 +3773,23 @@ function viewStock() {
     const full = isz > 0 ? Math.floor(x.have / isz + 1e-9) : 0, detail = pcs.length > 1 || (pcs.length === 1 && !(pk.length <= 1 && !f.lots));
     if (full >= 1 && !por && (detail || rem > 0.05)) sub = `${detail ? 'dont ' + pcs.join(' + ') : ''}${rem > 0.05 ? `${detail ? ' ' : ''}+ un reste de ${esc(packSz(f, Math.round(rem * 10) / 10))}` : ''} · ${esc(packSz(f, x.have))}`;
     else if (por && pcs.length && (pcs.length > 1 || (pk.length && !(pcs.length === 1 && pk.length === 1 && pk[0] === 1)))) sub = `dont ${pcs.join(' + ')}`;
+  return { head, sub, zero, szf };
+}
+function viewStock() {
+  const st = ui.stock, map = stockMap(), words = qwords(st.q);
+  const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
+  const eatenF = x => x.ate > 0.05, oldF = x => diffDays(today(), x.asof) >= 28, cnt = loc => loc === 'buy' ? stkBuyAll().length : all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : x.loc === loc)).length;
+  const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
+  const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
+  const row = x => {
+    const f = x.f, pk = packsOf(f), por = f.unit === 'portion', nm = f.ulbl || (por ? 'parts' : 'paquets'), { head, sub, zero, szf } = stkHeadSub(x);
     const hist = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '',
       (x.ate > 0.5 || x.reg > 0.05) ? `<span>${esc(szf(x.q))} le ${esc(fmtDM(x.asof))}</span><span class="ar">→</span>` : '',
       x.reg > 0.05 ? `<span class="neg" title="Retiré automatiquement">−${esc(szf(x.reg))} usage régulier (${esc(szf(f.use.q))} / ${USE_LBL[f.use.per]})</span>` : '',
       x.ate > 0.5 ? `<span class="neg" title="Mangé depuis le comptage">−${esc(szf(x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` (${x.ate - x.ateO > 0.05 ? esc(szf(x.ate - x.ateO)) + ' toi, ' : ''}${esc(szf(x.ateO))} ${esc(remote?.name || 'l\'autre')})` : ''}</span>` : '',
       shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean).join(' ');
     const op = !!(ui.stock.edit && ui.stock.edit[x.id]), pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk;
-    return `<div class="stk2"><div class="s2t">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub ? `<div class="s2s">${sub}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
+    return `<div class="stk2" id="stk-${x.id}"><div class="s2t">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub ? `<div class="s2s">${sub}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
       <div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}<button class="btn sm" data-a="stkedit" data-id="${x.id}" aria-expanded="${op}">${op ? 'Fermer' : 'Modifier'}</button></div>
       ${op ? `<div class="s2e">${!por && stkFmts(f).length ? stkEditor(x) : `<div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>`}
         <div class="s2r"><select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : ''}</div>`;
@@ -3886,7 +3894,7 @@ Object.assign(actions, {
     (ui.stock.edit ||= {})[id] = true;
     if (!S.stock.items[id]) stockSet(id, packsOf(f).length ? 0 : f.unit === 'portion' ? 1 : 100);
     ui.stock.q = ''; ui.stock.loc = 'all'; render();
-    setTimeout(() => { const i = document.querySelector(`[data-fk="sq-${id}"]`); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); i.select(); } }, 0);
+    setTimeout(() => { const i = document.querySelector(`[data-fk="sq-${id}"]`); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); i.select(); } else document.getElementById('stk-' + id)?.scrollIntoView({ block: 'center' }); }, 0);
   },
   stkcnt: el => { const id = el.dataset.id, h = stockHave(id); stockSet(id, Math.max(0, h + (+el.dataset.dir) * (+el.dataset.n))); },
   stkuse: el => { const id = el.dataset.id; stockSet(id, Math.max(0, stockHave(id) - (+el.dataset.n))); },
