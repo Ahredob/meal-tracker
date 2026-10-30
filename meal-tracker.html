@@ -2281,7 +2281,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 13:04 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 13:08 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2573,7 +2573,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 13:04';
+const BUILD_ID = '30/10/2026 à 13:08';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3762,16 +3762,17 @@ Object.assign(actions, { tplvar: el => { ui.tpl.vsel[el.dataset.k] = +el.dataset
 ui.stock = { q: '', loc: 'all' };
 const stkStep = f => f.unit === 'portion' ? 1 : 50;
 // formats comptables d'un aliment (tailles de lots, de paquets, d'articles), du plus grand au plus petit
+const stkPor = f => f.unit === 'portion' && !f.ulbl && [...packsOf(f), ...Object.values(f.lots || {}).map(l => l.s)].some(v => v > 1);   // portions comptées en paquets
 const stkFmts = f => [...new Set([...packsOf(f), ...Object.values(f.lots || {}).map(l => l.s)].filter(n => n > 0))].sort((a, b) => b - a);
 function stkDecomp(f, have) { let rem = Math.max(0, have); const counts = []; for (const n of stkFmts(f)) { const c = Math.floor(rem / n + 1e-9); counts.push([n, c]); rem -= c * n; } return { counts, rest: Math.max(0, Math.round(rem * 100) / 100) }; }
 const capF = w => w.charAt(0).toUpperCase() + w.slice(1);
 function stkEditor(x) {
-  const f = x.f, fm = stkFmts(f), { counts, rest } = stkDecomp(f, x.have), big = !!(ui.stock.rb && ui.stock.rb[x.id]) || (rest >= 1000 && !(ui.stock.rb && ui.stock.rb[x.id] === false)), pair = f.unit === 'g' ? ['g', 'kg'] : ['ml', 'l'], isz = fm.length ? fm[fm.length - 1] : 0;
+  const f = x.f, fm = stkFmts(f), { counts, rest } = stkDecomp(f, x.have), por = f.unit === 'portion', rb = ui.stock.rb && ui.stock.rb[x.id], big = !por && (!!rb || (rest >= 1000 && rb !== false)), pair = f.unit === 'g' ? ['g', 'kg'] : ['ml', 'l'], isz = fm.length ? fm[fm.length - 1] : 0, pu = n => por ? `${qtxt(n)} ${n >= 2 ? 'parts' : 'part'}` : packSz(f, n);
   const lab = n => { const l = lotOf(f, n); return l ? `Lots de ${l.n} × ${packSz(f, l.s)}` : `${capF(artN(f, 2))} de ${packSz(f, n)}`; };
   const rows = counts.map(([n, c]) => `<div class="s2c"><span class="lb">${esc(lab(n))}</span><div class="qc"><button class="qs" data-a="stkcnt" data-id="${x.id}" data-n="${n}" data-dir="-1" aria-label="Moins">−</button><input class="qin cvi" type="text" inputmode="numeric" value="${c}" data-c="${c}" data-i="stkcin" data-id="${x.id}" data-n="${n}" data-fk="sc-${x.id}-${n}" aria-label="Nombre de ${esc(lab(n))}"><button class="qs" data-a="stkcnt" data-id="${x.id}" data-n="${n}" data-dir="1" aria-label="Plus">+</button></div></div>`).join('');
   const rv = rest > 0 ? qtxt(big ? Math.round(rest) / 1000 : Math.round(rest * 100) / 100) : '0';
-  return `${rows}<div class="s2c"><span class="lb">Reste entamé</span><div class="rst"><input class="qin" type="text" inputmode="decimal" value="${rv}" data-i="stkrest" data-id="${x.id}" data-fk="sr-${x.id}" aria-label="Reste entamé"><span class="u3"><button class="${big ? '' : 'on'}" data-a="stkrb" data-id="${x.id}" data-b="0">${pair[0]}</button><button class="${big ? 'on' : ''}" data-a="stkrb" data-id="${x.id}" data-b="1">${pair[1]}</button></span></div></div>
-    <div class="s2tt"><span>Ça fait</span><span><b>${esc(packSz(f, Math.max(0, x.have)))}</b></span></div>${isz ? `<div class="s2q"><button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${isz}">J'en ai utilisé 1 (− ${esc(packSz(f, isz))})</button></div>` : ''}`;
+  return `${rows}<div class="s2c"><span class="lb">Reste entamé</span><div class="rst"><input class="qin" type="text" inputmode="decimal" value="${rv}" data-i="stkrest" data-id="${x.id}" data-fk="sr-${x.id}" aria-label="Reste entamé">${por ? '<span class="u">parts</span>' : `<span class="u3"><button class="${big ? '' : 'on'}" data-a="stkrb" data-id="${x.id}" data-b="0">${pair[0]}</button><button class="${big ? 'on' : ''}" data-a="stkrb" data-id="${x.id}" data-b="1">${pair[1]}</button></span>`}</div></div>
+    <div class="s2tt"><span>Ça fait</span><span><b>${esc(pu(Math.max(0, x.have)))}</b></span></div>${isz ? `<div class="s2q"><button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${isz}">J'en ai utilisé 1 (− ${esc(pu(isz))})</button></div>` : ''}`;
 }
 function stkHeadSub(x) {
     const f = x.f, pk = packsOf(f), por = f.unit === 'portion', nm = f.ulbl || (por ? 'parts' : 'paquets'), sing = nm.replace(/[sx]$/, '');
@@ -3817,7 +3818,7 @@ function viewStock() {
     const op = !!(ui.stock.edit && ui.stock.edit[x.id]), pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk;
     return `<div class="stk2" id="stk-${x.id}"><div class="s2t">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub ? `<div class="s2s">${sub}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
       <div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}<button class="btn sm" data-a="stkedit" data-id="${x.id}" aria-expanded="${op}">${op ? 'Fermer' : 'Modifier'}</button></div>
-      ${op ? `<div class="s2e">${!por && stkFmts(f).length ? stkEditor(x) : `<div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>`}
+      ${op ? `<div class="s2e">${(!por || stkPor(f)) && stkFmts(f).length ? stkEditor(x) : `<div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>`}
         <div class="s2r"><select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : ''}</div>`;
   };
   if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt);
@@ -3945,7 +3946,7 @@ extraChange = function (e) {
   const el = e.target, k = el.dataset?.i;
   if (k === 'stkcin') { const id = el.dataset.id, n = +el.dataset.n, c0 = +el.dataset.c, ok = /^\s*\d+\s*$/.test(el.value), c1 = ok ? Math.round(num(el.value)) : c0; if (c1 === c0) { el.value = c0; return true; } stockSet(id, Math.max(0, stockHave(id) + (c1 - c0) * n)); return true; }
   if (k === 'stqty') { stockSet(el.dataset.id, num(el.value)); return true; }
-  if (k === 'stkrest') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), rb = ui.stock.rb && ui.stock.rb[id], big = rb || (rb !== false && rest >= 1000); stockSet(id, Math.max(0, h - rest + num(el.value) * (big ? 1000 : 1))); return true; }
+  if (k === 'stkrest') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), rb = ui.stock.rb && ui.stock.rb[id], big = f.unit !== 'portion' && (rb || (rb !== false && rest >= 1000)); stockSet(id, Math.max(0, h - rest + num(el.value) * (big ? 1000 : 1))); return true; }
   if (k === 'stkbsel') { (ui.stock.sel ||= {})[el.dataset.id] = el.checked; render(); return true; }
   if (k === 'stloc') { stockLoc(el.dataset.id, el.value); return true; }
   return prevExtraChangeStk(e);
