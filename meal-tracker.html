@@ -2281,7 +2281,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 13:08 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 13:14 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2573,7 +2573,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 13:08';
+const BUILD_ID = '30/10/2026 à 13:14';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3762,7 +3762,7 @@ Object.assign(actions, { tplvar: el => { ui.tpl.vsel[el.dataset.k] = +el.dataset
 ui.stock = { q: '', loc: 'all' };
 const stkStep = f => f.unit === 'portion' ? 1 : 50;
 // formats comptables d'un aliment (tailles de lots, de paquets, d'articles), du plus grand au plus petit
-const stkPor = f => f.unit === 'portion' && !f.ulbl && [...packsOf(f), ...Object.values(f.lots || {}).map(l => l.s)].some(v => v > 1);   // portions comptées en paquets
+const stkPor = f => f.unit === 'portion' && !f.ulbl && !Object.keys(f.lots || {}).length && packsOf(f).some(v => v > 1);   // portions comptées en paquets
 const stkFmts = f => [...new Set([...packsOf(f), ...Object.values(f.lots || {}).map(l => l.s)].filter(n => n > 0))].sort((a, b) => b - a);
 function stkDecomp(f, have) { let rem = Math.max(0, have); const counts = []; for (const n of stkFmts(f)) { const c = Math.floor(rem / n + 1e-9); counts.push([n, c]); rem -= c * n; } return { counts, rest: Math.max(0, Math.round(rem * 100) / 100) }; }
 const capF = w => w.charAt(0).toUpperCase() + w.slice(1);
@@ -3779,7 +3779,7 @@ function stkHeadSub(x) {
     const szf = v => por ? `${qtxt(Math.round(v * 100) / 100)} ${f.ulbl || 'part' + (v >= 2 ? 's' : '')}` : packSz(f, v);
     const sizes = [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 0), isz = por ? 1 : sizes.length ? Math.min(...sizes) : 0;
     let head = '', sub = '', zero = x.have <= 0.05;
-    const pszs = por && !f.ulbl ? [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 1) : [], psz = pszs.length ? Math.min(...pszs) : 0;   // portions comptées en paquets (« paquets de 12 »)
+    const pszs = por && !f.ulbl && !Object.keys(f.lots || {}).length ? pk.filter(v => v > 1) : [], psz = pszs.length ? Math.min(...pszs) : 0;   // portions comptées en paquets (« paquets de 12 »)
     if (psz) {
       const full = Math.floor(x.have / psz + 1e-9);
       if (full >= 1) head = `${full} <small>${full >= 2 ? 'paquets' : 'paquet'}</small>`;
