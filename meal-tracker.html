@@ -2281,7 +2281,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 19:02 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 30/10/2026 à 19:04 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2573,7 +2573,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 19:02';
+const BUILD_ID = '30/10/2026 à 19:04';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3805,7 +3805,8 @@ function stkHeadSub(x) {
 function viewStock() {
   const st = ui.stock, map = stockMap(), words = qwords(st.q);
   const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
-  const eatenF = x => x.ate > 0.05, oldF = x => diffDays(today(), x.asof) >= 28, cnt = loc => loc === 'buy' ? stkBuyAll().length : all.filter(x => loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : x.loc === loc)).length;
+  const eatenF = x => x.ate > 0.05, oldF = x => diffDays(today(), x.asof) >= 28, soonF = x => stkSoon(x), catOk = x => !st.cat || x.f.cat === st.cat;
+  const cnt = loc => loc === 'buy' ? stkBuyAll().filter(catOk).length : all.filter(x => catOk(x) && (loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : loc === 'soon' ? soonF(x) : x.loc === loc))).length;
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
@@ -3821,29 +3822,36 @@ function viewStock() {
       ${op ? `<div class="s2e">${(!por || stkPor(f)) && stkFmts(f).length ? stkEditor(x) : `<div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>`}
         <div class="s2r"><select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : ''}</div>`;
   };
-  if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt);
-  const flt = st.loc === 'eaten' || st.loc === 'old', fp = st.loc === 'old' ? oldF : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
-  const body = locs.map(l => { const xs = all.filter(x => x.loc === l && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
+  if (st.loc === 'buy') return stockBuyView(all, st, resHtml, cnt, catOk);
+  const flt = ['eaten', 'old', 'soon'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
+  const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
-    <div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['old', 'À recompter'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>
-    ${body || (flt && all.length ? `<section class="card"><p style="padding:14px">${st.loc === 'old' ? 'Tout a été compté il y a moins de 4 semaines.' : 'Rien n\'a été mangé depuis tes derniers comptages.'}</p></section>` : `<section class="card"><p style="padding:14px">Ton stock est vide. Cherche un produit ci-dessus pour l'ajouter, avec sa quantité.</p></section>`)}</main>`;
+    ${stkChips(all, st, cnt)}
+    ${body || (flt && all.length ? `<section class="card"><p style="padding:14px">${st.loc === 'old' ? 'Tout a été compté il y a moins de 4 semaines.' : st.loc === 'soon' ? 'Aucun produit n\'est presque fini : il ne reste de paquet entamé nulle part.' : 'Rien n\'a été mangé depuis tes derniers comptages.'}</p></section>` : `<section class="card"><p style="padding:14px">Ton stock est vide. Cherche un produit ci-dessus pour l'ajouter, avec sa quantité.</p></section>`)}</main>`;
 }
 // ---- vue « À racheter » : produits à 0, on coche ce qu'on veut ajouter à la liste de courses ----
 const inCart = id => (S.meta.shopx || []).some(x => x.fid === id);
-const stkLow = x => x.have <= 0.05 || (x.f?.min > 0 && x.have < x.f.min);
-// produits à racheter : ceux du stock à 0 ou sous leur minimum, + les aliments avec un stock minimum qui ne sont pas (ou plus) dans le stock
+// « Bientôt vide » : il ne reste que le paquet entamé (moins d'un paquet entier)
+function stkSoon(x) { const f = x.f; if (!f || x.have <= 0.05) return false; const fm = f.unit === 'portion' && !f.ulbl ? packsOf(f).filter(v => v > 1) : stkFmts(f).filter(v => v > (f.unit === 'portion' ? 1 : 0)); return fm.length > 0 && x.have < Math.min(...fm) - 1e-9; }
+function stkChips(all, st, cnt) {
+  const cats = [...new Set(all.map(x => x.f.cat).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const main = [['all', 'Tout'], ...LOCS.map(l => [l, l]), ['soon', 'Bientôt vide'], ['buy', 'Vides'], ['eaten', 'Mangés'], ['old', 'À recompter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('');
+  const catBtn = `<button class="chip ${st.cat ? 'on' : ''}" data-a="stkcatopen" aria-expanded="${!!st.catOpen}">${st.cat ? esc(st.cat) : 'Catégories'} ${st.catOpen ? '▴' : '▾'}</button>`;
+  return `<div class="chips" style="margin:10px 0 ${st.catOpen ? '6px' : '10px'}">${main}${catBtn}</div>${st.catOpen ? `<div class="chips stkcats" style="margin:0 0 10px">${cats.map(c => `<button class="chip ${st.cat === c ? 'on' : ''}" data-a="stkcat" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}`;
+}
+const stkLow = x => x.have <= 0.05;   // « Vides » : les produits à 0 (ceux sous leur minimum vont tout seuls dans les Courses)
+// produits vides : ceux du stock qui sont à 0
 function stkBuyAll() {
   const map = stockMap(), items = S.stock?.items || {};
   const out = Object.keys(items).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f);
-  for (const f of S.foods) if (!f.hidden && !f.recipe && f.min > 0 && !items[f.id]) out.push({ id: f.id, f, q: 0, have: 0, ate: 0, virtual: true, loc: guessLoc(f) });
   return out.filter(stkLow).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
 }
 const buySug = x => { const f = x.f, pk = packsOf(f), tg = f.max > f.min ? f.max : f.min; if (x.virtual) return tg; if (f.min > 0 && x.have > 0.05) return Math.round((tg - x.have) * 100) / 100; return x.q > 0 ? x.q : (pk[0] || stkStep(f)); };
-function stockBuyView(all, st, resHtml, cnt) {
-  const xs = stkBuyAll(); st.sel ||= {}; st.rq ||= {};
-  const chips = `<div class="chips" style="margin:10px 0">${[['all', 'Tout'], ...LOCS.map(l => [l, l]), ['eaten', 'Mangés'], ['old', 'À recompter'], ['buy', 'À racheter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('')}</div>`;
+function stockBuyView(all, st, resHtml, cnt, catOk = () => true) {
+  const xs = stkBuyAll().filter(catOk); st.sel ||= {}; st.rq ||= {};
+  const chips = stkChips(all, st, cnt);
   const n = xs.filter(x => st.sel[x.id] && !inCart(x.id)).length;
   const row = x => { const f = x.f, inc = inCart(x.id), q = st.rq[x.id] ?? buySug(x);
     return `<div class="stkb ${inc ? 'inc' : ''}"><label class="stkbc"><input type="checkbox" data-i="stkbsel" data-id="${x.id}" ${st.sel[x.id] && !inc ? 'checked' : ''} ${inc ? 'disabled' : ''}><span class="cbx"></span></label>
@@ -3851,8 +3859,8 @@ function stockBuyView(all, st, resHtml, cnt) {
       <div class="qc"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(q * 100) / 100)}" data-i="stkbq" data-id="${x.id}" aria-label="Quantité à racheter"><button class="qs" data-a="stkbstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${f.unit === 'portion' ? 'part' : esc(f.unit)}</span></div></div>`; };
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}${chips}
-    ${xs.length ? `<section class="card stkbuy"><div class="stkbh"><b>À racheter</b><button class="lnk" data-a="stkball">${xs.every(x => st.sel[x.id] || inCart(x.id)) ? 'Tout décocher' : 'Tout cocher'}</button></div><p class="mini" style="padding:0 14px 6px">Coche ce que tu veux ajouter à la liste de courses.</p>${xs.map(row).join('')}</section>
-    <div class="stkbbar"><button class="btn pri" data-a="stkbadd" ${n ? '' : 'disabled'}>Ajouter aux courses${n ? ` (${n})` : ''}</button></div>` : `<section class="card"><p style="padding:14px">Rien à racheter pour le moment : aucun produit n'est à 0 ou sous son minimum.</p></section>`}</main>`;
+    ${xs.length ? `<section class="card stkbuy"><div class="stkbh"><b>Vides</b><button class="lnk" data-a="stkball">${xs.every(x => st.sel[x.id] || inCart(x.id)) ? 'Tout décocher' : 'Tout cocher'}</button></div><p class="mini" style="padding:0 14px 6px">Coche ce que tu veux ajouter à la liste de courses.</p>${xs.map(row).join('')}</section>
+    <div class="stkbbar"><button class="btn pri" data-a="stkbadd" ${n ? '' : 'disabled'}>Ajouter aux courses${n ? ` (${n})` : ''}</button></div>` : `<section class="card"><p style="padding:14px">Aucun produit n'est à 0 dans ton stock.</p></section>`}</main>`;
 }
 function rangeStock(ov, clearX) {
   const bought = Object.entries(ov).filter(([, v]) => v > 0).map(([id, buy]) => ({ id, have: stockHave(id), buy }));
@@ -3916,6 +3924,8 @@ Object.assign(actions, {
     ids.forEach(id => { delete st.sel[id]; }); if (ui.sync?.cfg) syncSoon(2500); render(); toast(`${ids.length} produit${ids.length > 1 ? 's' : ''} ajouté${ids.length > 1 ? 's' : ''} à la liste de courses`);
   },
   stkloc: el => { ui.stock.loc = el.dataset.l; render(); },
+  stkcatopen: () => { ui.stock.catOpen = !ui.stock.catOpen; render(); },
+  stkcat: el => { ui.stock.cat = ui.stock.cat === el.dataset.k ? '' : el.dataset.k; render(); },
   stkadd: el => {
     const id = el.dataset.id, f = foodMap.get(id); if (!f) return;
     (ui.stock.edit ||= {})[id] = true;
