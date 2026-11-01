@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Meal Tracker</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1225,6 +1225,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 /* iOS : un champ de moins de 16 px fait zoomer la page à la saisie, et la barre du bas reste ensuite coincée au milieu de l écran */
 @media (max-width:900px){input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]),select,textarea{font-size:16px}}
 @media (max-width:900px){textarea.notein,.notein{font-size:16px}}
+
+@media (max-width:640px){#app{overflow-x:clip}}
 </style>
 </head>
 <body>
@@ -2316,7 +2318,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 01/11/2026 à 14:54 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 01/11/2026 à 19:24 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2608,7 +2610,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '01/11/2026 à 14:54';
+const BUILD_ID = '01/11/2026 à 19:24';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4439,31 +4441,33 @@ matchMedia('(max-width:1060px)').addEventListener?.('change', () => { if (ui.vie
 document.addEventListener('focusin', e => { const el = e.target; if (el?.matches?.('input[data-i="stqty"]')) setTimeout(() => { try { el.select(); el.setSelectionRange(0, 9999); } catch { } }, 0); });
 
 // ---------- recette : réordonner les ingrédients en glissant la poignée ⋮⋮ (souris et tactile) ----------
+// Les écouteurs de déplacement ne sont posés que pendant un glisser (et en « passive ») : aucun écouteur global permanent ne gêne le défilement.
 let rcDrag = null;
 const rcClear = () => document.querySelectorAll('.rci.rcdrag,.rci.rcb4,.rci.rcaf').forEach(x => x.classList.remove('rcdrag', 'rcb4', 'rcaf'));
-document.addEventListener('pointerdown', e => {
-  const g = e.target.closest?.('.rcgrip'); if (!g || ui.modal?.type !== 'recipe') return;
-  e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch { }
-  rcDrag = { from: +g.dataset.idx, to: null, after: false }; g.closest('.rci').classList.add('rcdrag');
-});
-document.addEventListener('pointermove', e => {
-  if (!rcDrag) return; e.preventDefault();
+const rcMove = e => {
+  if (!rcDrag) return;
   const bd = document.querySelector('.modal .bd, .bd'); if (bd) { const r = bd.getBoundingClientRect(); if (e.clientY < r.top + 40) bd.scrollTop -= 12; else if (e.clientY > r.bottom - 40) bd.scrollTop += 12; }
   document.querySelectorAll('.rci.rcb4,.rci.rcaf').forEach(x => x.classList.remove('rcb4', 'rcaf'));
   const el = [...document.querySelectorAll('.rci[data-idx]')].find(x => { const r = x.getBoundingClientRect(); return e.clientY >= r.top && e.clientY <= r.bottom; });
   if (!el || +el.dataset.idx === rcDrag.from) { rcDrag.to = null; return; }
   const r = el.getBoundingClientRect(); rcDrag.to = +el.dataset.idx; rcDrag.after = e.clientY > r.top + r.height / 2;
   el.classList.add(rcDrag.after ? 'rcaf' : 'rcb4');
-});
+};
 const rcEnd = e => {
+  document.removeEventListener('pointermove', rcMove); document.removeEventListener('pointerup', rcEnd); document.removeEventListener('pointercancel', rcEnd);
   if (!rcDrag) return; const d = rcDrag; rcDrag = null; rcClear();
   const m = ui.modal; if (e.type !== 'pointerup' || d.to === null || !m?.items) return;
   const tgt = m.items[d.to], [it] = m.items.splice(d.from, 1); if (!it) return;
   if (tgt[2]) it[2] = tgt[2]; else it.length = 2;   // déposé dans une autre section : il en prend la section
-  let at = m.items.indexOf(tgt) + (d.after ? 1 : 0); m.items.splice(at, 0, it);
+  const at = m.items.indexOf(tgt) + (d.after ? 1 : 0); m.items.splice(at, 0, it);
   m.rowMenu = undefined; renderModal();
 };
-document.addEventListener('pointerup', rcEnd); document.addEventListener('pointercancel', rcEnd);
+document.addEventListener('pointerdown', e => {
+  const g = e.target.closest?.('.rcgrip'); if (!g || ui.modal?.type !== 'recipe') return;
+  try { g.setPointerCapture(e.pointerId); } catch { }
+  rcDrag = { from: +g.dataset.idx, to: null, after: false }; g.closest('.rci').classList.add('rcdrag');
+  document.addEventListener('pointermove', rcMove, { passive: true }); document.addEventListener('pointerup', rcEnd); document.addEventListener('pointercancel', rcEnd);
+}, { passive: true });
 
 // ---- ocr.js ----
 // Lecture d'une étiquette nutritionnelle : transforme le texte reconnu (souvent imparfait) en valeurs pour 100 g.
@@ -5234,7 +5238,6 @@ async function start() {
   let ut = 0;
   const later = () => { clearTimeout(ut); ut = setTimeout(unstick, 150); };
   document.addEventListener('focusout', later);
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
   window.addEventListener('orientationchange', later);
 }
 start();
