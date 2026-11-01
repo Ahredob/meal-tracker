@@ -804,8 +804,6 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 /* ===== téléphone : onglet Courses ===== */
 .shopcfg>.shopsum{display:none!important}
 @media (max-width:640px){
-  .dh:has(.sp>[data-a=shopcopy]){display:block}
-  .dh:has(.sp>[data-a=shopcopy])>.dt{margin-bottom:10px}
   .dh:has(.sp>[data-a=shopcopy])>.sp{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0!important;width:100%}
   .dh:has(.sp>[data-a=shopcopy]) .sp .btn{min-height:44px;font-size:14px;justify-content:center}
   .dh:has(.sp>[data-a=shopcopy]) .sp [data-a=shopreset]{grid-column:1/-1}
@@ -1234,6 +1232,10 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 /* stock : filtres repliables sur téléphone */
 .stftog{display:none;margin:6px 0 2px}
 @media(max-width:640px){.stftog{display:block}.stkf:not(.show){display:none}}
+
+/* Courses et Stock : même en-tête que Aliments, Recettes, Poids (titre et sous-titre à gauche, sur la même ligne) ; la ligne de partage prend toute la largeur dessous */
+.dh>.shline{flex:1 1 100%;order:0}
+@media (min-width:641px){.dh>.shline{order:5}}
 </style>
 </head>
 <body>
@@ -2325,7 +2327,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 01/11/2026 à 19:37 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 01/11/2026 à 19:47 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2617,7 +2619,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '01/11/2026 à 19:37';
+const BUILD_ID = '01/11/2026 à 19:47';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3106,7 +3108,7 @@ function viewShop() {
   const range = dates.length ? `${fmtDM(dates[0])} → ${fmtDM(dates[dates.length - 1])} · ${dates.length} jour${dates.length > 1 ? 's' : ''}` : 'aucun jour choisi';
   const sw = (a, on, t, d) => `<label class="swr"><input type="checkbox" data-a="${a}" ${on ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`;
   const empty = !total ? `<section class="card"><p>Rien à acheter : aucun repas n'est planifié pour les jours choisis.</p></section>` : '';
-  return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Courses</h1><span class="mini">${esc(range)}</span>${shareLine()}</div><div class="sp">${total ? `<button class="btn sm pri" data-a="shopstock" title="Choisis ce que tu as acheté : le stock est mis à jour">Ranger dans le stock${done ? ` · ${done}` : ''}</button>` : ''}<button class="btn sm" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
+  return `<main class="main wide2"><div class="dh"><h1>Courses</h1><span class="mini">${esc(range)}</span>${shareLine()}<div class="sp">${total ? `<button class="btn sm pri" data-a="shopstock" title="Choisis ce que tu as acheté : le stock est mis à jour">Ranger dans le stock${done ? ` · ${done}` : ''}</button>` : ''}<button class="btn sm" data-a="shopgoadd">+ Ajouter</button><button class="btn sm" data-a="shopcopy">Copier</button><button class="btn sm" data-a="shopprint">Imprimer</button>${done ? '<button class="btn sm" data-a="shopreset">Tout décocher</button>' : ''}</div></div>
     <section class="card shopcfg${ui.cfgOpen ? ' open' : ''}"><button class="shopsum" data-a="shopcfgt" aria-expanded="${!!ui.cfgOpen}"><span>${mode === 'sun' ? '1 semaine' : mode === 'two' ? '2 semaines' : 'Jours choisis'} · ${useStock ? 'stock retiré' : 'stock ignoré'}${shopExpand() ? ' · recettes en ingrédients' : ''}</span><b>${ui.cfgOpen ? 'Fermer ▴' : 'Modifier ▾'}</b></button><div class="lbl">Période</div><div class="seg"><button class="${mode === 'sun' ? 'on' : ''}" data-a="shopmode" data-m="sun">1 semaine</button><button class="${mode === 'two' ? 'on' : ''}" data-a="shopmode" data-m="two">2 semaines</button><button class="${mode === 'custom' ? 'on' : ''}" data-a="shopmode" data-m="custom">Choisir les jours</button></div>
     ${remote && shareOn() ? `<div class="lbl" style="margin-top:12px">Pour qui</div><div class="seg"><button class="${shopWho() === 'all' ? 'on' : ''}" data-a="shopwho" data-w="all">Tout le monde</button><button class="${shopWho() === 'me' ? 'on' : ''}" data-a="shopwho" data-w="me">${esc(S.meta.share.me.name)}</button><button class="${shopWho() === 'other' ? 'on' : ''}" data-a="shopwho" data-w="other">${esc(remote.name)}</button></div>` : ''}
     ${mode === 'custom' ? `<div class="shopdays">${row(all.slice(0, 7), '7 prochains jours')}${row(all.slice(7), '7 jours suivants')}</div>` : ''}
@@ -3884,7 +3886,7 @@ function viewStock() {
   };
   const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
   const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
-  return `<main class="main wide2"><div class="dh"><div class="dt"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div></div>
+  return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
     ${stkChips(all, st, cnt)}
