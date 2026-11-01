@@ -2287,7 +2287,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 30/10/2026 à 19:54 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 01/11/2026 à 14:27 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2579,7 +2579,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '30/10/2026 à 19:54';
+const BUILD_ID = '01/11/2026 à 14:27';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3780,6 +3780,8 @@ function stkEditor(x) {
   return `${rows}<div class="s2c"><span class="lb">Reste entamé</span><div class="rst"><input class="qin" type="text" inputmode="decimal" value="${rv}" data-i="stkrest" data-id="${x.id}" data-fk="sr-${x.id}" aria-label="Reste entamé">${por ? '<span class="u">parts</span>' : `<span class="u3"><button class="${big ? '' : 'on'}" data-a="stkrb" data-id="${x.id}" data-b="0">${pair[0]}</button><button class="${big ? 'on' : ''}" data-a="stkrb" data-id="${x.id}" data-b="1">${pair[1]}</button></span>`}</div></div>
     <div class="s2tt"><span>Ça fait</span><span><b>${esc(pu(Math.max(0, x.have)))}</b></span></div>${isz ? `<div class="s2q"><button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${isz}">J'en ai utilisé 1 (− ${esc(pu(isz))})</button></div>` : ''}`;
 }
+// nombre de paquets avec une décimale (18,6) ; jamais arrondi à l'entier tant qu'un paquet est entamé
+const decN = v => { const r = Math.round(v * 10) / 10; if (Math.abs(v - Math.round(v)) < 1e-6) return { t: qtxt(Math.round(v)), r: Math.round(v) }; const k = Math.abs(r - Math.round(r)) < 1e-9 ? (v < r ? r - 0.1 : r + 0.1) : r; return { t: qtxt(Math.round(k * 10) / 10), r: k }; };
 function stkHeadSub(x) {
     const f = x.f, pk = packsOf(f), por = f.unit === 'portion', nm = f.ulbl || (por ? 'parts' : 'paquets'), sing = nm.replace(/[sx]$/, '');
     const szf = v => por ? `${qtxt(Math.round(v * 100) / 100)} ${f.ulbl || 'part' + (v >= 2 ? 's' : '')}` : packSz(f, v);
@@ -3788,13 +3790,13 @@ function stkHeadSub(x) {
     const pszs = por && !f.ulbl && !Object.keys(f.lots || {}).length ? pk.filter(v => v > 1) : [], psz = pszs.length ? Math.min(...pszs) : 0;   // portions comptées en paquets (« paquets de 12 »)
     if (psz) {
       const full = Math.floor(x.have / psz + 1e-9);
-      if (full >= 1) head = `${full} <small>${full >= 2 ? 'paquets' : 'paquet'}</small>`;
+      if (full >= 1) { const d = decN(x.have / psz); head = `${d.t} <small>${d.r >= 2 ? 'paquets' : 'paquet'}</small>`; }
       else if (x.have > 0.05) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${n >= 2 ? 'parts' : 'part'}</small>`; sub = `reste d'un paquet de ${qtxt(psz)}`; }
       else head = `0 <small>paquet</small>`;
     } else if (por) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${esc(n >= 2 || n === 0 ? nm : sing)}</small>`; }
     else if (isz > 0) {
       const full = Math.floor(x.have / isz + 1e-9);
-      if (full >= 1) head = `${full} <small>${esc(full >= 2 ? nm : sing)}</small>`;
+      if (full >= 1) { const d = decN(x.have / isz); head = `${d.t} <small>${esc(d.r >= 2 ? nm : sing)}</small>`; }
       else if (x.have > 0.05) { head = `${esc(packSz(f, x.have))}`.replace(/^(\S+) (.*)$/, '$1 <small>$2</small>'); sub = `reste d'un ${esc(sing)} de ${esc(packSz(f, isz))}`; }
       else head = `0 <small>${esc(nm)}</small>`;
     } else head = esc(packSz(f, Math.max(0, x.have))).replace(/^(\S+) (.*)$/, '$1 <small>$2</small>');
