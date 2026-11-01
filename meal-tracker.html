@@ -2310,7 +2310,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 01/11/2026 à 14:33 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 01/11/2026 à 14:41 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2602,7 +2602,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '01/11/2026 à 14:33';
+const BUILD_ID = '01/11/2026 à 14:41';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3854,7 +3854,7 @@ function viewStock() {
       x.ate > 0.5 ? `<span class="neg" title="Mangé depuis le comptage">−${esc(szf(x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` (${x.ate - x.ateO > 0.05 ? esc(szf(x.ate - x.ateO)) + ' toi, ' : ''}${esc(szf(x.ateO))} ${esc(remote?.name || 'l\'autre')})` : ''}</span>` : '',
       shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean).join(' ');
     const pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk, nfm = stkFmts(f).length;
-    const blab = n => { const l = lotOf(f, n); return l ? `lot de ${l.n}` : nfm > 1 ? `${artN(f, 1)} de ${packSz(f, n)}` : artN(f, 1); };
+    const blab = n => { const l = lotOf(f, n); return l ? `lot de ${l.n}` : packSz(f, n); };   // « + 12 », « + 500 g », « + lot de 6 »
     const esz = stkEntSize(f), big = !por && esz >= 1000, rest = esz ? stkDecomp(f, x.have).rest : 0;
     const eu = por ? (rest >= 2 ? 'parts' : 'part') : big ? (f.unit === 'g' ? 'kg' : 'l') : f.unit;
     const stp = esz
@@ -3862,9 +3862,8 @@ function viewStock() {
       : `<span class="s2k"><span class="lb">Stock</span><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Moins">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Plus">+</button><span class="u opt">${esc(unitLabel(f))}</span></span>`;
     const mo = !!(ui.stock.menu && ui.stock.menu[x.id]);
     const menu = mo ? `<div class="s2menu"><div class="s2mr"><b>Rangé dans</b>${LOCS.map(l => `<button class="chip ${l === x.loc ? 'on' : ''}" data-a="stkplace" data-id="${x.id}" data-l="${l}">${l}</button>`).join('')}</div>
-        <div class="s2mr">${pko.length ? `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${pko[0]}">− 1 ${esc(blab(pko[0]))}</button>` : ''}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div>
-        ${hist ? `<div class="s2info"><b>Ce qui a été retiré tout seul</b><div class="s2h">${hist}</div></div>` : ''}</div>` : '';
-    return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${(ui.stock.loc === 'eaten' || ui.stock.loc === 'old') && hist ? `<div class="s2h">${hist}</div>` : ''}
+        <div class="s2mr">${pko.length ? `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${pko[0]}">− 1 ${esc(packLbl(f, pko[0]))}</button>` : ''}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : '';
+    return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
       <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
   };
   const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
