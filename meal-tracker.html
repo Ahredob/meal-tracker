@@ -1196,6 +1196,29 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stkall{margin:0 0 10px}
 
 .btn.cartb{background:var(--accent-soft);color:var(--accent);border:1.5px solid var(--accent);display:inline-flex;align-items:center;gap:6px;font-weight:700}.btn.cartb svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* lignes du stock v3 : stepper « Entamé » sur la ligne, menu ⋯ */
+.stk2 .s2nm{display:flex;align-items:center;gap:8px;min-width:0}
+.stk2 .s2m{flex:none;width:30px;height:26px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);color:var(--mute);font-weight:800;font-size:15px;line-height:1;display:inline-grid;place-items:center;padding:0}.stk2 .s2m.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.stk2 .s2ln{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:9px}
+.stk2 .s2ln .s2a{margin:0;flex:0 1 auto}
+.stk2 .s2k{display:inline-flex;align-items:center;gap:5px;flex-wrap:nowrap;white-space:nowrap;margin-left:auto;background:var(--accent-soft);border-radius:11px;padding:4px 8px 4px 10px;max-width:100%}
+.stk2 .s2k .lb{font-size:13px;font-weight:650;color:var(--accent)}
+.stk2 .s2k .qs{flex:none;width:30px;height:32px;border:1px solid var(--line);background:var(--surface,#fff);color:var(--ink);border-radius:9px;font-size:18px;padding:0;opacity:1}
+.stk2 .s2k .qin{width:clamp(40px,12vw,56px);min-width:0;height:32px;padding:0 4px;text-align:center;font-size:16px;font-weight:800;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink)}
+.stk2 .s2k .u{font-size:13px;color:var(--mute)}
+.stk2 .s2menu{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface,#fff);display:flex;flex-direction:column;gap:10px}
+.stk2 .s2mr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}.stk2 .s2mr .dng{margin-left:auto}
+.stk2 .s2info{font-size:13px;color:var(--mute);background:var(--soft,#eef2ef);border-radius:10px;padding:8px 10px}.stk2 .s2info .s2h{margin-top:4px}
+@media (max-width:420px){.stk2 .s2k{gap:4px;padding:4px 6px 4px 8px}.stk2 .s2k .qs{width:28px}}
+
+.stk2 .s2k{gap:4px;padding:4px 8px 4px 9px}.stk2 .s2k .lb{font-size:12.5px}.stk2 .s2k .qs{width:28px}.stk2 .s2k .qin{width:clamp(36px,11vw,52px)}
+.stk2 .s2ln .s2a .btn{padding-left:11px;padding-right:11px}
+@media (max-width:380px){.stk2 .s2k .lb{display:none}.stk2 .s2k{padding:4px 6px}}
+
+@media (max-width:430px){.stk2 .s2k{gap:3px;padding:4px 6px 4px 8px}.stk2 .s2k .lb{font-size:12px}.stk2 .s2k .qs{width:26px}.stk2 .s2k .qin{width:clamp(34px,10vw,52px)}.stk2 .s2k .u.opt{display:none}.stk2 .s2ln .s2a .btn{padding-left:9px;padding-right:9px}}
+
+@media (max-width:430px){.stk2 .s2k .qin{font-size:15px;padding:0 1px;letter-spacing:-.2px}}
 </style>
 </head>
 <body>
@@ -2287,7 +2310,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 01/11/2026 à 14:27 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 01/11/2026 à 14:33 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2579,7 +2602,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '01/11/2026 à 14:27';
+const BUILD_ID = '01/11/2026 à 14:33';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3808,8 +3831,14 @@ function stkHeadSub(x) {
     if (psz) { const f1 = Math.floor(x.have / psz + 1e-9); if (f1 >= 1) sub = [pcs.length > 1 ? 'dont ' + pcs.join(' + ') : '', rem > 0.05 ? `+ 1 entamé : ${rest(rem)}` : ''].filter(Boolean).join(' '); }
     else if (full >= 1 && !por && (detail || rem > 0.05)) sub = [detail ? 'dont ' + pcs.join(' + ') : '', rem > 0.05 ? `+ 1 entamé : ${rest(rem)}` : ''].filter(Boolean).join(' ');
     else if (por && pcs.length && (pcs.length > 1 || (pk.length && !(pcs.length === 1 && pk.length === 1 && pk[0] === 1)))) sub = `dont ${pcs.join(' + ')}`;
-  return { head, sub, zero, szf };
+  let sub2 = '';   // sous-ligne de la liste : le paquet entamé est déjà sur le stepper, on garde seulement le détail des formats
+  if (psz) { if (Math.floor(x.have / psz + 1e-9) >= 1 && pcs.length > 1) sub2 = 'dont ' + pcs.join(' + '); }
+  else if (!por) { if (full >= 1 && detail) sub2 = 'dont ' + pcs.join(' + '); }
+  else sub2 = sub;
+  return { head, sub, sub2, zero, szf };
 }
+// taille du paquet dont on suit le « paquet entamé » (0 = aucun format de paquet : on compte simplement le stock)
+const stkEntSize = f => { if (f.unit === 'portion' && f.ulbl) return 0; const fm = f.unit === 'portion' ? stkFmts(f).filter(v => v > 1) : stkFmts(f); return fm.length ? Math.min(...fm) : 0; };
 function viewStock() {
   const st = ui.stock, map = stockMap(), words = qwords(st.q);
   const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
@@ -3818,17 +3847,25 @@ function viewStock() {
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
-    const f = x.f, pk = packsOf(f), por = f.unit === 'portion', nm = f.ulbl || (por ? 'parts' : 'paquets'), { head, sub, zero, szf } = stkHeadSub(x);
+    const f = x.f, pk = packsOf(f), por = f.unit === 'portion', { head, sub2, zero, szf } = stkHeadSub(x);
     const hist = [ui.stock.loc === 'old' ? `<span class="stc">compté il y a ${Math.round(diffDays(today(), x.asof) / 7)} sem.</span>` : '',
       (x.ate > 0.5 || x.reg > 0.05) ? `<span>${esc(szf(x.q))} le ${esc(fmtDM(x.asof))}</span><span class="ar">→</span>` : '',
       x.reg > 0.05 ? `<span class="neg" title="Retiré automatiquement">−${esc(szf(x.reg))} usage régulier (${esc(szf(f.use.q))} / ${USE_LBL[f.use.per]})</span>` : '',
       x.ate > 0.5 ? `<span class="neg" title="Mangé depuis le comptage">−${esc(szf(x.ate))} mangé${x.ate > 1 ? 's' : ''}${x.ateO > 0.05 ? ` (${x.ate - x.ateO > 0.05 ? esc(szf(x.ate - x.ateO)) + ' toi, ' : ''}${esc(szf(x.ateO))} ${esc(remote?.name || 'l\'autre')})` : ''}</span>` : '',
       shareBy('st|' + x.id) ? `<span class="stm2">mis à jour par ${esc(shareBy('st|' + x.id))}</span>` : ''].filter(Boolean).join(' ');
-    const op = !!(ui.stock.edit && ui.stock.edit[x.id]), pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk;
-    return `<div class="stk2" id="stk-${x.id}"><div class="s2t">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub ? `<div class="s2s">${sub}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
-      <div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(packLbl(f, n))}</button>`).join('')}<button class="btn sm" data-a="stkedit" data-id="${x.id}" aria-expanded="${op}">${op ? 'Fermer' : 'Modifier'}</button>${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>
-      ${op ? `<div class="s2e">${(!por || stkPor(f)) && stkFmts(f).length ? stkEditor(x) : `<div class="qc"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Augmenter">+</button><span class="u">${unitLabel(f)}</span></div>`}
-        <div class="s2r"><select data-i="stloc" data-id="${x.id}" aria-label="Lieu de rangement">${LOCS.map(l => `<option ${l === x.loc ? 'selected' : ''}>${l}</option>`).join('')}</select><button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : ''}</div>`;
+    const pko = f.defp && pk.includes(f.defp) ? [f.defp, ...pk.filter(n => n !== f.defp)] : pk, nfm = stkFmts(f).length;
+    const blab = n => { const l = lotOf(f, n); return l ? `lot de ${l.n}` : nfm > 1 ? `${artN(f, 1)} de ${packSz(f, n)}` : artN(f, 1); };
+    const esz = stkEntSize(f), big = !por && esz >= 1000, rest = esz ? stkDecomp(f, x.have).rest : 0;
+    const eu = por ? (rest >= 2 ? 'parts' : 'part') : big ? (f.unit === 'g' ? 'kg' : 'l') : f.unit;
+    const stp = esz
+      ? `<span class="s2k"><span class="lb">Entamé</span><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Moins">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(big ? Math.round(rest / 10) / 100 : Math.round(rest * 100) / 100)}" data-i="stkent" data-id="${x.id}" data-big="${big ? 1 : 0}" data-fk="se-${x.id}" aria-label="Paquet entamé de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Plus">+</button><span class="u">/ ${por ? qtxt(esz) : big ? qtxt(esz / 1000) + ' ' + eu : qtxt(esz) + ' ' + f.unit}</span></span>`
+      : `<span class="s2k"><span class="lb">Stock</span><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Moins">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(Math.round(x.have * 100) / 100)}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Plus">+</button><span class="u opt">${esc(unitLabel(f))}</span></span>`;
+    const mo = !!(ui.stock.menu && ui.stock.menu[x.id]);
+    const menu = mo ? `<div class="s2menu"><div class="s2mr"><b>Rangé dans</b>${LOCS.map(l => `<button class="chip ${l === x.loc ? 'on' : ''}" data-a="stkplace" data-id="${x.id}" data-l="${l}">${l}</button>`).join('')}</div>
+        <div class="s2mr">${pko.length ? `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${pko[0]}">− 1 ${esc(blab(pko[0]))}</button>` : ''}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div>
+        ${hist ? `<div class="s2info"><b>Ce qui a été retiré tout seul</b><div class="s2h">${hist}</div></div>` : ''}</div>` : '';
+    return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${(ui.stock.loc === 'eaten' || ui.stock.loc === 'old') && hist ? `<div class="s2h">${hist}</div>` : ''}
+      <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
   };
   const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
   const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
@@ -3924,15 +3961,16 @@ Object.assign(actions, {
   stkcat: el => { ui.stock.cat = ui.stock.cat === el.dataset.k ? '' : el.dataset.k; render(); },
   stkadd: el => {
     const id = el.dataset.id, f = foodMap.get(id); if (!f) return;
-    (ui.stock.edit ||= {})[id] = true;
     if (!S.stock.items[id]) stockSet(id, packsOf(f).length ? 0 : f.unit === 'portion' ? 1 : 100);
     ui.stock.q = ''; ui.stock.loc = 'all'; render();
-    setTimeout(() => { const i = document.querySelector(`[data-fk="sq-${id}"]`); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); i.select(); } else document.getElementById('stk-' + id)?.scrollIntoView({ block: 'center' }); }, 0);
+    setTimeout(() => { const i = document.querySelector(`[data-fk="se-${id}"],[data-fk="sq-${id}"]`); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); i.select(); } else document.getElementById('stk-' + id)?.scrollIntoView({ block: 'center' }); }, 0);
   },
   stkcnt: el => { const id = el.dataset.id, h = stockHave(id); stockSet(id, Math.max(0, h + (+el.dataset.dir) * (+el.dataset.n))); },
   stkuse: el => { const id = el.dataset.id; stockSet(id, Math.max(0, stockHave(id) - (+el.dataset.n))); },
   stkrb: el => { (ui.stock.rb ||= {})[el.dataset.id] = el.dataset.b === '1'; render(); },
   stkfiche: el => { const id = el.dataset.id, y = window.scrollY; actions.nav({ dataset: { v: 'aliments' } }); actions.editfood({ dataset: { id } }, { preventDefault() { } }); if (ui.form && ui.form.id === id) { ui.form.tab = 'achat'; render(); } ui.stkRet = { y }; },
+  stkmenu: el => { const m = (ui.stock.menu ||= {}); m[el.dataset.id] = !m[el.dataset.id]; render(); },
+  stkplace: el => stockLoc(el.dataset.id, el.dataset.l),
   stkedit: el => { const e = (ui.stock.edit ||= {}); e[el.dataset.id] = !e[el.dataset.id]; render(); },
   stkpack: el => { const id = el.dataset.id, f = foodMap.get(id), n = +el.dataset.n; if (f) { stockSet(id, stockHave(id) + n); toast(`+ ${packLbl(f, n)} · ${f.name}`, [{ a: 'gundo', l: 'Annuler' }], 3500); } },
   stkstep: el => { const id = el.dataset.id, f = foodMap.get(id); if (f) stockSet(id, stockHave(id) + stkStep(f) * +el.dataset.dir); },
@@ -3943,13 +3981,14 @@ extraInput = function (e) {
   const el = e.target;
   if (el.dataset?.i === 'rgnew') { const r = ui.modal?.rows?.[+el.dataset.r]; if (r) r.addVal = el.value; return true; }
   if (el.dataset?.i === 'stq') { ui.stock.q = el.value; render(); return true; }
-  if (el.dataset?.i === 'stqty' || el.dataset?.i === 'stkrest' || el.dataset?.i === 'stkcin') return true;
+  if (el.dataset?.i === 'stqty' || el.dataset?.i === 'stkrest' || el.dataset?.i === 'stkcin' || el.dataset?.i === 'stkent') return true;
   if (el.dataset?.i === 'stkbq') { (ui.stock.rq ||= {})[el.dataset.id] = num(el.value); return true; }
   return prevExtraInputStk(e);
 };
 const prevExtraChangeStk = extraChange;
 extraChange = function (e) {
   const el = e.target, k = el.dataset?.i;
+  if (k === 'stkent') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), m = el.dataset.big === '1' ? 1000 : 1; stockSet(id, Math.max(0, h - rest + num(el.value) * m)); return true; }
   if (k === 'stkcin') { const id = el.dataset.id, n = +el.dataset.n, c0 = +el.dataset.c, ok = /^\s*\d+\s*$/.test(el.value), c1 = ok ? Math.round(num(el.value)) : c0; if (c1 === c0) { el.value = c0; return true; } stockSet(id, Math.max(0, stockHave(id) + (c1 - c0) * n)); return true; }
   if (k === 'stqty') { stockSet(el.dataset.id, num(el.value)); return true; }
   if (k === 'stkrest') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), rb = ui.stock.rb && ui.stock.rb[id], big = f.unit !== 'portion' && (rb || (rb !== false && rest >= 1000)); stockSet(id, Math.max(0, h - rest + num(el.value) * (big ? 1000 : 1))); return true; }
