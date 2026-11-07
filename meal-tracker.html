@@ -1236,6 +1236,14 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 /* Courses et Stock : même en-tête que Aliments, Recettes, Poids (titre et sous-titre à gauche, sur la même ligne) ; la ligne de partage prend toute la largeur dessous */
 .dh>.shline{flex:1 1 100%;order:0}
 @media (min-width:641px){.dh>.shline{order:5}}
+
+/* lieux de rangement */
+.stk2 .s2put{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--warn-soft,#f7e1db)}.stk2 .s2put b{color:var(--warn,#b8432c);font-size:13.5px}
+.stk2 .s2mr .chip{padding:5px 11px;font-size:13px}.stk2 .s2nl{display:inline-flex;align-items:center;gap:6px;flex:1 1 100%}.stk2 .s2nl input{flex:1;min-width:0;height:34px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink)}
+.stklm{padding:12px 14px;margin:0 0 12px}.stklm h2{font-size:16px;margin:0 0 8px}
+.stklm .lmr{display:flex;align-items:center;gap:8px;margin:6px 0}.stklm .lmn{flex:1;min-width:0;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink)}
+.stklm .lmc{font-size:12.5px;color:var(--mute);white-space:nowrap}.stklm .ib{width:34px;height:34px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink);padding:0}.stklm .ib[disabled]{opacity:.35}.stklm .ib.dng{color:var(--warn,#b8432c)}
+@media (max-width:430px){.stklm .lmc{display:none}}
 </style>
 </head>
 <body>
@@ -1625,7 +1633,8 @@ function shopAgg(dates) {
 }
 // ---------- stock (frigo, placards, congélateur) ----------
 // chaque produit garde la quantité comptée à une date (asof) ; ce qui a été mangé depuis (repas planifiés des jours écoulés) est retiré automatiquement
-const LOCS = ['Frigo', 'Placards', 'Congélateur'];
+const LOCS = ['Frigo', 'Placards', 'Congélateur'];   // lieux proposés au départ ; la liste de l'utilisateur est dans S.meta.locs
+const stkLocs = () => Array.isArray(S?.meta?.locs) ? S.meta.locs : LOCS;
 const guessLoc = f => /surgel|glace/i.test(f.cat || '') ? 'Congélateur' : /laitier|viande|poisson|légume|fruit|charcut|œuf|oeuf|frais|traiteur/i.test(f.cat || '') ? 'Frigo' : 'Placards';
 // consommation régulière : f.use = { q: 1, per: 'day'|'week'|'month' } → quantité retirée du stock par jour
 const USE_DAYS = { day: 1, week: 7, month: 30 }, USE_LBL = { day: 'jour', week: 'semaine', month: 'mois' };
@@ -1657,7 +1666,7 @@ function stockMap() {
 }
 const stockHave = id => stockMap().get(id)?.have || 0;
 function stockSet(id, qty, loc) {
-  mut(s => { const st = (s.stock ||= { items: {} }), f = foodMap.get(id), old = st.items[id]; st.items[id] = { q: Math.max(0, Math.round(qty * 100) / 100), loc: loc || old?.loc || (f ? guessLoc(f) : 'Placards'), asof: today() }; });
+  mut(s => { const st = (s.stock ||= { items: {} }), f = foodMap.get(id), old = st.items[id]; st.items[id] = { q: Math.max(0, Math.round(qty * 100) / 100), loc: loc || old?.loc || '', asof: today() }; });   // pas de lieu par défaut : le produit arrive dans « Sans lieu » pour ne pas l'oublier
 }
 const stockRemove = id => mut(s => { if (s.stock?.items) delete s.stock.items[id]; });
 const stockLoc = (id, loc) => mut(s => { const it = s.stock?.items?.[id]; if (it) it.loc = loc; });
@@ -2327,7 +2336,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 01/11/2026 à 19:47 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 01/11/2026 à 19:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2619,7 +2628,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '01/11/2026 à 19:47';
+const BUILD_ID = '01/11/2026 à 19:56';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3858,9 +3867,9 @@ function stkHeadSub(x) {
 const stkEntSize = f => { if (f.unit === 'portion' && f.ulbl) return 0; const fm = f.unit === 'portion' ? stkFmts(f).filter(v => v > 1) : stkFmts(f); return fm.length ? Math.min(...fm) : 0; };
 function viewStock() {
   const st = ui.stock, map = stockMap(), words = qwords(st.q);
-  const all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
+  const locs0 = stkLocs(), all = Object.keys(S.stock?.items || {}).map(id => ({ id, f: foodMap.get(id), ...map.get(id) })).filter(x => x.f).map(x => ({ ...x, loc: locs0.includes(x.loc) ? x.loc : '' })).sort((a, b) => a.f.name.localeCompare(b.f.name, 'fr'));
   const eatenF = x => x.ate > 0.05, oldF = x => diffDays(today(), x.asof) >= 28, soonF = x => stkSoon(x), catOk = x => !st.cat || x.f.cat === st.cat;
-  const cnt = loc => loc === 'buy' ? stkBuyAll().filter(catOk).length : all.filter(x => catOk(x) && (loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : loc === 'soon' ? soonF(x) : x.loc === loc))).length;
+  const cnt = loc => loc === 'buy' ? stkBuyAll().filter(catOk).length : all.filter(x => catOk(x) && (loc === 'all' || (loc === 'eaten' ? eatenF(x) : loc === 'old' ? oldF(x) : loc === 'soon' ? soonF(x) : loc === 'none' ? x.loc === '' : x.loc === loc.slice(2)))).length;
   const res = words.length ? S.foods.filter(f => !f.hidden && words.every(w => norm(f.name).includes(w))).sort((a, b) => a.name.localeCompare(b.name, 'fr')).slice(0, 8) : [];
   const resHtml = words.length ? `<div class="card list stkres">${res.map(f => `<button class="li" data-a="stkadd" data-id="${f.id}"><div class="b"><b>${esc(f.name)}</b><span>${esc(f.cat)}${S.stock.items[f.id] ? ' · déjà dans ton stock' : ''}</span></div><div class="r">${S.stock.items[f.id] ? 'Modifier' : 'Ajouter'}</div></button>`).join('') || '<p class="mu" style="padding:12px">Aucun aliment trouvé. Tu peux en créer un dans l\'onglet Aliments.</p>'}</div>` : '';
   const row = x => {
@@ -3879,13 +3888,14 @@ function viewStock() {
       ? `<span class="s2k"><span class="lb">Entamé</span><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Moins">−</button><input class="qin" type="text" inputmode="decimal" ${iw(ev)} value="${ev}" data-i="stkent" data-id="${x.id}" data-big="${big ? 1 : 0}" data-fk="se-${x.id}" aria-label="Paquet entamé de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Plus">+</button><span class="u">/ ${por ? qtxt(esz) : big ? qtxt(esz / 1000) + ' ' + eu : qtxt(esz) + ' ' + f.unit}</span></span>`
       : `<span class="s2k"><span class="lb">Stock</span><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Moins">−</button><input class="qin" type="text" inputmode="decimal" ${iw(sv)} value="${sv}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Plus">+</button><span class="u opt">${esc(unitLabel(f))}</span></span>`;
     const mo = !!(ui.stock.menu && ui.stock.menu[x.id]);
-    const menu = mo ? `<div class="s2menu"><div class="s2mr"><b>Rangé dans</b>${LOCS.map(l => `<button class="chip ${l === x.loc ? 'on' : ''}" data-a="stkplace" data-id="${x.id}" data-l="${l}">${l}</button>`).join('')}</div>
+    const menu = mo ? `<div class="s2menu"><div class="s2mr"><b>Rangé dans</b>${locChips(x)}</div>
         <div class="s2mr">${pko.map(n => `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${n}">− 1 ${esc(packLbl(f, n))}</button>`).join('')}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : '';
     return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
+      ${x.loc === '' ? `<div class="s2mr s2put"><b>Où le ranger ?</b>${locChips(x)}</div>` : ''}
       <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
   };
-  const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? LOCS : [st.loc];
-  const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l} <span class="mini">${xs.length}</span></h2>${xs.map(row).join('')}</section>` : ''; }).join('');
+  const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? ['', ...locs0] : [st.loc === 'none' ? '' : st.loc.slice(2)];
+  const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l === '' ? 'Sans lieu' : esc(l)} <span class="mini">${xs.length}</span></h2>${l === '' ? '<p class="mini" style="padding:0 14px 4px">Choisis où ranger ces produits.</p>' : ''}${xs.map(row).join('')}</section>` : ''; }).join('');
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
@@ -3898,11 +3908,27 @@ const inCart = id => (S.meta.shopx || []).some(x => x.fid === id);
 // « Bientôt vide » : il ne reste que le paquet entamé (moins d'un paquet entier)
 function stkSoon(x) { const f = x.f; if (!f || x.have <= 0.05) return false; const fm = f.unit === 'portion' && !f.ulbl ? packsOf(f).filter(v => v > 1) : stkFmts(f).filter(v => v > (f.unit === 'portion' ? 1 : 0)); return fm.length > 0 && x.have < Math.min(...fm) - 1e-9; }
 function stkChips(all, st, cnt) {
+  const locs0 = stkLocs();
   const cats = [...new Set(all.map(x => x.f.cat).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
-  const main = [['all', 'Tout'], ...LOCS.map(l => [l, l]), ['soon', 'Bientôt vide'], ['buy', 'Vides'], ['eaten', 'Mangés'], ['old', 'À recompter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${k}">${l} <small>${cnt(k)}</small></button>`).join('');
+  const main = [['all', 'Tout'], ...(all.some(x => x.loc === '') ? [['none', 'Sans lieu']] : []), ...locs0.map(l => ['l:' + l, l]), ['soon', 'Bientôt vide'], ['buy', 'Vides'], ['eaten', 'Mangés'], ['old', 'À recompter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${esc(k)}">${esc(l)} <small>${cnt(k)}</small></button>`).join('');
+  const lieuBtn = `<button class="chip ${st.mgr ? 'on' : ''}" data-a="stklocmgr" aria-expanded="${!!st.mgr}">⚙ Lieux</button>`;
   const catBtn = `<button class="chip ${st.cat ? 'on' : ''}" data-a="stkcatopen" aria-expanded="${!!st.catOpen}">${st.cat ? esc(st.cat) : 'Catégories'} ${st.catOpen ? '▴' : '▾'}</button>`;
-  const names = { all: 'Tout', soon: 'Bientôt vide', buy: 'Vides', eaten: 'Mangés', old: 'À recompter' }, open = !!st.fopen, cur = (names[st.loc] || st.loc) + (st.cat ? ' · ' + st.cat : '');
-  return `<button class="lnk stftog" data-a="stkfopen" aria-expanded="${open}">${open ? 'Masquer' : 'Afficher'} les filtres · ${esc(cur)}</button><div class="stkf${open ? ' show' : ''}"><div class="chips" style="margin:10px 0 ${st.catOpen ? '6px' : '10px'}">${main}${catBtn}</div>${st.catOpen ? `<div class="chips stkcats" style="margin:0 0 10px">${cats.map(c => `<button class="chip ${st.cat === c ? 'on' : ''}" data-a="stkcat" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}</div>`;
+  const names = { all: 'Tout', none: 'Sans lieu', soon: 'Bientôt vide', buy: 'Vides', eaten: 'Mangés', old: 'À recompter' }, open = !!st.fopen, cur = (names[st.loc] || st.loc.replace(/^l:/, '')) + (st.cat ? ' · ' + st.cat : '');
+  return `<button class="lnk stftog" data-a="stkfopen" aria-expanded="${open}">${open ? 'Masquer' : 'Afficher'} les filtres · ${esc(cur)}</button><div class="stkf${open ? ' show' : ''}"><div class="chips" style="margin:10px 0 ${st.catOpen ? '6px' : '10px'}">${main}${catBtn}${lieuBtn}</div>${st.catOpen ? `<div class="chips stkcats" style="margin:0 0 10px">${cats.map(c => `<button class="chip ${st.cat === c ? 'on' : ''}" data-a="stkcat" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}</div>${st.mgr ? stkLocPanel(all, st) : ''}`;
+}
+// pastilles « rangé dans » d'un produit (avec création d'un nouveau lieu sur place)
+const locChips = x => `${stkLocs().map(l => `<button class="chip ${l === x.loc ? 'on' : ''}" data-a="stkplace" data-id="${x.id}" data-l="${esc(l)}">${esc(l)}</button>`).join('')}<button class="chip" data-a="stknl" data-id="${x.id}">+ Nouveau</button>${ui.stock.nl === x.id ? `<span class="s2nl"><input type="text" maxlength="30" placeholder="Nom du lieu" data-i="stknlin" data-id="${x.id}" data-fk="nl-${x.id}"><button class="btn sm pri" data-a="stknlsave" data-id="${x.id}">OK</button></span>` : ''}`;
+function stkLocPanel(all, st) {
+  const ls = stkLocs();
+  return `<section class="card stklm"><h2>Lieux de rangement</h2>${ls.map((l, i) => { const n = all.filter(x => x.loc === l).length; return `<div class="lmr"><input class="lmn" type="text" maxlength="30" value="${esc(l)}" data-i="stklocname" data-k="${i}" aria-label="Nom du lieu"><span class="lmc">${n} produit${n > 1 ? 's' : ''}</span><button class="ib" data-a="stklocmove" data-k="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter">↑</button><button class="ib" data-a="stklocmove" data-k="${i}" data-d="1" ${i === ls.length - 1 ? 'disabled' : ''} aria-label="Descendre">↓</button><button class="ib dng" data-a="stklocdel" data-k="${i}" aria-label="Supprimer ${esc(l)}" title="Supprimer ce lieu">${icon('x')}</button></div>`; }).join('')}
+    <div class="lmr"><input id="lmnew" class="lmn" type="text" maxlength="30" placeholder="Nouveau lieu (Cellier, Garage…)" data-i="stklocnew"><button class="btn sm pri" data-a="stklocadd">Ajouter</button></div>
+    <p class="mini">Supprimer un lieu ne supprime pas ses produits : ils passent dans « Sans lieu ».</p></section>`;
+}
+// crée un lieu (s'il n'existe pas) et, si on donne un produit, l'y range
+function stkLocAdd(name, id) {
+  const ex = stkLocs().find(l => l.toLowerCase() === name.toLowerCase());
+  if (name.toLowerCase() === 'sans lieu') { toast('« Sans lieu » existe déjà'); return; }
+  mut(s => { const a = (s.meta.locs ||= [...LOCS]); const nm = ex || name; if (!ex) a.push(nm); if (id && s.stock?.items?.[id]) s.stock.items[id].loc = nm; });
 }
 const soonSug = x => { const f = x.f, pk = packsOf(f); if (f.min > 0) return buySug(x); return f.defp && pk.includes(f.defp) ? f.defp : (pk[0] || stkFmts(f).slice(-1)[0] || stkStep(f)); };
 function stkCartAdd(list) {
@@ -3923,7 +3949,7 @@ function rangeStock(ov, clearX) {
   const mon = shopMon();
   mut(s => {
     const stk = (s.stock ||= { items: {} });
-    for (const b of bought) { const f = foodMap.get(b.id), old = stk.items[b.id]; stk.items[b.id] = { q: Math.round((b.have + b.buy) * 100) / 100, loc: old?.loc || guessLoc(f), asof: today() }; }
+    for (const b of bought) { const f = foodMap.get(b.id), old = stk.items[b.id]; stk.items[b.id] = { q: Math.round((b.have + b.buy) * 100) / 100, loc: old?.loc || '', asof: today() }; }
     for (const id of Object.keys(ov)) if (s.meta.shop?.[mon]) delete s.meta.shop[mon][id];
     if (clearX) { for (const x of s.meta.shopx || []) if (s.meta.shop?.[mon]) delete s.meta.shop[mon]['x:' + x.k]; s.meta.shopx = []; }
   });
@@ -3987,6 +4013,12 @@ Object.assign(actions, {
   stkuse: el => { const id = el.dataset.id; stockSet(id, Math.max(0, stockHave(id) - (+el.dataset.n))); },
   stkrb: el => { (ui.stock.rb ||= {})[el.dataset.id] = el.dataset.b === '1'; render(); },
   stkfiche: el => { const id = el.dataset.id, y = window.scrollY; actions.nav({ dataset: { v: 'aliments' } }); actions.editfood({ dataset: { id } }, { preventDefault() { } }); if (ui.form && ui.form.id === id) { ui.form.tab = 'achat'; render(); } ui.stkRet = { y }; },
+  stklocmgr: () => { ui.stock.mgr = !ui.stock.mgr; render(); },
+  stklocadd: () => { const i = $('#lmnew'), n = (i?.value || '').trim(); if (!n) return; stkLocAdd(n); setTimeout(() => $('#lmnew')?.focus(), 0); },
+  stklocmove: el => { const k = +el.dataset.k, d = +el.dataset.d; mut(s => { const a = (s.meta.locs ||= [...LOCS]); const j = k + d; if (j < 0 || j >= a.length) return; [a[k], a[j]] = [a[j], a[k]]; }); },
+  stklocdel: el => { const k = +el.dataset.k, name = stkLocs()[k]; if (name === undefined) return; let n = 0; mut(s => { const a = (s.meta.locs ||= [...LOCS]); a.splice(k, 1); for (const it of Object.values(s.stock?.items || {})) if (it.loc === name) { it.loc = ''; n++; } }); if (ui.stock.loc === 'l:' + name) ui.stock.loc = 'all'; toast(`Lieu « ${name} » supprimé${n ? ' · ' + n + ' produit' + (n > 1 ? 's' : '') + ' sans lieu' : ''}`, [{ a: 'gundo', l: 'Annuler' }], 6000); },
+  stknl: el => { ui.stock.nl = ui.stock.nl === el.dataset.id ? null : el.dataset.id; render(); setTimeout(() => document.querySelector('[data-fk="nl-' + el.dataset.id + '"]')?.focus(), 0); },
+  stknlsave: el => { const i = document.querySelector('[data-fk="nl-' + el.dataset.id + '"]'), n = (i?.value || '').trim(); if (!n) return; const id = el.dataset.id; ui.stock.nl = null; stkLocAdd(n, id); },
   stkfopen: () => { ui.stock.fopen = !ui.stock.fopen; render(); },
   stkmenu: el => { const m = (ui.stock.menu ||= {}); m[el.dataset.id] = !m[el.dataset.id]; render(); },
   stkplace: el => stockLoc(el.dataset.id, el.dataset.l),
@@ -4000,13 +4032,16 @@ extraInput = function (e) {
   const el = e.target;
   if (el.dataset?.i === 'rgnew') { const r = ui.modal?.rows?.[+el.dataset.r]; if (r) r.addVal = el.value; return true; }
   if (el.dataset?.i === 'stq') { ui.stock.q = el.value; render(); return true; }
-  if (el.dataset?.i === 'stqty' || el.dataset?.i === 'stkrest' || el.dataset?.i === 'stkcin' || el.dataset?.i === 'stkent') return true;
+  if (el.dataset?.i === 'stqty' || el.dataset?.i === 'stkrest' || el.dataset?.i === 'stkcin' || el.dataset?.i === 'stkent' || ['stklocname', 'stklocnew', 'stknlin'].includes(el.dataset?.i)) return true;
   if (el.dataset?.i === 'stkbq') { (ui.stock.rq ||= {})[el.dataset.id] = num(el.value); return true; }
   return prevExtraInputStk(e);
 };
 const prevExtraChangeStk = extraChange;
 extraChange = function (e) {
   const el = e.target, k = el.dataset?.i;
+  if (k === 'stklocname') { const i = +el.dataset.k, old = stkLocs()[i], n = el.value.trim(); if (old === undefined) return true; if (!n || n === old) { render(); return true; } if (n.toLowerCase() === 'sans lieu' || stkLocs().some((l, j) => j !== i && l.toLowerCase() === n.toLowerCase())) { toast('Ce nom existe déjà'); render(); return true; } mut(s => { (s.meta.locs ||= [...LOCS])[i] = n; for (const it of Object.values(s.stock?.items || {})) if (it.loc === old) it.loc = n; }); if (ui.stock.loc === 'l:' + old) ui.stock.loc = 'l:' + n; return true; }
+  if (k === 'stklocnew') { const n = el.value.trim(); if (n) { stkLocAdd(n); setTimeout(() => $('#lmnew')?.focus(), 0); } return true; }
+  if (k === 'stknlin') { const n = el.value.trim(), id = el.dataset.id; if (n) { ui.stock.nl = null; stkLocAdd(n, id); } return true; }
   if (k === 'stkent') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), m = el.dataset.big === '1' ? 1000 : 1; stockSet(id, Math.max(0, h - rest + num(el.value) * m)); return true; }
   if (k === 'stkcin') { const id = el.dataset.id, n = +el.dataset.n, c0 = +el.dataset.c, ok = /^\s*\d+\s*$/.test(el.value), c1 = ok ? Math.round(num(el.value)) : c0; if (c1 === c0) { el.value = c0; return true; } stockSet(id, Math.max(0, stockHave(id) + (c1 - c0) * n)); return true; }
   if (k === 'stqty') { stockSet(el.dataset.id, num(el.value)); return true; }
