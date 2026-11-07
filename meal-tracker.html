@@ -1675,7 +1675,9 @@ function stockMap() {
 }
 const stockHave = id => stockMap().get(id)?.have || 0;
 function stockSet(id, qty, loc) {
-  mut(s => { const st = (s.stock ||= { items: {} }), f = foodMap.get(id), old = st.items[id]; st.items[id] = { q: Math.max(0, Math.round(qty * 100) / 100), loc: loc || old?.loc || '', asof: today() }; });   // pas de lieu par défaut : le produit arrive dans « Sans lieu » pour ne pas l'oublier
+  // dans « Mangés » / « À recompter », on corrige la quantité SANS recompter : le produit reste dans la liste jusqu'à ce qu'on le valide (✓)
+  const keep = typeof ui !== 'undefined' && ui.view === 'stock' && ['eaten', 'old'].includes(ui.stock?.loc) && !!S.stock?.items?.[id], h = keep ? stockHave(id) : 0;
+  mut(s => { const st = (s.stock ||= { items: {} }), f = foodMap.get(id), old = st.items[id]; st.items[id] = keep ? { ...old, q: Math.max(0, Math.round((old.q + qty - h) * 100) / 100), loc: loc || old.loc || '' } : { q: Math.max(0, Math.round(qty * 100) / 100), loc: loc || old?.loc || '', asof: today() }; });   // pas de lieu par défaut : le produit arrive dans « Sans lieu » pour ne pas l'oublier
 }
 const stockRemove = id => mut(s => { if (s.stock?.items) delete s.stock.items[id]; });
 const stockLoc = (id, loc) => mut(s => { const it = s.stock?.items?.[id]; if (it) it.loc = loc; });
@@ -2345,7 +2347,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 07/11/2026 à 13:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 07/11/2026 à 13:59 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2637,7 +2639,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '07/11/2026 à 13:42';
+const BUILD_ID = '07/11/2026 à 13:59';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
