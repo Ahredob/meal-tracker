@@ -1251,6 +1251,8 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stkloc>h2.lh{display:flex;justify-content:space-between;align-items:center;margin:0;padding:9px 14px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid var(--line)}
 .stkloc>h2.lh .lc{background:var(--accent);color:#fff;border-radius:99px;min-width:22px;height:20px;padding:0 7px;display:inline-grid;place-items:center;font-size:12px;letter-spacing:0}
 .stkloc>.mini{padding:8px 14px 0!important}
+
+.btn.okb{background:var(--surface,#fff);color:var(--accent);border:1.5px solid var(--accent);font-weight:700}
 </style>
 </head>
 <body>
@@ -2343,7 +2345,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 07/11/2026 à 13:36 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 07/11/2026 à 13:40 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2635,7 +2637,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '07/11/2026 à 13:36';
+const BUILD_ID = '07/11/2026 à 13:40';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3899,7 +3901,7 @@ function viewStock() {
         <div class="s2mr">${pko.map(n => `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${n}">− 1 ${esc(packLbl(f, n))}</button>`).join('')}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : '';
     return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
       ${x.loc === '' ? `<div class="s2mr s2put"><b>Où le ranger ?</b>${locChips(x)}</div>` : ''}
-      <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
+      <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'eaten' ? `<button class="btn sm okb" data-a="stkok" data-id="${x.id}" title="La quantité est juste : ça compte comme un recomptage">✓ C'est bon</button>` : ''}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
   };
   const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? ['', ...locs0] : [st.loc === 'none' ? '' : st.loc.slice(2)];
   const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card stkloc"><h2 class="lh"><span>${l === '' ? 'Sans lieu' : esc(l)}</span><span class="lc">${xs.length}</span></h2>${l === '' ? '<p class="mini" style="padding:0 14px 4px">Choisis où ranger ces produits.</p>' : ''}${xs.map(row).join('')}</section>` : ''; }).join('');
@@ -3907,6 +3909,7 @@ function viewStock() {
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
     ${stkChips(all, st, cnt)}
+    ${st.loc === 'eaten' && all.some(x => catOk(x) && eatenF(x)) ? `<div class="stkall"><p class="mini" style="margin:0 0 8px">Vérifie ce qui a été retiré du stock : corrige la quantité si elle est fausse, ou valide d'un clic (ça compte comme un recomptage).</p><button class="btn sm okb" data-a="stkallok">✓ Tout valider (${all.filter(x => catOk(x) && eatenF(x)).length})</button></div>` : ''}
     ${(st.loc === 'soon' || st.loc === 'buy') && all.some(x => catOk(x) && fp(x) && !inCart(x.id)) ? `<div class="stkall"><button class="btn sm cartb" data-a="stkallv" data-v="${st.loc}">${icon('cart')} Tout ajouter aux courses (${all.filter(x => catOk(x) && fp(x) && !inCart(x.id)).length})</button></div>` : ''}
     ${body || (flt && all.length ? `<section class="card"><p style="padding:14px">${st.loc === 'old' ? 'Tout a été compté il y a moins de 4 semaines.' : st.loc === 'soon' ? 'Aucun produit n\'est presque fini : il ne reste de paquet entamé nulle part.' : st.loc === 'buy' ? 'Aucun produit n\'est à 0 dans ton stock.' : 'Rien n\'a été mangé depuis tes derniers comptages.'}</p></section>` : `<section class="card"><p style="padding:14px">Ton stock est vide. Cherche un produit ci-dessus pour l'ajouter, avec sa quantité.</p></section>`)}</main>`;
 }
@@ -3922,7 +3925,7 @@ function stkChips(all, st, cnt) {
   const lieuBtn = `<button class="chip ${st.mgr ? 'on' : ''}" data-a="stklocmgr" aria-expanded="${!!st.mgr}">⚙ Lieux</button>`;
   const catBtn = `<button class="chip ${st.cat ? 'on' : ''}" data-a="stkcatopen" aria-expanded="${!!st.catOpen}">${st.cat ? esc(st.cat) : 'Catégories'} ${st.catOpen ? '▴' : '▾'}</button>`;
   const names = { all: 'Tout', none: 'Sans lieu', soon: 'Bientôt vide', buy: 'Vides', eaten: 'Mangés', old: 'À recompter' }, open = !!st.fopen, cur = (names[st.loc] || st.loc.replace(/^l:/, '')) + (st.cat ? ' · ' + st.cat : '');
-  return `<button class="lnk stftog" data-a="stkfopen" aria-expanded="${open}">${open ? 'Masquer' : 'Afficher'} les filtres · ${esc(cur)}</button><div class="stkf${open ? ' show' : ''}"><div class="chips" style="margin:10px 0 ${st.catOpen ? '6px' : '10px'}">${main}${catBtn}${lieuBtn}</div>${st.catOpen ? `<div class="chips stkcats" style="margin:0 0 10px">${cats.map(c => `<button class="chip ${st.cat === c ? 'on' : ''}" data-a="stkcat" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}</div>${st.mgr ? stkLocPanel(all, st) : ''}`;
+  return `<button class="lnk stftog" data-a="stkfopen" aria-expanded="${open}">${open ? 'Masquer' : 'Afficher'} les filtres · ${esc(cur)}</button><div class="stkf${open ? ' show' : ''}"><div class="chips" style="margin:10px 0 ${st.catOpen ? '6px' : '10px'}">${main}<span class="chsep" aria-hidden="true"></span>${catBtn}${lieuBtn}</div>${st.catOpen ? `<div class="chips stkcats" style="margin:0 0 10px">${cats.map(c => `<button class="chip ${st.cat === c ? 'on' : ''}" data-a="stkcat" data-k="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}</div>${st.mgr ? stkLocPanel(all, st) : ''}`;
 }
 // pastilles « rangé dans » d'un produit (avec création d'un nouveau lieu sur place)
 const locChips = x => `${stkLocs().map(l => `<button class="chip ${l === x.loc ? 'on' : ''}" data-a="stkplace" data-id="${x.id}" data-l="${esc(l)}">${esc(l)}</button>`).join('')}<button class="chip" data-a="stknl" data-id="${x.id}">+ Nouveau</button>${ui.stock.nl === x.id ? `<span class="s2nl"><input type="text" maxlength="30" placeholder="Nom du lieu" data-i="stknlin" data-id="${x.id}" data-fk="nl-${x.id}"><button class="btn sm pri" data-a="stknlsave" data-id="${x.id}">OK</button></span>` : ''}`;
@@ -3931,6 +3934,13 @@ function stkLocPanel(all, st) {
   return `<section class="card stklm"><h2>Lieux de rangement</h2>${ls.map((l, i) => { const n = all.filter(x => x.loc === l).length; return `<div class="lmr"><input class="lmn" type="text" maxlength="30" value="${esc(l)}" data-i="stklocname" data-k="${i}" aria-label="Nom du lieu"><span class="lmc">${n} produit${n > 1 ? 's' : ''}</span><button class="ib" data-a="stklocmove" data-k="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Monter">↑</button><button class="ib" data-a="stklocmove" data-k="${i}" data-d="1" ${i === ls.length - 1 ? 'disabled' : ''} aria-label="Descendre">↓</button><button class="ib dng" data-a="stklocdel" data-k="${i}" aria-label="Supprimer ${esc(l)}" title="Supprimer ce lieu">${icon('x')}</button></div>`; }).join('')}
     <div class="lmr"><input id="lmnew" class="lmn" type="text" maxlength="30" placeholder="Nouveau lieu (Cellier, Garage…)" data-i="stklocnew"><button class="btn sm pri" data-a="stklocadd">Ajouter</button></div>
     <p class="mini">Supprimer un lieu ne supprime pas ses produits : ils passent dans « Sans lieu ».</p></section>`;
+}
+// valider les quantités mangées = recompter : le stock calculé devient le nouveau comptage d'aujourd'hui
+function stkValidate(ids) {
+  const map = stockMap(), vals = ids.map(id => [id, map.get(id)?.have]).filter(([, h]) => h !== undefined);
+  if (!vals.length) return;
+  mut(s => { for (const [id, h] of vals) { const it = s.stock?.items?.[id]; if (it) { it.q = Math.max(0, Math.round(h * 100) / 100); it.asof = today(); } } });
+  toast(vals.length > 1 ? `${vals.length} quantités validées` : 'Quantité validée', [{ a: 'gundo', l: 'Annuler' }], 5000);
 }
 // crée un lieu (s'il n'existe pas) et, si on donne un produit, l'y range
 function stkLocAdd(name, id) {
@@ -4021,6 +4031,8 @@ Object.assign(actions, {
   stkuse: el => { const id = el.dataset.id; stockSet(id, Math.max(0, stockHave(id) - (+el.dataset.n))); },
   stkrb: el => { (ui.stock.rb ||= {})[el.dataset.id] = el.dataset.b === '1'; render(); },
   stkfiche: el => { const id = el.dataset.id, y = window.scrollY; actions.nav({ dataset: { v: 'aliments' } }); actions.editfood({ dataset: { id } }, { preventDefault() { } }); if (ui.form && ui.form.id === id) { ui.form.tab = 'achat'; render(); } ui.stkRet = { y }; },
+  stkok: el => { stkValidate([el.dataset.id]); },
+  stkallok: () => { const st = ui.stock, map = stockMap(); const ids = Object.keys(S.stock?.items || {}).filter(id => { const x = map.get(id), f = foodMap.get(id); return x && f && x.ate > 0.05 && (!st.cat || f.cat === st.cat); }); stkValidate(ids); },
   stklocmgr: () => { ui.stock.mgr = !ui.stock.mgr; render(); },
   stklocadd: () => { const i = $('#lmnew'), n = (i?.value || '').trim(); if (!n) return; stkLocAdd(n); setTimeout(() => $('#lmnew')?.focus(), 0); },
   stklocmove: el => { const k = +el.dataset.k, d = +el.dataset.d; mut(s => { const a = (s.meta.locs ||= [...LOCS]); const j = k + d; if (j < 0 || j >= a.length) return; [a[k], a[j]] = [a[j], a[k]]; }); },
