@@ -1244,6 +1244,13 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stklm .lmr{display:flex;align-items:center;gap:8px;margin:6px 0}.stklm .lmn{flex:1;min-width:0;height:38px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink)}
 .stklm .lmc{font-size:12.5px;color:var(--mute);white-space:nowrap}.stklm .ib{width:34px;height:34px;display:inline-grid;place-items:center;border:1px solid var(--line);border-radius:9px;background:var(--surface,#fff);color:var(--ink);padding:0}.stklm .ib[disabled]{opacity:.35}.stklm .ib.dng{color:var(--warn,#b8432c)}
 @media (max-width:430px){.stklm .lmc{display:none}}
+
+/* stock : séparateur dans les filtres, titre de lieu bien distinct des noms d'aliments */
+.chsep{flex:none;width:1px;height:24px;background:var(--line,#dce4e0);margin:0 6px;align-self:center}
+.stkloc{padding:0;overflow:hidden}
+.stkloc>h2.lh{display:flex;justify-content:space-between;align-items:center;margin:0;padding:9px 14px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.stkloc>h2.lh .lc{background:var(--accent);color:#fff;border-radius:99px;min-width:22px;height:20px;padding:0 7px;display:inline-grid;place-items:center;font-size:12px;letter-spacing:0}
+.stkloc>.mini{padding:8px 14px 0!important}
 </style>
 </head>
 <body>
@@ -2336,7 +2343,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 01/11/2026 à 19:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 07/11/2026 à 13:36 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2628,7 +2635,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '01/11/2026 à 19:56';
+const BUILD_ID = '07/11/2026 à 13:36';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3895,7 +3902,7 @@ function viewStock() {
       <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
   };
   const flt = ['eaten', 'old', 'soon', 'buy'].includes(st.loc), fp = st.loc === 'old' ? oldF : st.loc === 'soon' ? soonF : st.loc === 'buy' ? (x => x.have <= 0.05) : eatenF, locs = st.loc === 'all' || flt ? ['', ...locs0] : [st.loc === 'none' ? '' : st.loc.slice(2)];
-  const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card"><h2 style="padding:12px 14px 4px">${l === '' ? 'Sans lieu' : esc(l)} <span class="mini">${xs.length}</span></h2>${l === '' ? '<p class="mini" style="padding:0 14px 4px">Choisis où ranger ces produits.</p>' : ''}${xs.map(row).join('')}</section>` : ''; }).join('');
+  const body = locs.map(l => { const xs = all.filter(x => x.loc === l && catOk(x) && (!flt || fp(x))); return xs.length ? `<section class="card stkloc"><h2 class="lh"><span>${l === '' ? 'Sans lieu' : esc(l)}</span><span class="lc">${xs.length}</span></h2>${l === '' ? '<p class="mini" style="padding:0 14px 4px">Choisis où ranger ces produits.</p>' : ''}${xs.map(row).join('')}</section>` : ''; }).join('');
   return `<main class="main wide2"><div class="dh"><h1>Stock</h1><span class="mini">${all.length} produit${all.length > 1 ? 's' : ''}</span>${shareLine()}</div>
     <p class="mini">Note ce que tu as déjà : la liste de Courses ne le rachète pas. Les repas des jours passés sont retirés du stock automatiquement. Après tes courses, le bouton « Ajouter les articles cochés au stock » (onglet Courses) le remplit pour toi.</p>
     <div class="search">${icon('search')}<input type="search" placeholder="Ajouter un produit à ton stock (riz, œufs, lait…)" value="${esc(st.q)}" data-i="stq" data-fk="stq"></div>${resHtml}
@@ -3910,7 +3917,8 @@ function stkSoon(x) { const f = x.f; if (!f || x.have <= 0.05) return false; con
 function stkChips(all, st, cnt) {
   const locs0 = stkLocs();
   const cats = [...new Set(all.map(x => x.f.cat).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr'));
-  const main = [['all', 'Tout'], ...(all.some(x => x.loc === '') ? [['none', 'Sans lieu']] : []), ...locs0.map(l => ['l:' + l, l]), ['soon', 'Bientôt vide'], ['buy', 'Vides'], ['eaten', 'Mangés'], ['old', 'À recompter']].map(([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${esc(k)}">${esc(l)} <small>${cnt(k)}</small></button>`).join('');
+  const chipH = ([k, l]) => `<button class="chip ${st.loc === k ? 'on' : ''}" data-a="stkloc" data-l="${esc(k)}">${esc(l)} <small>${cnt(k)}</small></button>`;
+  const main = [['all', 'Tout'], ...(all.some(x => x.loc === '') ? [['none', 'Sans lieu']] : []), ...locs0.map(l => ['l:' + l, l])].map(chipH).join('') + '<span class="chsep" aria-hidden="true"></span>' + [['soon', 'Bientôt vide'], ['buy', 'Vides'], ['eaten', 'Mangés'], ['old', 'À recompter']].map(chipH).join('');
   const lieuBtn = `<button class="chip ${st.mgr ? 'on' : ''}" data-a="stklocmgr" aria-expanded="${!!st.mgr}">⚙ Lieux</button>`;
   const catBtn = `<button class="chip ${st.cat ? 'on' : ''}" data-a="stkcatopen" aria-expanded="${!!st.catOpen}">${st.cat ? esc(st.cat) : 'Catégories'} ${st.catOpen ? '▴' : '▾'}</button>`;
   const names = { all: 'Tout', none: 'Sans lieu', soon: 'Bientôt vide', buy: 'Vides', eaten: 'Mangés', old: 'À recompter' }, open = !!st.fopen, cur = (names[st.loc] || st.loc.replace(/^l:/, '')) + (st.cat ? ' · ' + st.cat : '');
