@@ -3833,7 +3833,7 @@ const stkStep = f => f.unit === 'portion' ? 1 : 50;
 // formats comptables d'un aliment (tailles de lots, de paquets, d'articles), du plus grand au plus petit
 const stkPor = f => f.unit === 'portion' && !f.ulbl && !Object.keys(f.lots || {}).length && packsOf(f).some(v => v > 1);   // portions comptées en paquets
 const stkFmts = f => [...new Set([...packsOf(f), ...Object.values(f.lots || {}).map(l => l.s)].filter(n => n > 0))].sort((a, b) => b - a);
-function stkDecomp(f, have) { let rem = Math.max(0, have); const counts = []; for (const n of stkFmts(f)) { const c = Math.floor(rem / n + 1e-9); counts.push([n, c]); rem -= c * n; } return { counts, rest: Math.max(0, Math.round(rem * 100) / 100) }; }
+function stkDecomp(f, have) { let rem = Math.max(0, have); const counts = []; for (const n of (f.unit === 'portion' && !f.ulbl ? stkFmts(f).filter(v => v > 1) : stkFmts(f))) { const c = Math.floor(rem / n + 1e-9); counts.push([n, c]); rem -= c * n; } return { counts, rest: Math.max(0, Math.round(rem * 100) / 100) }; }
 const capF = w => w.charAt(0).toUpperCase() + w.slice(1);
 function stkEditor(x) {
   const f = x.f, fm = stkFmts(f), { counts, rest } = stkDecomp(f, x.have), por = f.unit === 'portion', rb = ui.stock.rb && ui.stock.rb[x.id], big = !por && (!!rb || (rest >= 1000 && rb !== false)), pair = f.unit === 'g' ? ['g', 'kg'] : ['ml', 'l'], isz = fm.length ? fm[fm.length - 1] : 0, pu = n => por ? `${qtxt(n)} ${n >= 2 ? 'parts' : 'part'}` : packSz(f, n);
@@ -3867,8 +3867,8 @@ function stkHeadSub(x) {
       else head = `0 <small>${esc(nm)}</small>`;
     } else head = esc(packSz(f, Math.max(0, x.have))).replace(/^(\S+) (.*)$/, '$1 <small>$2</small>');
     let rem = x.have, npk = 0; const pcs = [];
-    for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; npk += c; } }
-    if (f.lots) for (const sz of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / sz + 1e-9); if (c >= 1 && !pk.includes(sz)) { pcs.push(`${c} ${c > 1 ? esc(nm) : esc(sing)} de ${esc(packSz(f, sz))}`); rem -= c * sz; npk += c; } }
+    for (const L of [...pk].reverse()) { if (por && L <= 1) continue; const c = Math.floor(rem / L + 1e-9); if (c >= 1) { { const lt = lotOf(f, L); pcs.push(por && lt && lt.s === 1 ? `${c} lot${c > 1 ? 's' : ''} de ${lt.n}` : esc(packTxt(f, [[L, c]]))); } rem -= c * L; npk += c; } }
+    if (f.lots) for (const sz of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { if (por && sz <= 1) continue; const c = Math.floor(rem / sz + 1e-9); if (c >= 1 && !pk.includes(sz)) { pcs.push(`${c} ${c > 1 ? esc(nm) : esc(sing)} de ${esc(packSz(f, sz))}`); rem -= c * sz; npk += c; } }
     const full = isz > 0 ? Math.floor(x.have / isz + 1e-9) : 0, detail = pcs.length > 1 || (pcs.length === 1 && !(pk.length <= 1 && !f.lots));
     const rest = r => psz ? `${qtxt(Math.round(r * 100) / 100)} ${r >= 2 ? 'parts' : 'part'} sur ${qtxt(psz)}` : `${esc(packSz(f, Math.round(r * 10) / 10))} sur ${esc(packSz(f, isz))}`;
     if (psz) { const f1 = Math.floor(x.have / psz + 1e-9); if (f1 >= 1) sub = [pcs.length > 1 ? 'dont ' + pcs.join(' + ') : '', rem > 0.05 ? `+ 1 entamé : ${rest(rem)}` : ''].filter(Boolean).join(' '); }
@@ -3877,7 +3877,7 @@ function stkHeadSub(x) {
   let sub2 = '';   // sous-ligne de la liste : le paquet entamé est déjà sur le stepper, on garde seulement le détail des formats
   if (psz) { if (Math.floor(x.have / psz + 1e-9) >= 1 && pcs.length > 1) sub2 = 'dont ' + pcs.join(' + '); }
   else if (!por) { if (full >= 1 && detail && npk >= 2) sub2 = 'dont ' + pcs.join(' + '); }   // la ligne n'apparaît que s'il y a plusieurs paquets (sinon elle répète le chiffre)
-  else sub2 = sub;
+  else if (pcs.length && (npk >= 2 || (npk >= 1 && rem > 0.05))) sub2 = 'dont ' + pcs.join(' + ') + (rem > 0.05 ? ` + ${qtxt(Math.round(rem * 100) / 100)} ${esc(rem >= 2 ? nm : sing)}` : '');
   return { head, sub, sub2, zero, szf };
 }
 // taille du paquet dont on suit le « paquet entamé » (0 = aucun format de paquet : on compte simplement le stock)
