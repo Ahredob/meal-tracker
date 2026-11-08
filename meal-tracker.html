@@ -509,6 +509,7 @@ button.src:hover{border-color:var(--accent);background:var(--accent-soft)}.src[d
 
 #totop{position:fixed;right:22px;bottom:24px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s;z-index:80}
 #totop.show{opacity:1;transform:none;pointer-events:auto}#totop:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+@media (max-width:640px){#totop{bottom:calc(74px + env(safe-area-inset-bottom));right:16px}}
 @media print{#totop{display:none}}
 
 .dh>.titlebox{flex:1 1 300px;min-width:240px;margin:0;padding:6px 14px 5px}.dh>.titlebox .titlein{font-size:21px;margin:0}.dh>.sp{margin-left:auto}
@@ -2348,7 +2349,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 08/11/2026 à 20:05 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 08/11/2026 à 20:12 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2640,7 +2641,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '08/11/2026 à 20:05';
+const BUILD_ID = '08/11/2026 à 20:12';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
