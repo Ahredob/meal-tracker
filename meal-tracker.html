@@ -1144,7 +1144,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stk2 .s2t{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .stk2 .s2n{font-weight:650;font-size:16px;line-height:1.2}
 .stk2 .s2b{font-weight:800;font-size:19px;white-space:nowrap}.stk2 .s2b small{font-size:13.5px;font-weight:600;color:var(--mute)}.stk2 .s2b.zero{color:var(--warn,#b0342f)}
-.stk2 .s2s{font-size:13px;color:var(--mute);margin-top:2px}
+.stk2 .s2s{font-size:13px;color:var(--mute);margin-top:2px;text-align:right}
 .stk2 .s2h{font-size:12.5px;color:var(--mute);margin-top:6px;display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}.stk2 .s2h .neg{color:var(--warn,#b0342f);font-weight:650}.stk2 .s2h .ar{opacity:.6}
 .stk2 .s2a{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .stk2 .s2e{margin-top:10px;padding:10px;border:1px solid var(--accent);border-radius:12px;display:flex;flex-direction:column;gap:10px}
@@ -3848,7 +3848,10 @@ function stkHeadSub(x) {
     const sizes = [...pk, ...Object.values(f.lots || {}).map(l => l.s)].filter(v => v > 0), isz = por ? 1 : sizes.length ? Math.min(...sizes) : 0;
     let head = '', sub = '', zero = x.have <= 0.05;
     const pszs = por && !f.ulbl && !Object.keys(f.lots || {}).length ? pk.filter(v => v > 1) : [], psz = pszs.length ? Math.min(...pszs) : 0;   // portions comptées en paquets (« paquets de 12 »)
-    if (psz) {
+    const dsz = v => new Set(v.map(n => Math.round(n * 1000))).size, multi = psz ? dsz(pszs) > 1 : (!por && dsz(sizes) > 1);   // plusieurs formats : « 1,4 paquet » n'a pas de sens, on affiche le total
+    if (multi && psz) { const n = Math.round(Math.max(0, x.have) * 2) / 2; head = `${qtxt(n)} <small>${n >= 2 || n === 0 ? 'parts' : 'part'}</small>`; }
+    else if (multi) head = esc(packSz(f, Math.max(0, x.have))).replace(/^(\S+) (.*)$/, '$1 <small>$2</small>');
+    else if (psz) {
       const full = Math.floor(x.have / psz + 1e-9);
       if (full >= 1) { const d = decN(x.have / psz); head = `${d.t} <small>${d.r >= 2 ? 'paquets' : 'paquet'}</small>`; }
       else if (x.have > 0.05) { const n = Math.round(x.have * 2) / 2; head = `${qtxt(n)} <small>${n >= 2 ? 'parts' : 'part'}</small>`; sub = `reste d'un paquet de ${qtxt(psz)}`; }
