@@ -2348,7 +2348,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 08/11/2026 à 19:35 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 08/11/2026 à 20:05 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2640,7 +2640,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '08/11/2026 à 19:35';
+const BUILD_ID = '08/11/2026 à 20:05';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3864,9 +3864,9 @@ function stkHeadSub(x) {
       else if (x.have > 0.05) { head = `${esc(packSz(f, x.have))}`.replace(/^(\S+) (.*)$/, '$1 <small>$2</small>'); sub = `reste d'un ${esc(sing)} de ${esc(packSz(f, isz))}`; }
       else head = `0 <small>${esc(nm)}</small>`;
     } else head = esc(packSz(f, Math.max(0, x.have))).replace(/^(\S+) (.*)$/, '$1 <small>$2</small>');
-    let rem = x.have; const pcs = [];
-    for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; } }
-    if (f.lots) for (const sz of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / sz + 1e-9); if (c >= 1 && !pk.includes(sz)) { pcs.push(`${c} ${c > 1 ? esc(nm) : esc(sing)} de ${esc(packSz(f, sz))}`); rem -= c * sz; } }
+    let rem = x.have, npk = 0; const pcs = [];
+    for (const L of [...pk].reverse()) { const c = Math.floor(rem / L + 1e-9); if (c >= 1) { pcs.push(esc(packTxt(f, [[L, c]]))); rem -= c * L; npk += c; } }
+    if (f.lots) for (const sz of [...new Set(Object.values(f.lots).map(l => l.s))].sort((a, b) => b - a)) { const c = Math.floor(rem / sz + 1e-9); if (c >= 1 && !pk.includes(sz)) { pcs.push(`${c} ${c > 1 ? esc(nm) : esc(sing)} de ${esc(packSz(f, sz))}`); rem -= c * sz; npk += c; } }
     const full = isz > 0 ? Math.floor(x.have / isz + 1e-9) : 0, detail = pcs.length > 1 || (pcs.length === 1 && !(pk.length <= 1 && !f.lots));
     const rest = r => psz ? `${qtxt(Math.round(r * 100) / 100)} ${r >= 2 ? 'parts' : 'part'} sur ${qtxt(psz)}` : `${esc(packSz(f, Math.round(r * 10) / 10))} sur ${esc(packSz(f, isz))}`;
     if (psz) { const f1 = Math.floor(x.have / psz + 1e-9); if (f1 >= 1) sub = [pcs.length > 1 ? 'dont ' + pcs.join(' + ') : '', rem > 0.05 ? `+ 1 entamé : ${rest(rem)}` : ''].filter(Boolean).join(' '); }
@@ -3874,7 +3874,7 @@ function stkHeadSub(x) {
     else if (por && pcs.length && (pcs.length > 1 || (pk.length && !(pcs.length === 1 && pk.length === 1 && pk[0] === 1)))) sub = `dont ${pcs.join(' + ')}`;
   let sub2 = '';   // sous-ligne de la liste : le paquet entamé est déjà sur le stepper, on garde seulement le détail des formats
   if (psz) { if (Math.floor(x.have / psz + 1e-9) >= 1 && pcs.length > 1) sub2 = 'dont ' + pcs.join(' + '); }
-  else if (!por) { if (full >= 1 && detail) sub2 = 'dont ' + pcs.join(' + '); }
+  else if (!por) { if (full >= 1 && detail && npk >= 2) sub2 = 'dont ' + pcs.join(' + '); }   // la ligne n'apparaît que s'il y a plusieurs paquets (sinon elle répète le chiffre)
   else sub2 = sub;
   return { head, sub, sub2, zero, szf };
 }
