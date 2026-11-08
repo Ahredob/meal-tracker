@@ -1144,6 +1144,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stk2 .s2t{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .stk2 .s2n{font-weight:650;font-size:16px;line-height:1.2}
 .stk2 .s2b{font-weight:800;font-size:19px;white-space:nowrap}.stk2 .s2b small{font-size:13.5px;font-weight:600;color:var(--mute)}.stk2 .s2b.zero{color:var(--warn,#b0342f)}
+.stk2 button.s2b{background:none;border:0;border-bottom:1.5px dotted var(--mute);border-radius:0;padding:0;font-family:inherit;color:inherit;cursor:pointer;text-align:right}.stk2 button.s2b.zero{color:var(--warn,#b0342f)}.stk2 .s2b.tot{display:inline-flex;align-items:center;gap:6px;font-size:15px}.stk2 .s2b.tot .qin{height:36px;text-align:center;font-size:17px;font-weight:800}
 .stk2 .s2s{font-size:13px;color:var(--mute);margin-top:2px;text-align:right}
 .stk2 .s2h{font-size:12.5px;color:var(--mute);margin-top:6px;display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}.stk2 .s2h .neg{color:var(--warn,#b0342f);font-weight:650}.stk2 .s2h .ar{opacity:.6}
 .stk2 .s2a{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -3903,8 +3904,8 @@ function viewStock() {
       : `<span class="s2k"><span class="lb">Stock</span><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="-1" tabindex="-1" aria-label="Moins">−</button><input class="qin" type="text" inputmode="decimal" ${iw(sv)} value="${sv}" data-i="stqty" data-id="${x.id}" data-fk="sq-${x.id}" aria-label="Quantité en stock de ${esc(f.name)}"><button class="qs" data-a="stkstep" data-id="${x.id}" data-dir="1" tabindex="-1" aria-label="Plus">+</button><span class="u opt">${esc(unitLabel(f))}</span></span>`;
     const mo = !!(ui.stock.menu && ui.stock.menu[x.id]);
     const menu = mo ? `<div class="s2menu"><div class="s2mr"><b>Rangé dans</b>${locChips(x)}</div>
-        <div class="s2mr">${pko.map(n => `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${n}">− 1 ${esc(packLbl(f, n))}</button>`).join('')}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : '';
-    return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span><span class="s2b${zero ? ' zero' : ''}">${head}</span></div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
+        <div class="s2mr">${[...pko, ...stkFmts(f).filter(v => !pko.includes(v))].map(n => `<button class="btn sm" data-a="stkuse" data-id="${x.id}" data-n="${n}">− 1 ${esc(por && n === 1 ? (f.ulbl ? f.ulbl.replace(/[sx]$/, '') : 'part') : packLbl(f, n))}</button>`).join('')}<button class="lnk dng" data-a="stkdel" data-id="${x.id}">Retirer du stock</button></div></div>` : '';
+    return `<div class="stk2" id="stk-${x.id}"><div class="s2t"><span class="s2nm">${f.recipe ? `<b class="s2n">${esc(f.name)}</b>` : `<button class="s2n s2lk" data-a="stkfiche" data-id="${x.id}" title="Ouvrir la fiche de l'aliment">${esc(f.name)} <span aria-hidden="true">›</span></button>`}<button class="s2m${mo ? ' on' : ''}" data-a="stkmenu" data-id="${x.id}" aria-expanded="${mo}" aria-label="Plus d'options" title="Lieu de rangement, retirer du stock…">⋯</button></span>${ui.stock.tot === x.id ? `<span class="s2b tot"><input id="stktot-${x.id}" class="qin" type="text" inputmode="decimal" style="width:${Math.max(56, String(sv).length * 12 + 20)}px" value="${sv}" data-i="stktot" data-id="${x.id}" aria-label="Quantité totale de ${esc(f.name)}"> <span class="u">${esc(por ? (f.ulbl || 'parts') : f.unit)}</span></span>` : `<button class="s2b tapb${zero ? ' zero' : ''}" data-a="stktot" data-id="${x.id}" title="Toucher pour corriger la quantité totale">${head}</button>`}</div>${sub2 ? `<div class="s2s">${sub2}</div>` : ''}${hist ? `<div class="s2h">${hist}</div>` : ''}
       ${x.loc === '' ? `<div class="s2mr s2put"><b>Où le ranger ?</b>${locChips(x)}</div>` : ''}
       <div class="s2ln"><div class="s2a">${pko.map((n, k) => `<button class="btn sm${k === 0 ? ' pri' : ''}" data-a="stkpack" data-id="${x.id}" data-n="${n}" title="Ajoute un ${esc(packLbl(f, n))} au stock">+ ${esc(blab(n))}</button>`).join('')}${ui.stock.loc === 'eaten' || ui.stock.loc === 'old' ? `<button class="btn sm okb" data-a="stkok" data-id="${x.id}" title="La quantité est juste : ça compte comme un recomptage">${ui.stock.loc === 'old' ? '✓ Toujours bon' : '✓ C\'est bon'}</button>` : ''}${ui.stock.loc === 'soon' || ui.stock.loc === 'buy' ? (inCart(x.id) ? '<span class="stkbd">✓ Dans les courses</span>' : `<button class="btn sm cartb" data-a="stkcart" data-id="${x.id}" data-v="${ui.stock.loc}">${icon('cart')} Aux courses</button>`) : ''}</div>${stp}</div>${menu}</div>`;
   };
@@ -4045,6 +4046,7 @@ Object.assign(actions, {
   stknl: el => { ui.stock.nl = ui.stock.nl === el.dataset.id ? null : el.dataset.id; render(); setTimeout(() => document.querySelector('[data-fk="nl-' + el.dataset.id + '"]')?.focus(), 0); },
   stknlsave: el => { const i = document.querySelector('[data-fk="nl-' + el.dataset.id + '"]'), n = (i?.value || '').trim(); if (!n) return; const id = el.dataset.id; ui.stock.nl = null; stkLocAdd(n, id); },
   stkfopen: () => { ui.stock.fopen = !ui.stock.fopen; render(); },
+  stktot: el => { ui.stock.tot = el.dataset.id; render(); setTimeout(() => { const i = $('#stktot-' + el.dataset.id); if (i) { i.focus(); i.select(); } }, 0); },
   stkmenu: el => { const m = (ui.stock.menu ||= {}); m[el.dataset.id] = !m[el.dataset.id]; render(); },
   stkplace: el => stockLoc(el.dataset.id, el.dataset.l),
   stkedit: el => { const e = (ui.stock.edit ||= {}); e[el.dataset.id] = !e[el.dataset.id]; render(); },
@@ -4057,10 +4059,11 @@ extraInput = function (e) {
   const el = e.target;
   if (el.dataset?.i === 'rgnew') { const r = ui.modal?.rows?.[+el.dataset.r]; if (r) r.addVal = el.value; return true; }
   if (el.dataset?.i === 'stq') { ui.stock.q = el.value; render(); return true; }
-  if (el.dataset?.i === 'stqty' || el.dataset?.i === 'stkrest' || el.dataset?.i === 'stkcin' || el.dataset?.i === 'stkent' || ['stklocname', 'stklocnew', 'stknlin'].includes(el.dataset?.i)) return true;
+  if (el.dataset?.i === 'stqty' || el.dataset?.i === 'stkrest' || el.dataset?.i === 'stkcin' || el.dataset?.i === 'stkent' || el.dataset?.i === 'stktot' || ['stklocname', 'stklocnew', 'stknlin'].includes(el.dataset?.i)) return true;
   if (el.dataset?.i === 'stkbq') { (ui.stock.rq ||= {})[el.dataset.id] = num(el.value); return true; }
   return prevExtraInputStk(e);
 };
+document.addEventListener('focusout', e => { const el = e.target; if (el?.dataset?.i === 'stktot') setTimeout(() => { if (ui.stock.tot === el.dataset.id) { ui.stock.tot = null; render(); } }, 200); });
 const prevExtraChangeStk = extraChange;
 extraChange = function (e) {
   const el = e.target, k = el.dataset?.i;
@@ -4069,6 +4072,7 @@ extraChange = function (e) {
   if (k === 'stknlin') { const n = el.value.trim(), id = el.dataset.id; if (n) { ui.stock.nl = null; stkLocAdd(n, id); } return true; }
   if (k === 'stkent') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), m = el.dataset.big === '1' ? 1000 : 1; stockSet(id, Math.max(0, h - rest + num(el.value) * m)); return true; }
   if (k === 'stkcin') { const id = el.dataset.id, n = +el.dataset.n, c0 = +el.dataset.c, ok = /^\s*\d+\s*$/.test(el.value), c1 = ok ? Math.round(num(el.value)) : c0; if (c1 === c0) { el.value = c0; return true; } stockSet(id, Math.max(0, stockHave(id) + (c1 - c0) * n)); return true; }
+  if (k === 'stktot') { const id = el.dataset.id, v = num(el.value); ui.stock.tot = null; if (Number.isFinite(v) && el.value.trim() !== '') stockSet(id, Math.max(0, v)); else render(); return true; }
   if (k === 'stqty') { stockSet(el.dataset.id, num(el.value)); return true; }
   if (k === 'stkrest') { const id = el.dataset.id, f = foodMap.get(id), h = stockHave(id), { rest } = stkDecomp(f, h), rb = ui.stock.rb && ui.stock.rb[id], big = f.unit !== 'portion' && (rb || (rb !== false && rest >= 1000)); stockSet(id, Math.max(0, h - rest + num(el.value) * (big ? 1000 : 1))); return true; }
   if (k === 'stkbsel') { (ui.stock.sel ||= {})[el.dataset.id] = el.checked; render(); return true; }
