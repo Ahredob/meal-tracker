@@ -663,7 +663,7 @@ html[data-mode=light]{color-scheme:light}
   .main .ln .n{grid-column:1/5;grid-row:1;white-space:normal;font-weight:600;font-size:14.5px;line-height:1.25}
   .main .ln .acts{grid-column:5/7;grid-row:1;justify-self:end}
   .main .ln .qc{grid-column:1;grid-row:2;gap:2px}
-  .main .ln .grip{display:none}
+  .main .ln .grip{display:flex;align-items:center;justify-content:center;width:26px;height:32px;padding:0;opacity:.6;touch-action:none;font-size:15px}
   .main .ln .qs{width:32px;height:32px;opacity:1;font-size:18px}
   .main .ln .qin{width:50px;font-size:16px;padding:5px 2px}
   .main .ln>span:not(.acts){grid-row:2;display:flex;flex-direction:column;align-items:center;font-size:12.5px;line-height:1.15;text-align:center}
@@ -4547,6 +4547,34 @@ document.addEventListener('pointerdown', e => {
   try { g.setPointerCapture(e.pointerId); } catch { }
   rcDrag = { from: +g.dataset.idx, to: null, after: false }; g.closest('.rci').classList.add('rcdrag');
   document.addEventListener('pointermove', rcMove, { passive: true }); document.addEventListener('pointerup', rcEnd); document.addEventListener('pointercancel', rcEnd);
+}, { passive: true });
+
+// ---- réorganiser les aliments d'une journée au doigt (mobile) : on glisse la poignée ⋮⋮ ----
+let tdrag = null;
+const tdClear = () => { clearMarks(); document.querySelectorAll('.ln.dragging').forEach(x => x.classList.remove('dragging')); };
+const tdSpot = (x, y) => {
+  const el = document.elementFromPoint(x, y), row = el?.closest?.('[data-row]'), sec = el?.closest?.('[data-drop]');
+  if (!sec) return null;
+  if (row) { const r = row.getBoundingClientRect(), after = y > r.top + r.height / 2; return { meal: row.dataset.meal, idx: +row.dataset.idx + (after ? 1 : 0), row, after }; }
+  return { meal: sec.dataset.drop, idx: 1e9, row: null, sec };
+};
+const tdMove = e => {
+  if (!tdrag) return;
+  if (e.clientY < 90) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 110) window.scrollBy(0, 14);
+  clearMarks(); const t = tdrag.to = tdSpot(e.clientX, e.clientY);
+  if (t) { if (t.row) t.row.classList.add(t.after ? 'dropa' : 'dropb'); else t.sec.classList.add('dropm'); }
+};
+const tdEnd = e => {
+  document.removeEventListener('pointermove', tdMove); document.removeEventListener('pointerup', tdEnd); document.removeEventListener('pointercancel', tdEnd);
+  if (!tdrag) return; const d = tdrag; tdrag = null; tdClear();
+  if (e.type !== 'pointerup' || !d.to) return;
+  reorderEntry(ui.date, d.meal, d.idx, d.to.meal, d.to.idx);
+};
+document.addEventListener('pointerdown', e => {
+  const g = e.target.closest?.('.grip'); if (!g || e.pointerType === 'mouse') return;
+  try { g.setPointerCapture(e.pointerId); } catch { }
+  tdrag = { meal: g.dataset.meal, idx: +g.dataset.idx, to: null }; g.closest('[data-row]')?.classList.add('dragging');
+  document.addEventListener('pointermove', tdMove, { passive: true }); document.addEventListener('pointerup', tdEnd); document.addEventListener('pointercancel', tdEnd);
 }, { passive: true });
 
 // ---- ocr.js ----
