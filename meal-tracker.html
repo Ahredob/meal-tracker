@@ -663,7 +663,8 @@ html[data-mode=light]{color-scheme:light}
   .main .ln .n{grid-column:1/5;grid-row:1;white-space:normal;font-weight:600;font-size:14.5px;line-height:1.25}
   .main .ln .acts{grid-column:5/7;grid-row:1;justify-self:end}
   .main .ln .qc{grid-column:1;grid-row:2;gap:2px}
-  .main .ln .grip{display:flex;align-items:center;justify-content:center;width:26px;height:32px;padding:0;opacity:.6;touch-action:none;font-size:15px}
+  .main .ln{position:relative;padding-left:30px}
+  .main .ln .grip{position:absolute;left:3px;top:4px;display:flex;align-items:center;justify-content:center;width:26px;height:34px;padding:0;opacity:.6;touch-action:none;font-size:15px}
   .main .ln .qs{width:32px;height:32px;opacity:1;font-size:18px}
   .main .ln .qin{width:50px;font-size:16px;padding:5px 2px}
   .main .ln>span:not(.acts){grid-row:2;display:flex;flex-direction:column;align-items:center;font-size:12.5px;line-height:1.15;text-align:center}
@@ -2350,7 +2351,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 08/11/2026 à 20:24 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 15/11/2026 à 16:56 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2642,7 +2643,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '08/11/2026 à 20:24';
+const BUILD_ID = '15/11/2026 à 16:56';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
