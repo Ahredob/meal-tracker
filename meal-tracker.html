@@ -1258,7 +1258,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stkloc>.mini{padding:8px 14px 0!important}
 
 .btn.okb{background:var(--surface,#fff);color:var(--accent);border:1.5px solid var(--accent);font-weight:700}
-</style>
+.eqb{background:var(--accent-bg,#f8e4ec);border-radius:10px;padding:10px 12px;font-size:16px;margin:8px 0}.pul{list-style:none;padding-left:0;margin:6px 0}.pul li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid var(--line,#eee)}.pul li span{color:var(--mute)}</style>
 </head>
 <body>
 <div id="app" aria-live="polite"></div>
@@ -1825,16 +1825,48 @@ function foodUsage(id) {
   for (const [d, day] of Object.entries(S.days)) if (MEALS.some(m => (day.meals[m.id] || []).some(e => e[0] === id))) { n++; if (d > last) last = d; if (d <= tt && d > lastPast) lastPast = d; }
   return { n, last: lastPast || last };
 }
+function convertCore(s, foodId, newUnit, m, daysOnly) {   // daysOnly : seulement les quantités de mes journées et repas types (la fiche de l'aliment a déjà été convertie par l'autre)
+  const f = s.foods.find(x => x.id === foodId); if (!f || !(m > 0)) return;
+  const conv = list => { for (const e of list || []) if (e[0] === foodId) e[1] = Math.round(e[1] * m * 1e4) / 1e4; };
+  for (const day of Object.values(s.days)) MEALS.forEach(mm => conv(day.meals[mm.id]));
+  for (const t of s.templates) MEALS.forEach(mm => conv(t.meals[mm.id]));
+  if (daysOnly) return;
+  for (const k of ['p', 'c', 'l', 'f', 'k']) f[k] = f[k] / m;
+  f.unit = newUnit;
+}
 function convertFoodUnit(foodId, newUnit, m) {
   mut(s => {
-    const f = s.foods.find(x => x.id === foodId); if (!f || !(m > 0) || (shareOn() && (f.unit === 'portion' || newUnit === 'portion' || m !== 1))) return;   // en partage : seulement g ↔ ml, sans changer les quantités
-    const conv = list => { for (const e of list || []) if (e[0] === foodId) e[1] = Math.round(e[1] * m * 1e4) / 1e4; };
-    for (const day of Object.values(s.days)) MEALS.forEach(mm => conv(day.meals[mm.id]));
-    for (const t of s.templates) MEALS.forEach(mm => conv(t.meals[mm.id]));
-    for (const k of ['p', 'c', 'l', 'f', 'k']) f[k] = f[k] / m;
-    f.unit = newUnit;
+    const f = s.foods.find(x => x.id === foodId); if (!f || !(m > 0) || (shareOn() && (f.unit === 'portion' || newUnit === 'portion' || m !== 1))) return;   // en partage, la conversion vers/depuis la portion passe par une proposition
+    convertCore(s, foodId, newUnit, m, false);
   });
 }
+// ---- propositions de changement d'unité entre les deux personnes du partage ----
+const puList = () => Object.values(S.meta?.unitProps || {});
+const puMe = () => S.meta?.share?.me?.id;
+const puIncoming = () => shareOn() ? puList().filter(p => p.st === 'pending' && p.by !== puMe() && foodMap.has(p.id)) : [];
+const puResults = () => shareOn() ? puList().filter(p => p.by === puMe() && (p.st === 'accepted' || p.st === 'refused') && !(S.meta.share.puSeen || {})[p.id + '|' + p.t]) : [];
+const puMine = id => { const p = (S.meta?.unitProps || {})[id]; return shareOn() && p && p.by === puMe() && p.st === 'pending' ? p : null; };
+const puTheirs = id => puIncoming().find(p => p.id === id) || null;
+const puAlerts = () => puIncoming().length + puResults().length;
+const uLab = (u, q) => u === 'portion' ? (Math.abs(q) >= 2 ? 'parts' : 'part') : u;
+const puEq = p => `1 part = ${qtxt(p.x)} ${p.from === 'portion' ? p.to : p.from}`;
+function puUses(id) { const out = []; for (const [d, day] of Object.entries(S.days)) for (const mm of MEALS) for (const e of day.meals[mm.id] || []) if (e[0] === id) out.push({ d, ml: mm.label, q: e[1] }); return out.sort((a, b) => b.d.localeCompare(a.d)); }
+function puSync() {   // chez celui qui a proposé : quand l'autre a accepté, mes propres quantités sont converties (une seule fois)
+  const sh = S.meta.share, done = (sh.puDone ||= {});
+  for (const p of puList()) {
+    const key = p.id + '|' + p.t; if (p.st !== 'accepted' || done[key]) continue;
+    const f = S.foods.find(x => x.id === p.id); if (!f || f.unit !== p.to) continue;   // la fiche convertie n'est pas encore arrivée
+    done[key] = 1; convertCore(S, p.id, p.to, p.m, true);
+  }
+}
+function unitBanner() {
+  if (!shareOn()) return '';
+  const inc = puIncoming(), res = puResults(); let h = '';
+  if (inc.length) { const p = inc[0], f = foodMap.get(p.id); h += `<div class="banner"><span><b>${inc.length > 1 ? inc.length + ' changements d\'unité à valider' : '1 changement d\'unité à valider'}</b> (${esc(f.name)}${inc.length > 1 ? '…' : ''})</span><button class="btn pri" data-a="puopen" data-id="${p.id}">Voir</button></div>`; }
+  for (const p of res.slice(0, 2)) { const f = foodMap.get(p.id); h += `<div class="banner"><span>${p.st === 'accepted' ? '✓' : '✕'} <b>${esc(p.ackName || 'L\'autre personne')}</b> a ${p.st === 'accepted' ? 'accepté' : 'refusé'} le changement d'unité de « ${esc(f?.name || '')} ».${p.st === 'refused' ? ' Rien n\'a changé.' : ''}</span><button class="btn" data-a="puok" data-id="${p.id}">OK</button></div>`; }
+  return h;
+}
+const puTag = id => puTheirs(id) ? ' <span class="tag n">Unité à valider</span>' : puMine(id) ? ' <span class="tag">Proposition envoyée</span>' : '';
 
 
 
@@ -1895,14 +1927,14 @@ function nameUnitIssue(name, unit) {
 const NAV = [['Au quotidien', [['jour', 'Journée', 'jour'], ['semaine', 'Semaine', 'week'], ['courses', 'Courses', 'cart'], ['stock', 'Stock', 'box']]],
   ['Suivi et bibliothèque', [['poids', 'Poids', 'scale'], ['recettes', 'Recettes', 'rec'], ['aliments', 'Aliments', 'foods']]],
   ['', [['reglages', 'Réglages', 'set']]]];
-const navBtn = ([k, l, i]) => `<button class="${ui.view === k || (k === 'recettes' && ui.view === 'modeles') ? 'on' : ''}" data-a="nav" data-v="${k}">${icon(i)}<span>${l}</span>${(k === 'aliments' && newsCount()) || (k === 'recettes' && newsCount(true)) ? '<i class="ndot"></i>' : ''}</button>`;
+const navBtn = ([k, l, i]) => `<button class="${ui.view === k || (k === 'recettes' && ui.view === 'modeles') ? 'on' : ''}" data-a="nav" data-v="${k}">${icon(i)}<span>${l}</span>${(k === 'aliments' && (newsCount() || puAlerts())) || (k === 'recettes' && newsCount(true)) ? '<i class="ndot"></i>' : ''}</button>`;
 const SECOND = ['poids', 'modeles', 'recettes', 'aliments', 'reglages'];
 const navHtml = () => NAV.map(([g, items], gi) => {
   const inner = (g ? `<div class="ng">${g}</div>` : '<div class="nsep"></div>') + items.map(navBtn).join('');
   return gi === 0 ? inner + '<!--MORE-->' : `<div class="nsheet-part">${inner}</div>`;
 }).join('');
 const undoHtml = () => `<div class="undo"><button data-a="gundo" ${canUndo() ? '' : 'disabled'} title="Annuler la dernière modification (Ctrl+Z)">↶ Annuler</button><button data-a="gredo" ${canRedo() ? '' : 'disabled'} title="Rétablir (Ctrl+Y)">↷ Rétablir</button></div>`;
-const moreBtn = () => `<button class="nmore ${ui.moreOpen ? 'open' : ''} ${SECOND.includes(ui.view) ? 'on' : ''}" data-a="navmore">${icon('more')}<span>Plus</span>${newsCount() || newsCount(true) ? '<i class="ndot"></i>' : ''}</button>`;
+const moreBtn = () => `<button class="nmore ${ui.moreOpen ? 'open' : ''} ${SECOND.includes(ui.view) ? 'on' : ''}" data-a="navmore">${icon('more')}<span>Plus</span>${newsCount() || newsCount(true) || puAlerts() ? '<i class="ndot"></i>' : ''}</button>`;
 const suspectFood = f => !f.hidden && !f.recipe && !isHome(f) && !f.k && !foodOk(f) && !/^(eau|the|stevia|cafe)\b/.test(norm(f.name));
 const PALETTES = {"vert": ["Vert", "#F3F6F4", "#D9ECE5", "#1F6F5B"], "ocean": ["Océan", "#F2F5F9", "#DCE8F6", "#2563A8"], "prune": ["Prune", "#F6F3F8", "#E9DDF4", "#7B4BA6"], "terre": ["Terracotta", "#F8F4F0", "#F5E0D6", "#B5532F"], "rose": ["Rose", "#FAF3F6", "#F8DDE9", "#C2467A"], "graphite": ["Graphite", "#F4F5F6", "#E1E5E9", "#3D4650"]};
 function applyTheme() {
@@ -1999,7 +2031,7 @@ function viewDay() {
     return `<section class="meal" data-drop="${m.id}"><div class="mh"><h3>${m.label}</h3><button class="lnk addh" data-a="add" data-meal="${m.id}">${icon('plus')} Ajouter un aliment</button><span>${list.length ? `${f0(mt.k)} kcal` : '—'}</span></div>${list.length ? `<div class="ln h"><span>Qté</span><span>Aliment</span><span class="hp">P</span><span class="hc">G</span><span class="hl">L</span><span class="hf">F</span><span>kcal</span><span></span></div>` : ''}${rows}</section>`;
   }).join('');
   const bad = new Set(); MEALS.forEach(m => (day.meals[m.id] || []).forEach(e => { const f = foodMap.get(e[0]); if (f && suspectFood(f)) bad.add(f.id); }));
-  return `<main class="main">${backupBanner()}${dayStrip(date)}<div class="dh"><button class="ib" data-a="day" data-n="-1" aria-label="Jour précédent">${icon('left')}</button>
+  return `<main class="main">${backupBanner()}${unitBanner()}${dayStrip(date)}<div class="dh"><button class="ib" data-a="day" data-n="-1" aria-label="Jour précédent">${icon('left')}</button>
     <div class="dt"><h1>${fmtLong(date)}</h1><div class="chips"><button class="chip acc" data-a="weeklabel">${labelName(wl.label)}${wl.auto ? ' · auto' : ''}</button><span class="chip">${esc(fmtDM(mon))} → ${esc(fmtDM(addDays(mon, 6)))}</span></div></div>
     <button class="ib" data-a="day" data-n="1" aria-label="Jour suivant">${icon('right')}</button>
 <label class="titlebox"><span>Repas du jour</span><input class="titlein" type="text" placeholder="Nom du repas du jour (ex. Couscous)" value="${esc(day.title)}" data-i="title" data-fk="title" aria-label="Nom du repas du jour"></label>    <div class="sp">${isToday ? '' : '<button class="btn" data-a="today">Aujourd\'hui</button>'}<button class="btn ib2" data-a="saveastpl" title="Enregistrer cette journée comme repas type" aria-label="Enregistrer en repas type"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button><button class="btn dng" data-a="clearday">Vider la journée</button><button class="btn dmore" data-a="daymenu" aria-label="Plus d'actions" aria-expanded="${!!ui.dmenu}">⋯</button>${ui.dmenu ? `<div class="dscrim2" data-a="daymenu"></div><div class="dmenu" role="menu">${isToday ? '' : '<button data-a="dmact" data-k="today">Aller à aujourd\'hui</button>'}<button data-a="dmact" data-k="saveastpl">Enregistrer comme repas type</button><button class="dng" data-a="dmact" data-k="clearday">Vider la journée</button></div>` : ''}</div></div>
@@ -2019,9 +2051,9 @@ function viewFoods() {
   ui._foodIds = list.slice(0, 400).map(f => f.id); ui.picked ||= new Set();
   const rows = list.slice(0, 400).map(f => {
     const b = basisOf(f), iss = foodIssuesU(f);
-    return `<tr class="${ui.form?.id === f.id ? 'sel' : ''}${f.hidden ? ' hid' : ''}${ui.picked.has(f.id) ? ' picked' : ''}" data-a="editfood" data-id="${f.id}"><td class="ck"><input type="checkbox" data-a="selfood" data-id="${f.id}" ${ui.picked.has(f.id) ? 'checked' : ''} aria-label="Sélectionner ${esc(f.name)}"></td><td>${esc(f.name)}${newsBadge(f.id)}${f.recipe ? ' <span class="tag">recette</span>' : ''}${f.hidden ? ' <span class="tag g">archivé</span>' : ''}${iss.length ? ' <span class="tag w" title="' + esc(iss.join(' · ')) + '">écart ?</span>' : ''}${!foodOk(f) && nameUnitIssue(f.name, f.unit) ? ' <span class="tag w" title="' + esc(nameUnitIssue(f.name, f.unit)) + '">nom ?</span>' : ''}</td><td class="mu">${esc(f.cat)}</td><td class="mu">${b.txt}</td><td>${f1(f.p * b.fac)}</td><td>${f1(f.c * b.fac)}</td><td>${f1(f.l * b.fac)}</td><td>${f1(f.f * b.fac)}</td><td>${f0(f.k * b.fac)}</td><td class="mu">${f.k > 0 ? f0(f.p * 100 / f.k * 10) / 10 : '—'}</td></tr>`;
+    return `<tr class="${ui.form?.id === f.id ? 'sel' : ''}${f.hidden ? ' hid' : ''}${ui.picked.has(f.id) ? ' picked' : ''}" data-a="editfood" data-id="${f.id}"><td class="ck"><input type="checkbox" data-a="selfood" data-id="${f.id}" ${ui.picked.has(f.id) ? 'checked' : ''} aria-label="Sélectionner ${esc(f.name)}"></td><td>${esc(f.name)}${newsBadge(f.id)}${puTag(f.id)}${f.recipe ? ' <span class="tag">recette</span>' : ''}${f.hidden ? ' <span class="tag g">archivé</span>' : ''}${iss.length ? ' <span class="tag w" title="' + esc(iss.join(' · ')) + '">écart ?</span>' : ''}${!foodOk(f) && nameUnitIssue(f.name, f.unit) ? ' <span class="tag w" title="' + esc(nameUnitIssue(f.name, f.unit)) + '">nom ?</span>' : ''}</td><td class="mu">${esc(f.cat)}</td><td class="mu">${b.txt}</td><td>${f1(f.p * b.fac)}</td><td>${f1(f.c * b.fac)}</td><td>${f1(f.l * b.fac)}</td><td>${f1(f.f * b.fac)}</td><td>${f0(f.k * b.fac)}</td><td class="mu">${f.k > 0 ? f0(f.p * 100 / f.k * 10) / 10 : '—'}</td></tr>`;
   }).join('');
-  return `<main class="main wide">${ui.form ? '<div class="fscrim" data-a="cancelfood"></div>' : ''}<div class="dh"><h1>Aliments</h1><span class="mini">${S.foods.filter(f => !f.hidden).length} aliments</span><div class="sp"><button class="btn pri" data-a="newfood">${icon('plus')} Aliment</button></div></div>
+  return `<main class="main wide">${ui.form ? '<div class="fscrim" data-a="cancelfood"></div>' : ''}${unitBanner()}<div class="dh"><h1>Aliments</h1><span class="mini">${S.foods.filter(f => !f.hidden).length} aliments</span><div class="sp"><button class="btn pri" data-a="newfood">${icon('plus')} Aliment</button></div></div>
     <div class="srow"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Rechercher un aliment…" value="${esc(ui.foodQ)}" data-i="fq" data-fk="fq"></div><button class="ib ftb${ui.ftOpen ? ' on' : ''}" data-a="ftoolsT" aria-label="Outils" aria-expanded="${!!ui.ftOpen}">⚙</button></div>
     <div class="chips fchips"><button class="chip ${ui.foodCat === 'all' ? 'on' : ''}" data-a="foodcat" data-c="all">Tous</button>${newsCount() ? `<button class="chip ${ui.foodCat === 'news' ? 'on' : ''}" data-a="foodcat" data-c="news" title="Aliments ajoutés ou modifiés par l'autre personne">Nouveautés (${newsCount()})</button>` : ''}${S.foods.some(suspectFood) ? `<button class="chip ${ui.foodCat === 'check' ? 'on' : ''}" data-a="foodcat" data-c="check" title="Aliments à 0 kcal : probablement incomplets">⚠ À vérifier (${S.foods.filter(suspectFood).length})</button>` : ''}${S.foods.some(f => foodIssuesU(f).length) ? `<button class="chip ${ui.foodCat === 'incoh' ? 'on' : ''}" data-a="foodcat" data-c="incoh" title="Calories incohérentes avec les macros, plus de 100 g de macros pour 100 g, fibres supérieures aux glucides">⚖ Écarts possibles (${S.foods.filter(f => foodIssuesU(f).length).length})</button>` : ''}${dups.length ? `<button class="chip ${ui.foodCat === 'dups' ? 'on' : ''}" data-a="foodcat" data-c="dups" title="Aliments dont le nom est identique à la ponctuation ou à l'ordre des mots près">⧉ Doublons possibles (${dups.length})</button>` : ''}${cats.map(c => `<button class="chip ${ui.foodCat === c ? 'on' : ''}" data-a="foodcat" data-c="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div class="ftools${ui.ftOpen ? ' open' : ''}"><label class="sw"><input type="checkbox" data-i="per100" ${ui.per100 ? 'checked' : ''}> Afficher les portions pour 100 g</label><span class="sp2"></span><button class="lnk" data-a="catmanage">Gérer les catégories…</button><button class="lnk" data-a="csvexport">Exporter en CSV</button><button class="lnk" data-a="csvpick">Importer un CSV…</button><input type="file" id="csvf" accept=".csv,text/csv,.txt" hidden data-i="csvfile"></div>
@@ -2207,7 +2239,7 @@ function foodForm() {
     <label for="ff-name">Nom</label><input id="ff-name" type="text" value="${esc(d.name)}" data-i="ff" data-k="name" data-fk="ff-name"><div id="dup">${okHint(d)}${dupHint(d)}</div>
     ${d.recipe ? '' : `<div class="seg ftabs"><button class="${tab === 'val' ? 'on' : ''}" data-a="fftab" data-t="val">Valeurs</button><button class="${tab === 'achat' ? 'on' : ''}" data-a="fftab" data-t="achat">Achat et stock</button></div>`}
     ${tab === 'achat' && !d.recipe ? packTab(d) : `    ${ocrBox()}<label for="ff-catsel">Catégorie</label>${(() => { const cats = categories(), isNew = d.catNew || (!!d.cat && !cats.includes(d.cat)); return `<select id="ff-catsel" data-i="ffcatsel">${!d.cat && !isNew ? '<option value="" selected>— Choisir une catégorie —</option>' : ''}${cats.map(c => `<option value="${esc(c)}"${!isNew && c === d.cat ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__new__"${isNew ? ' selected' : ''}>+ Nouvelle catégorie…</option></select>${isNew ? `<input id="ff-cat" type="text" placeholder="Nom de la nouvelle catégorie" value="${esc(d.cat)}" data-i="ff" data-k="cat" data-fk="ff-cat" style="margin-top:6px">` : ''}`; })()}
-    <label for="ff-unit">Unité</label><div class="unitrow"><select id="ff-unit" data-i="ffunit"${d.id ? ' disabled' : ''}><option value="g" ${d.unit === 'g' ? 'selected' : ''}>Grammes</option><option value="ml" ${d.unit === 'ml' ? 'selected' : ''}>Millilitres</option><option value="portion" ${d.unit === 'portion' ? 'selected' : ''}>Portion</option></select>${d.id && (!shareOn() || d.unit !== 'portion') ? '<button class="lnk" style="margin:0" data-a="unitconv" data-id="' + d.id + '">Changer l\'unité de comptage…</button>' : ''}</div>
+    <label for="ff-unit">Unité</label><div class="unitrow"><select id="ff-unit" data-i="ffunit"${d.id ? ' disabled' : ''}><option value="g" ${d.unit === 'g' ? 'selected' : ''}>Grammes</option><option value="ml" ${d.unit === 'ml' ? 'selected' : ''}>Millilitres</option><option value="portion" ${d.unit === 'portion' ? 'selected' : ''}>Portion</option></select>${d.id && puMine(d.id) ? '<span class="tag">Proposition envoyée</span> <span class="mini">' + esc(puEq(puMine(d.id))) + ' · en attente</span> <button class="lnk" style="margin:0" data-a="pucancel" data-id="' + d.id + '">Annuler la proposition</button>' : d.id && puTheirs(d.id) ? '<span class="tag n">Unité à valider</span> <button class="lnk" style="margin:0" data-a="puopen" data-id="' + d.id + '">Voir la proposition</button>' : d.id ? '<button class="lnk" style="margin:0" data-a="unitconv" data-id="' + d.id + '">Changer l\'unité de comptage…</button>' : ''}</div>
     ${d.unit === 'portion' && !d.recipe ? `<div class="lbl">Saisie des valeurs</div><div class="seg"><button class="${md === 'port' ? 'on' : ''}" data-a="ffmode" data-m="port" title="Valeurs données par portion">Par portion</button><button class="${md === '100' ? 'on' : ''}" data-a="ffmode" data-m="100" title="Valeurs pour 100 g, avec le poids d'une portion">100 g</button></div>${md === '100' ? `<div class="lbl">Poids d'une portion</div><div class="seg"><button class="${d.calc ? '' : 'on'}" data-a="ffcalc" data-v="0">Je le connais</button><button class="${d.calc ? 'on' : ''}" data-a="ffcalc" data-v="1">Depuis le paquet</button></div>${d.calc ? `<div class="g2"><div><label for="ff-ck">Poids du paquet (g)</label><input id="ff-ck" type="text" inputmode="decimal" value="${esc(d.ck)}" data-i="ff" data-k="ck" data-fk="ff-ck"></div><div><label for="ff-cn">Nombre de parts</label><input id="ff-cn" type="text" inputmode="decimal" value="${esc(d.cn)}" data-i="ff" data-k="cn" data-fk="ff-cn"></div></div><div class="note" id="pgres">${pgRes(d)}</div>` : `<label for="ff-pg">Poids d'une portion (g)</label><input id="ff-pg" type="text" inputmode="decimal" value="${esc(d.pg)}" data-i="ff" data-k="pg" data-fk="ff-pg">`}` : ''}` : ''}
     <div class="lbl">Valeurs ${fac}</div><div class="g2">${inp('p', 'Protéines (g)')}${inp('c', 'Glucides (g)')}${inp('l', 'Lipides (g)')}${inp('f', 'Fibres (g)')}</div>
     <label for="ff-k">Calories (kcal)</label><input id="ff-k" type="text" inputmode="decimal" value="${esc(kv)}" class="${ow('k') ? 'owarn' : ''}" ${d.auto ? 'disabled' : ''} data-i="ff" data-k="k" data-fk="ff-k">${owHtml('k')}<label class="sw"><input type="checkbox" data-i="ffauto" ${d.auto ? 'checked' : ''}> Calculer les calories</label><div id="kh">${kcalHint(d)}</div><div id="pv">${portionPreview(d)}</div>
@@ -2352,7 +2384,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 15/11/2026 à 16:59 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 16/11/2026 à 20:59 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2644,7 +2676,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '15/11/2026 à 16:59';
+const BUILD_ID = '16/11/2026 à 20:59';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3501,20 +3533,33 @@ function renderModal3(m, root) {
     root.innerHTML = shell('Retrouver une version précédente', `<p class="mini">Chaque copie ou suppression de journée garde l'état d'avant. « Revenir à avant » remet ces jours tels qu'ils étaient (et garde la version actuelle ici, pour pouvoir revenir en arrière).</p><div class="jrl">${list}</div>`, '<button class="btn pri" data-a="close">Fermer</button>');
     return true;
   }
+  if (m.type === 'unitprop') {
+    const p = (S.meta.unitProps || {})[m.id], f = foodMap.get(m.id);
+    if (!p || !f || p.st !== 'pending') { closeModal(); return true; }
+    const uses = puUses(f.id), shown = m.all ? uses : uses.slice(0, 3), conv = q => Math.round(q * p.m * 1e4) / 1e4;
+    const li = shown.map(u => `<li><span>${esc(fmtDM(u.d))} · ${esc(u.ml)}</span><b>${qtxt(u.q)} ${uLab(f.unit, u.q)} → ${qtxt(conv(u.q))} ${uLab(p.to, conv(u.q))}</b></li>`).join('');
+    root.innerHTML = shell('Changement d\'unité à valider', `<p><b>${esc(f.name)}</b> : ${UNITS[p.from]} → ${UNITS[p.to]}</p><p>${esc(p.byName || 'L\'autre personne')} propose de changer l'unité de comptage de cet aliment.</p>
+      <p class="eqb"><b>${esc(puEq(p))}</b></p><p class="mini">${f0(f.k / p.m)} kcal par ${uLab(p.to, 1)}. Les totaux de tes journées ne changent pas.</p>
+      <p><b>Tes utilisations (${uses.length} jour${uses.length > 1 ? 's' : ''})</b></p><ul class="uconv pul">${li || '<li>Aucune pour l\'instant</li>'}</ul>
+      ${uses.length > 3 ? `<button class="lnk" data-a="puall">${m.all ? 'Réduire' : 'Voir toutes mes utilisations (' + uses.length + ')'}</button>` : ''}
+      <p class="mini">« Plus tard » garde cette demande. « Refuser » la ferme et prévient ${esc(p.byName || 'l\'autre personne')}. Tant que tu n'as pas accepté, rien ne change chez toi.</p>`,
+      `<button class="btn" data-a="purefuse">Refuser</button><button class="btn" data-a="close">Plus tard</button><button class="btn pri" data-a="puaccept">Appliquer</button>`);
+    return true;
+  }
   if (m.type !== 'unit') return false;
   const f = foodMap.get(m.foodId); if (!f) { closeModal(); return true; }
-  const opts = Object.keys(UNITS).filter(u => u !== f.unit && (!shareOn() || (u !== 'portion' && f.unit !== 'portion'))).map(u => `<button class="chip ${m.to === u ? 'on' : ''}" data-a="unitto" data-u="${u}">${UNITS[u]}</button>`).join('');
+  const opts = Object.keys(UNITS).filter(u => u !== f.unit).map(u => `<button class="chip ${m.to === u ? 'on' : ''}" data-a="unitto" data-u="${u}">${UNITS[u]}</button>`).join('');
   const needX = (f.unit === 'portion') !== (m.to === 'portion');
   const q = f.unit === 'portion' ? `1 part = combien de ${UNITS[m.to]} ?` : `1 part = combien de ${unitShort(f.unit)} ?`;
   root.innerHTML = shell(`Unité de « ${f.name} »`, `<p>Aujourd'hui, cet aliment est compté en <b>${UNITS[f.unit]}</b>. Passer à :</p><div class="chips" style="margin:8px 0">${opts}</div>
     ${needX ? `<label for="ux" class="mini" style="display:block;margin-top:10px">${q}</label><input id="ux" type="text" inputmode="decimal" value="${esc(m.x)}" data-i="ux" style="max-width:140px">` : '<p class="mini">Grammes et millilitres sont considérés équivalents (1 g = 1 ml).</p>'}
-    <div id="uprev">${unitPreview(m).html}</div><p class="mini">Tout l'historique et les repas types sont convertis. Pense à faire une sauvegarde avant si tu as un doute.</p>`,
-    `<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="unitdo">Convertir</button>`);
+    <div id="uprev">${unitPreview(m).html}</div>${shareOn() && needX ? `<p class="mini"><b>Rien ne change pour l'instant.</b> L'autre personne reçoit ta proposition, voit ses propres quantités converties, et accepte ou refuse. La conversion se fait chez vous deux quand elle accepte.</p>` : `<p class="mini">Tout l'historique et les repas types sont convertis. Pense à faire une sauvegarde avant si tu as un doute.</p>`}`,
+    `<button class="btn" data-a="close">Annuler</button><button class="btn pri" data-a="unitdo">${shareOn() && needX ? 'Envoyer la proposition' : 'Convertir'}</button>`);
   return true;
 }
 function unitOpen(foodId) {
   const f = foodMap.get(foodId), top = usedQuantities(foodId)[0]?.[0];
-  const to = f.unit === 'portion' ? 'g' : shareOn() ? (f.unit === 'g' ? 'ml' : 'g') : 'portion';
+  const to = f.unit === 'portion' ? 'g' : 'portion';
   openModal({ type: 'unit', foodId, to, x: f.unit === 'portion' ? '100' : String(top ?? 100).replace('.', ',') });
 }
 Object.assign(actions, {
@@ -3524,8 +3569,31 @@ Object.assign(actions, {
     const m = ui.modal, f = foodMap.get(m.foodId), x = num(m.x), needX = (f.unit === 'portion') !== (m.to === 'portion');
     if (needX && !(x > 0)) { toast('Indique une équivalence supérieure à 0'); return; }
     const mult = !needX ? 1 : f.unit === 'portion' ? x : 1 / x;
+    if (shareOn() && needX) {
+      const me = S.meta.share.me, cur = (S.meta.unitProps || {})[f.id];
+      if (cur && cur.st === 'pending' && cur.by !== me.id) { toast('L\'autre personne a déjà fait une proposition pour cet aliment : réponds-y d\'abord'); return; }
+      mut(s => { (s.meta.unitProps ||= {})[f.id] = { id: f.id, from: f.unit, to: m.to, m: mult, x, by: me.id, byName: me.name, t: Date.now(), st: 'pending' }; });
+      closeModal(); ui.form = draftFrom(foodMap.get(m.foodId)); render(); toast('Proposition envoyée'); return;
+    }
     convertFoodUnit(m.foodId, m.to, mult); closeModal(); ui.form = draftFrom(foodMap.get(m.foodId)); render(); toast('Unité convertie');
   },
+});
+Object.assign(actions, {
+  puopen: el => openModal({ type: 'unitprop', id: el.dataset.id, all: false }),
+  puall: () => { ui.modal.all = !ui.modal.all; renderModal(); },
+  puaccept: () => {
+    const id = ui.modal.id, p = (S.meta.unitProps || {})[id], f = foodMap.get(id), me = S.meta.share.me;
+    if (!p || !f || f.unit !== p.from) { toast('Cet aliment a changé entre-temps : demande une nouvelle proposition'); closeModal(); return; }
+    mut(s => { convertCore(s, id, p.to, p.m, false); s.meta.unitProps[id] = { ...p, st: 'accepted', ackBy: me.id, ackName: me.name, ackT: Date.now() }; (s.meta.share.puDone ||= {})[id + '|' + p.t] = 1; });
+    closeModal(); render(); toast('Unité convertie chez toi aussi');
+  },
+  purefuse: () => {
+    const id = ui.modal.id, p = (S.meta.unitProps || {})[id], me = S.meta.share.me; if (!p) { closeModal(); return; }
+    mut(s => { s.meta.unitProps[id] = { ...p, st: 'refused', ackBy: me.id, ackName: me.name, ackT: Date.now() }; });
+    closeModal(); render(); toast('Proposition refusée');
+  },
+  pucancel: el => { mut(s => { if (s.meta.unitProps) delete s.meta.unitProps[el.dataset.id]; }); if (ui.form?.id === el.dataset.id) ui.form = draftFrom(foodMap.get(el.dataset.id)); render(); toast('Proposition annulée'); },
+  puok: el => { const p = (S.meta.unitProps || {})[el.dataset.id]; if (!p) return; mut(s => { ((s.meta.share.puSeen ||= {}))[p.id + '|' + p.t] = 1; }); render(); },
 });
 const prevExtraInput = extraInput;
 extraInput = function (e) {
@@ -4658,6 +4726,7 @@ function shareCollect() {
   for (const [id, it] of Object.entries(S.stock?.items || {})) m.set('st|' + id, it);
   for (const [mon, o] of Object.entries(S.meta.shop || {})) for (const [id, v] of Object.entries(o || {})) if (v) m.set(`sk|${mon}|${id}`, true);
   for (const x of S.meta.shopx || []) m.set('sx|' + x.k, x);
+  for (const [id, p] of Object.entries(S.meta.unitProps || {})) m.set('pu|' + id, p);
   return m;
 }
 // date chaque enregistrement modifié ici depuis la dernière fois (base = enregistrements d'avant le partage : date 0, ils perdent contre toute vraie modification)
@@ -4683,6 +4752,7 @@ function shareApply(k, val) {
   } else if (t === 'st') { S.stock ||= { items: {} }; if (val === undefined) delete S.stock.items[a]; else S.stock.items[a] = clone(val); }
   else if (t === 'sk') { S.meta.shop ||= {}; const o = (S.meta.shop[a] ||= {}); if (val === undefined) delete o[b]; else o[b] = true; }
   else if (t === 'sx') { S.meta.shopx = (S.meta.shopx || []).filter(x => x.k !== a); if (val !== undefined) S.meta.shopx.push(clone(val)); }
+  else if (t === 'pu') { S.meta.unitProps ||= {}; if (val === undefined) delete S.meta.unitProps[a]; else S.meta.unitProps[a] = clone(val); }
 }
 // un aliment fusionné / corrigé « à partir d'une date » chez l'un : chez l'autre, ses journées sont redirigées une seule fois
 function rdAdd(s, food, oldId, kind, date) {
@@ -4747,7 +4817,7 @@ function shareMerge(p) {
       shareApply(k, val); sh.recs[k] = { h, u: r.u, by: r.by }; n++;
       if (k.startsWith('f|') && sh.seen1 && r.u > 0 && r.by !== me && has) shareNews(sh, k.slice(2), r, who, oldCopy, val);
     }
-    shareRedirects();
+    shareRedirects(); puSync();
     sh.seen1 = true; if (sh.adopt) sh.adoptDone = true;
     rebuild(); scheduleSave(); stockCache = null; listeners.forEach(fn => fn());
   } finally { ui.share.applying = false; }
