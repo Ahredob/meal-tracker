@@ -1649,6 +1649,7 @@ function shopAgg(dates) {
 // chaque produit garde la quantité comptée à une date (asof) ; ce qui a été mangé depuis (repas planifiés des jours écoulés) est retiré automatiquement
 const LOCS = ['Frigo', 'Placards', 'Congélateur'];   // lieux proposés au départ ; la liste de l'utilisateur est dans S.meta.locs
 const stkLocs = () => Array.isArray(S?.meta?.locs) ? S.meta.locs : LOCS;
+function locHeal() { const a = S?.meta?.locs; if (!Array.isArray(a)) return; for (const it of Object.values(S.stock?.items || {})) if (it.loc && !a.includes(it.loc)) { a.push(it.loc); stockCache = null; } }
 const guessLoc = f => /surgel|glace/i.test(f.cat || '') ? 'Congélateur' : /laitier|viande|poisson|légume|fruit|charcut|œuf|oeuf|frais|traiteur/i.test(f.cat || '') ? 'Frigo' : 'Placards';
 // consommation régulière : f.use = { q: 1, per: 'day'|'week'|'month' } → quantité retirée du stock par jour
 const USE_DAYS = { day: 1, week: 7, month: 30 }, USE_LBL = { day: 'jour', week: 'semaine', month: 'mois' };
@@ -2384,7 +2385,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 17/11/2026 à 22:38 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 17/11/2026 à 22:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2676,7 +2677,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '17/11/2026 à 22:38';
+const BUILD_ID = '17/11/2026 à 22:42';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4727,6 +4728,7 @@ function shareCollect() {
   for (const [mon, o] of Object.entries(S.meta.shop || {})) for (const [id, v] of Object.entries(o || {})) if (v) m.set(`sk|${mon}|${id}`, true);
   for (const x of S.meta.shopx || []) m.set('sx|' + x.k, x);
   for (const [id, p] of Object.entries(S.meta.unitProps || {})) m.set('pu|' + id, p);
+  if (Array.isArray(S.meta.locs)) m.set('lo|list', { locs: S.meta.locs });   // lieux de stockage : communs, pour que le rangement soit le même chez tout le monde
   return m;
 }
 // date chaque enregistrement modifié ici depuis la dernière fois (base = enregistrements d'avant le partage : date 0, ils perdent contre toute vraie modification)
@@ -4752,6 +4754,7 @@ function shareApply(k, val) {
   } else if (t === 'st') { S.stock ||= { items: {} }; if (val === undefined) delete S.stock.items[a]; else S.stock.items[a] = clone(val); }
   else if (t === 'sk') { S.meta.shop ||= {}; const o = (S.meta.shop[a] ||= {}); if (val === undefined) delete o[b]; else o[b] = true; }
   else if (t === 'sx') { S.meta.shopx = (S.meta.shopx || []).filter(x => x.k !== a); if (val !== undefined) S.meta.shopx.push(clone(val)); }
+  else if (t === 'lo') { if (val === undefined) delete S.meta.locs; else S.meta.locs = clone(val.locs); stockCache = null; }
   else if (t === 'pu') { S.meta.unitProps ||= {}; if (val === undefined) delete S.meta.unitProps[a]; else S.meta.unitProps[a] = clone(val); }
 }
 // un aliment fusionné / corrigé « à partir d'une date » chez l'un : chez l'autre, ses journées sont redirigées une seule fois
@@ -4817,7 +4820,7 @@ function shareMerge(p) {
       shareApply(k, val); sh.recs[k] = { h, u: r.u, by: r.by }; n++;
       if (k.startsWith('f|') && sh.seen1 && r.u > 0 && r.by !== me && has) shareNews(sh, k.slice(2), r, who, oldCopy, val);
     }
-    shareRedirects(); puSync();
+    shareRedirects(); puSync(); locHeal();
     sh.seen1 = true; if (sh.adopt) sh.adoptDone = true;
     rebuild(); scheduleSave(); stockCache = null; listeners.forEach(fn => fn());
   } finally { ui.share.applying = false; }
@@ -5150,7 +5153,6 @@ function devCollect() {
   for (const [mon, w] of Object.entries(S.weeks || {})) m.set('wk|' + mon, w);
   for (const t of S.templates || []) m.set('t|' + t.id, t);
   for (const [l, t] of Object.entries(S.program?.targets || {})) m.set('pg|' + l, t);
-  if (Array.isArray(S.meta?.locs)) m.set('lo|list', { locs: S.meta.locs });   // lieux de stockage (propres à moi, partagés entre mes appareils, pas avec l'autre personne)
   if (S.program?.order) m.set('po|cycle', { order: S.program.order, off: S.program.off || {}, names: S.program.names || {} });
   return m;
 }
@@ -5174,7 +5176,6 @@ function devApply(k, val) {
   else if (t === 'w') { S.weights = (S.weights || []).filter(w => w.date !== a); if (val !== undefined) { S.weights.push(clone(val)); S.weights.sort((x, y) => x.date.localeCompare(y.date)); } }
   else if (t === 'wk') { S.weeks ||= {}; if (val === undefined) delete S.weeks[a]; else S.weeks[a] = clone(val); }
   else if (t === 't') { S.templates = (S.templates || []).filter(x => x.id !== a); if (val !== undefined) S.templates.push(clone(val)); }
-  else if (t === 'lo') { if (val === undefined) delete S.meta.locs; else S.meta.locs = clone(val.locs); stockCache = null; }
   else if (t === 'po') { S.program ||= { targets: {} }; if (val === undefined) { delete S.program.order; delete S.program.off; delete S.program.names; } else { S.program.order = clone(val.order); S.program.off = clone(val.off); S.program.names = clone(val.names); } }
   else if (t === 'pg') { S.program ||= { targets: {} }; S.program.targets ||= {}; if (val === undefined) delete S.program.targets[a]; else S.program.targets[a] = clone(val); }
   else shareApply(k, val);
@@ -5205,7 +5206,7 @@ function devMerge(files) {
       }
     }
     if (n) { cleanDays(S); rebuild(); scheduleSave(); stockCache = null; listeners.forEach(fn => fn()); }
-  } finally { ui.dev.applying = false; }
+  } finally { locHeal(); ui.dev.applying = false; }
   return n;
 }
 async function devRead(c) {
