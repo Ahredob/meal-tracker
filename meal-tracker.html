@@ -2384,7 +2384,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 16/11/2026 à 20:59 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 17/11/2026 à 22:38 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2676,7 +2676,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '16/11/2026 à 20:59';
+const BUILD_ID = '17/11/2026 à 22:38';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -5150,6 +5150,7 @@ function devCollect() {
   for (const [mon, w] of Object.entries(S.weeks || {})) m.set('wk|' + mon, w);
   for (const t of S.templates || []) m.set('t|' + t.id, t);
   for (const [l, t] of Object.entries(S.program?.targets || {})) m.set('pg|' + l, t);
+  if (Array.isArray(S.meta?.locs)) m.set('lo|list', { locs: S.meta.locs });   // lieux de stockage (propres à moi, partagés entre mes appareils, pas avec l'autre personne)
   if (S.program?.order) m.set('po|cycle', { order: S.program.order, off: S.program.off || {}, names: S.program.names || {} });
   return m;
 }
@@ -5173,6 +5174,7 @@ function devApply(k, val) {
   else if (t === 'w') { S.weights = (S.weights || []).filter(w => w.date !== a); if (val !== undefined) { S.weights.push(clone(val)); S.weights.sort((x, y) => x.date.localeCompare(y.date)); } }
   else if (t === 'wk') { S.weeks ||= {}; if (val === undefined) delete S.weeks[a]; else S.weeks[a] = clone(val); }
   else if (t === 't') { S.templates = (S.templates || []).filter(x => x.id !== a); if (val !== undefined) S.templates.push(clone(val)); }
+  else if (t === 'lo') { if (val === undefined) delete S.meta.locs; else S.meta.locs = clone(val.locs); stockCache = null; }
   else if (t === 'po') { S.program ||= { targets: {} }; if (val === undefined) { delete S.program.order; delete S.program.off; delete S.program.names; } else { S.program.order = clone(val.order); S.program.off = clone(val.off); S.program.names = clone(val.names); } }
   else if (t === 'pg') { S.program ||= { targets: {} }; S.program.targets ||= {}; if (val === undefined) delete S.program.targets[a]; else S.program.targets[a] = clone(val); }
   else shareApply(k, val);
@@ -5186,6 +5188,7 @@ function devLabel(k, v) {
   if (t === 't') return 'Repas type « ' + (v?.name || '…') + ' »';
   if (t === 'pg' || t === 'po') return 'Programme (semaines et objectifs)';
   if (t === 'st') return 'Stock : ' + (foodMap.get(a)?.name || a);
+  if (t === 'lo') return 'Lieux de stockage';
   return 'Courses';
 }
 function devMerge(files) {
