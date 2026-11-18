@@ -1712,7 +1712,8 @@ function stkProj() {
   projCache = res;
   const items = S.stock?.items || {}; if (!Object.keys(items).length) return res;
   const t = today(), end = addDays(t, 56);
-  const need = list => { const u = new Map(), add = (id, q) => u.set(id, (u.get(id) || 0) + q); for (const [id, q] of list) { const f = foodMap.get(id); if (f?.recipe && !items[id]) { for (const [iid, iq] of f.recipe.items) add(iid, iq / f.recipe.parts * q); } else add(id, q); } return u; };
+  const need = list => { const u = new Map(), add = (id, q) => u.set(id, (u.get(id) || 0) + q); u.via = new Map(); u.direct = new Set(); for (const [id, q] of list) { const f = foodMap.get(id); if (f?.recipe && !items[id]) { for (const [iid, iq] of f.recipe.items) { add(iid, iq / f.recipe.parts * q); (u.via.get(iid) || u.via.set(iid, new Set()).get(iid)).add(f.name); } } else { add(id, q); u.direct.add(id); } } return u; };
+  const viaOf = (u, id) => !u.direct.has(id) && u.via.get(id) ? [...u.via.get(id)] : [];
   const dates = [...new Set([...Object.keys(S.days), ...Object.keys(remote?.days || {})])].filter(d => d >= t && d <= end).sort();
   for (const d of dates) MEALS.forEach((m, mi) => {
     const mine = S.days[d]?.meals?.[m.id] || [], oth = remote?.days?.[d]?.meals?.[m.id] || [];
@@ -1725,8 +1726,8 @@ function stkProj() {
       const a = s.nm.get(id) || 0, b = s.no.get(id) || 0, tot = a + b;
       const avail = Math.max(0, x.have - useRate(foodMap.get(id)) * Math.max(0, diffDays(s.d, t)) - (used.get(id) || 0));
       if (a > 0 && tot > avail + 0.001) res.flag.set(`${s.d}|${s.m}|${id}`, { id, state: avail <= 0.001 ? 'zero' : 'low', short: Math.min(a, tot - avail), avail, tot, same: b > 0, prev: (hist.get(id) || []).slice() });
-      if (a > 0) (hist.get(id) || hist.set(id, []).get(id)).push({ d: s.d, m: s.m, who: 'me' });
-      if (b > 0) (hist.get(id) || hist.set(id, []).get(id)).push({ d: s.d, m: s.m, who: 'o' });
+      if (a > 0) (hist.get(id) || hist.set(id, []).get(id)).push({ d: s.d, m: s.m, who: 'me', via: viaOf(s.nm, id) });
+      if (b > 0) (hist.get(id) || hist.set(id, []).get(id)).push({ d: s.d, m: s.m, who: 'o', via: viaOf(s.no, id) });
       used.set(id, (used.get(id) || 0) + tot);
     }
   }
@@ -1734,7 +1735,7 @@ function stkProj() {
 }
 const lcFirst = n => n && n[1] && n[1] === n[1].toLowerCase() ? n[0].toLowerCase() + n.slice(1) : n;
 const stkQ = (f, v) => !f || f.unit === 'portion' ? qtxt(Math.round(v * 100) / 100) : `${qtxt(Math.round(v))} ${f.unit}`;
-const stkWhen = (d, mid) => { const dn = diffDays(d, today()), ml = (MEALS.find(m => m.id === mid)?.label || '').toLowerCase(); return `${dn === 0 ? 'aujourd\'hui' : dn === 1 ? 'demain' : dn <= 6 ? fmtLong(d).split(' ')[0].toLowerCase() : fmtDM(d)} ${ml}`.trim(); };
+const stkWhen = (d, mid) => { const dn = diffDays(d, today()), ml = (MEALS.find(m => m.id === mid)?.label || '').toLowerCase(); return `${dn <= 6 ? fmtLong(d).split(' ')[0].toLowerCase() : fmtDM(d)} ${ml}`.trim(); };
 // manques d'une ligne de la journée (null = rien à signaler)
 function stkEntryFlag(date, mid, e) {
   if (date < today()) return null;
@@ -1746,7 +1747,7 @@ function stkEntryFlag(date, mid, e) {
   return { state: fl.some(x => x.state === 'zero') ? 'zero' : 'low', recipe: !!(f.recipe && !items[f.id]), fl, f };
 }
 function stkFlagMsg(x) {
-  const f = foodMap.get(x.id), nm = lcFirst(f?.name || ''), who = x.prev.slice(-2).map(p => p.who === 'me' ? `tu en manges ${stkWhen(p.d, p.m)}` : `l'autre personne en mange ${stkWhen(p.d, p.m)}`).join(' et ');
+  const f = foodMap.get(x.id), nm = lcFirst(f?.name || ''), who = x.prev.slice(-2).map(p => (p.who === 'me' ? `tu en manges ${stkWhen(p.d, p.m)}` : `l'autre personne en mange ${stkWhen(p.d, p.m)}`) + (p.via?.length ? ` (dans ${p.via.join(', ')})` : '')).join(' et ');
   let t;
   if (x.state === 'zero') t = x.prev.length ? `Plus de ${nm} à ce repas : ${who}.` : `Plus de ${nm} en stock.`;
   else t = `Il en reste ${stkQ(f, x.avail)} sur ${stkQ(f, x.tot)}${who ? ' : ' + who : ''}.`;
@@ -2477,7 +2478,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 18/11/2026 à 20:58 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 18/11/2026 à 21:22 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2771,7 +2772,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '18/11/2026 à 20:58';
+const BUILD_ID = '18/11/2026 à 21:22';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
