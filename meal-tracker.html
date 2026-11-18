@@ -1460,7 +1460,7 @@ async function init() {
     st = fromSeed(seed);
     S = st; rebuild(); await flush();
   }
-  S = st; S.meta ||= { profile: 'moi', lastBackup: null }; S.stock ||= { items: {} }; cleanDays(S); addWheyRecipes(S); migrateRecipes(S); rebuild();
+  S = st; S.meta ||= { profile: 'moi', lastBackup: null }; S.stock ||= { items: {} }; cleanDays(S); addWheyRecipes(S); migrateRecipes(S); rebuild(); if (locHeal()) scheduleSave();
   try { navigator.storage?.persist?.(); } catch {}
   addEventListener('pagehide', flush); addEventListener('beforeunload', flush);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
@@ -1664,7 +1664,14 @@ function shopAgg(dates) {
 // chaque produit garde la quantité comptée à une date (asof) ; ce qui a été mangé depuis (repas planifiés des jours écoulés) est retiré automatiquement
 const LOCS = ['Frigo', 'Placards', 'Congélateur'];   // lieux proposés au départ ; la liste de l'utilisateur est dans S.meta.locs
 const stkLocs = () => Array.isArray(S?.meta?.locs) ? S.meta.locs : LOCS;
-function locHeal() { const a = S?.meta?.locs; if (!Array.isArray(a)) return; for (const it of Object.values(S.stock?.items || {})) if (it.loc && !a.includes(it.loc)) { a.push(it.loc); stockCache = null; } }
+// répare la liste des lieux : tout lieu encore utilisé par un produit doit y figurer (liste absente, remplacée ou raccourcie par une synchronisation) ; renvoie true si quelque chose a été remis
+function locHeal() {
+  if (!S) return false; let ch = false;
+  const used = [...new Set(Object.values(S.stock?.items || {}).map(it => it.loc).filter(Boolean))];
+  if (!Array.isArray(S.meta?.locs)) { const extra = used.filter(l => !LOCS.includes(l)); if (!extra.length) return false; S.meta.locs = [...LOCS, ...extra]; stockCache = null; return true; }
+  for (const l of used) if (!S.meta.locs.includes(l)) { S.meta.locs.push(l); ch = true; }
+  if (ch) stockCache = null; return ch;
+}
 const guessLoc = f => /surgel|glace/i.test(f.cat || '') ? 'Congélateur' : /laitier|viande|poisson|légume|fruit|charcut|œuf|oeuf|frais|traiteur/i.test(f.cat || '') ? 'Frigo' : 'Placards';
 // consommation régulière : f.use = { q: 1, per: 'day'|'week'|'month' } → quantité retirée du stock par jour
 const USE_DAYS = { day: 1, week: 7, month: 30 }, USE_LBL = { day: 'jour', week: 'semaine', month: 'mois' };
@@ -2470,7 +2477,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 18/11/2026 à 20:46 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 18/11/2026 à 20:58 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2764,7 +2771,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '18/11/2026 à 20:46';
+const BUILD_ID = '18/11/2026 à 20:58';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -4841,7 +4848,7 @@ function shareApply(k, val) {
   } else if (t === 'st') { S.stock ||= { items: {} }; if (val === undefined) delete S.stock.items[a]; else S.stock.items[a] = clone(val); }
   else if (t === 'sk') { S.meta.shop ||= {}; const o = (S.meta.shop[a] ||= {}); if (val === undefined) delete o[b]; else o[b] = true; }
   else if (t === 'sx') { S.meta.shopx = (S.meta.shopx || []).filter(x => x.k !== a); if (val !== undefined) S.meta.shopx.push(clone(val)); }
-  else if (t === 'lo') { if (val === undefined) delete S.meta.locs; else S.meta.locs = clone(val.locs); stockCache = null; }
+  else if (t === 'lo') { if (val !== undefined && Array.isArray(val.locs)) { S.meta.locs = clone(val.locs); stockCache = null; } }   // une synchronisation ne supprime jamais la liste des lieux
   else if (t === 'pu') { S.meta.unitProps ||= {}; if (val === undefined) delete S.meta.unitProps[a]; else S.meta.unitProps[a] = clone(val); }
 }
 // un aliment fusionné / corrigé « à partir d'une date » chez l'un : chez l'autre, ses journées sont redirigées une seule fois
@@ -5292,7 +5299,7 @@ function devMerge(files) {
         devApply(k, val); dv.recs[k] = { h, u: r.u, by: r.by, b: r.b }; n++;
       }
     }
-    if (n) { cleanDays(S); rebuild(); scheduleSave(); stockCache = null; listeners.forEach(fn => fn()); }
+    if (n) { locHeal(); cleanDays(S); rebuild(); scheduleSave(); stockCache = null; listeners.forEach(fn => fn()); }
   } finally { locHeal(); ui.dev.applying = false; }
   return n;
 }
