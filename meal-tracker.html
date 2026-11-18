@@ -1258,7 +1258,22 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stkloc>.mini{padding:8px 14px 0!important}
 
 .btn.okb{background:var(--surface,#fff);color:var(--accent);border:1.5px solid var(--accent);font-weight:700}
-.eqb{background:var(--accent-bg,#f8e4ec);border-radius:10px;padding:10px 12px;font-size:16px;margin:8px 0}.pul{list-style:none;padding-left:0;margin:6px 0}.pul li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid var(--line,#eee)}.pul li span{color:var(--mute)}</style>
+.eqb{background:var(--accent-bg,#f8e4ec);border-radius:10px;padding:10px 12px;font-size:16px;margin:8px 0}.pul{list-style:none;padding-left:0;margin:6px 0}.pul li{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-top:1px solid var(--line,#eee)}.pul li span{color:var(--mute)}
+/* prévision du stock dans les journées */
+.chipw{display:inline-block;font-size:12px;font-weight:700;border-radius:10px;padding:1px 8px;margin-left:6px;white-space:nowrap;vertical-align:1px;cursor:pointer}
+.chipw.o{background:#FBE9C9;color:#8A5200}.chipw.r{background:var(--warn-soft);color:var(--warn)}
+.pop{background:var(--ink);color:var(--bg);border-radius:10px;padding:9px 12px;font-size:13.5px;line-height:1.35;margin:2px 10px 8px;max-width:420px}
+.stkw{margin:0 0 10px}
+@media (min-width:641px){.ln .n.hs{display:flex;align-items:center;min-width:0}.ln .n.hs .nt{overflow:hidden;text-overflow:ellipsis;min-width:0}.ln .n.hs .chipw,.ln .n.hs .rcl{flex:none}}
+.dsum{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--warn);background:var(--warn-soft);border-radius:12px;padding:4px 12px}
+.stkl{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 12px;margin-top:8px}
+.stkl>div{padding:8px 0;border-top:1px solid var(--line);font-size:14px}.stkl>div:first-child{border-top:0}
+.stkl span{display:block;color:var(--mute);font-size:13px;margin-top:1px}
+.ai .sb{display:block;width:max-content;max-width:100%;font-size:11.5px;font-weight:700;border-radius:9px;padding:1px 8px;margin:3px 0 0;white-space:normal}
+.ai .sb.ok{background:var(--accent-soft);color:var(--accent)}.ai .sb.zr{background:var(--warn-soft);color:var(--warn)}
+@media (prefers-color-scheme:dark){:root:not([data-mode=light]) .chipw.o{background:#3A2E14;color:#F2B04C}}
+:root[data-mode=dark] .chipw.o{background:#3A2E14;color:#F2B04C}
+</style>
 </head>
 <body>
 <div id="app" aria-live="polite"></div>
@@ -1680,6 +1695,67 @@ function stockMap() {
   return map;
 }
 const stockHave = id => stockMap().get(id)?.have || 0;
+
+// ---- prévision du stock : les repas prévus (aujourd'hui et à venir, les miens et ceux de l'autre personne) sont retirés du stock dans l'ordre, pour signaler un manque AVANT le jour J ----
+let projCache = null;
+function stkProj() {
+  const map = stockMap(), key = remote?.at || '';
+  if (projCache && projCache.map === map && projCache.key === key) return projCache;
+  const res = { map, key, slots: [], flag: new Map() };
+  projCache = res;
+  const items = S.stock?.items || {}; if (!Object.keys(items).length) return res;
+  const t = today(), end = addDays(t, 56);
+  const need = list => { const u = new Map(), add = (id, q) => u.set(id, (u.get(id) || 0) + q); for (const [id, q] of list) { const f = foodMap.get(id); if (f?.recipe && !items[id]) { for (const [iid, iq] of f.recipe.items) add(iid, iq / f.recipe.parts * q); } else add(id, q); } return u; };
+  const dates = [...new Set([...Object.keys(S.days), ...Object.keys(remote?.days || {})])].filter(d => d >= t && d <= end).sort();
+  for (const d of dates) MEALS.forEach((m, mi) => {
+    const mine = S.days[d]?.meals?.[m.id] || [], oth = remote?.days?.[d]?.meals?.[m.id] || [];
+    if (mine.length || oth.length) res.slots.push({ d, m: m.id, ord: d + '|' + mi, nm: need(mine), no: need(oth) });
+  });
+  const used = new Map(), hist = new Map();
+  for (const s of res.slots) {
+    for (const id of new Set([...s.nm.keys(), ...s.no.keys()])) {
+      const x = map.get(id); if (!x) continue;
+      const a = s.nm.get(id) || 0, b = s.no.get(id) || 0, tot = a + b;
+      const avail = Math.max(0, x.have - useRate(foodMap.get(id)) * Math.max(0, diffDays(s.d, t)) - (used.get(id) || 0));
+      if (a > 0 && tot > avail + 0.001) res.flag.set(`${s.d}|${s.m}|${id}`, { id, state: avail <= 0.001 ? 'zero' : 'low', short: Math.min(a, tot - avail), avail, tot, same: b > 0, prev: (hist.get(id) || []).slice() });
+      if (a > 0) (hist.get(id) || hist.set(id, []).get(id)).push({ d: s.d, m: s.m, who: 'me' });
+      if (b > 0) (hist.get(id) || hist.set(id, []).get(id)).push({ d: s.d, m: s.m, who: 'o' });
+      used.set(id, (used.get(id) || 0) + tot);
+    }
+  }
+  return res;
+}
+const lcFirst = n => n && n[1] && n[1] === n[1].toLowerCase() ? n[0].toLowerCase() + n.slice(1) : n;
+const stkQ = (f, v) => !f || f.unit === 'portion' ? qtxt(Math.round(v * 100) / 100) : `${qtxt(Math.round(v))} ${f.unit}`;
+const stkWhen = (d, mid) => { const dn = diffDays(d, today()), ml = (MEALS.find(m => m.id === mid)?.label || '').toLowerCase(); return `${dn === 0 ? 'aujourd\'hui' : dn === 1 ? 'demain' : dn <= 6 ? fmtLong(d).split(' ')[0].toLowerCase() : fmtDM(d)} ${ml}`.trim(); };
+// manques d'une ligne de la journée (null = rien à signaler)
+function stkEntryFlag(date, mid, e) {
+  if (date < today()) return null;
+  const P = stkProj(); if (!P.flag.size) return null;
+  const f = foodMap.get(e[0]); if (!f) return null;
+  const items = S.stock?.items || {}, ids = f.recipe && !items[f.id] ? f.recipe.items.map(x => x[0]) : [f.id];
+  const fl = ids.map(id => P.flag.get(`${date}|${mid}|${id}`)).filter(Boolean);
+  if (!fl.length) return null;
+  return { state: fl.some(x => x.state === 'zero') ? 'zero' : 'low', recipe: !!(f.recipe && !items[f.id]), fl, f };
+}
+function stkFlagMsg(x) {
+  const f = foodMap.get(x.id), nm = lcFirst(f?.name || ''), who = x.prev.slice(-2).map(p => p.who === 'me' ? `tu en manges ${stkWhen(p.d, p.m)}` : `l'autre personne en mange ${stkWhen(p.d, p.m)}`).join(' et ');
+  let t;
+  if (x.state === 'zero') t = x.prev.length ? `Plus de ${nm} à ce repas : ${who}.` : `Plus de ${nm} en stock.`;
+  else t = `Il en reste ${stkQ(f, x.avail)} sur ${stkQ(f, x.tot)}${who ? ' : ' + who : ''}.`;
+  if (x.same) t += ' L\'autre personne en prévoit aussi à ce repas.';
+  return t;
+}
+const stkEntryChip = x => x.recipe ? `ingrédient${x.fl.length > 1 ? 's' : ''} manquant${x.fl.length > 1 ? 's' : ''}` : x.state === 'zero' ? 'épuisé' : `manque ${stkQ(x.f, x.fl[0].short)}`;
+const stkEntryMsg = x => x.recipe ? x.fl.map(y => `${foodMap.get(y.id)?.name || ''} : ${stkFlagMsg(y)}`).join(' ') : stkFlagMsg(x.fl[0]);
+// stock prévu à un repas donné (pour la liste d'ajout) : stock actuel moins les repas prévus avant celui-ci
+function stkAvailAt(id, d, mid) {
+  if (d < today() || !S.stock?.items?.[id]) return null;
+  const P = stkProj(), x = P.map.get(id); if (!x) return null;
+  const ord = d + '|' + MEALS.findIndex(m => m.id === mid); let used = 0, last = null;
+  for (const s of P.slots) { if (s.ord >= ord) break; const q = (s.nm.get(id) || 0) + (s.no.get(id) || 0); if (q > 0) { used += q; last = s; } }
+  return { avail: Math.max(0, x.have - useRate(foodMap.get(id)) * Math.max(0, diffDays(d, today())) - used), have: x.have, last };
+}
 function stockSet(id, qty, loc) {
   // dans « Mangés » / « À recompter », on corrige la quantité SANS recompter : le produit reste dans la liste jusqu'à ce qu'on le valide (✓)
   const keep = typeof ui !== 'undefined' && ui.view === 'stock' && ['eaten', 'old'].includes(ui.stock?.loc) && !!S.stock?.items?.[id], h = keep ? stockHave(id) : 0;
@@ -2019,6 +2095,15 @@ function totalsPanel(tot, tgt, wl, bad, compact) {
   if (compact) return `<div class="tpanel tp-m" role="group" aria-label="Totaux de la journée">${[kc, ...others].map(box).join('')}${bad.size ? `<button class="sbw" data-a="chkfoods">⚠ ${bad.size} aliment${bad.size > 1 ? 's' : ''} sans calories</button>` : ''}</div>`;
   return `<div class="tpanel" role="group" aria-label="Totaux de la journée"><h5>Totaux du jour</h5><div class="tsub">${labelName(wl.label)} · objectif ${f0(tgt.k)} kcal</div>${box(kc)}<div class="tgrid">${others.map(box).join('')}</div>${bad.size ? `<button class="sbw" data-a="chkfoods" title="Ouvrir la liste des aliments à vérifier">⚠ ${bad.size} aliment${bad.size > 1 ? 's' : ''} sans calories</button>` : ''}<div class="tleg"><span class="d under"></span>reste<span class="d ok"></span>atteint<span class="d over"></span>au-dessus</div></div>`;
 }
+function stkDayBanner(date, day) {
+  if (date < today()) return '';
+  const seen = new Map();
+  for (const m of MEALS) for (const e of day.meals[m.id] || []) { const x = stkEntryFlag(date, m.id, e); if (x && !seen.has(e[0] + '|' + m.id)) seen.set(e[0] + '|' + m.id, x); }
+  if (!seen.size) return '';
+  const open = ui.stkDay === date, n = seen.size;
+  const list = open ? `<div class="stkl">${[...seen.values()].map(x => `<div><b>${esc(x.f.name)}</b> · ${x.state === 'zero' ? 'épuisé' : esc(stkEntryChip(x))}<span>${esc(stkEntryMsg(x))}</span></div>`).join('')}</div>` : '';
+  return `<div class="stkw"><button class="dsum" data-a="stkday" aria-expanded="${open}">⚠ ${n} aliment${n > 1 ? 's' : ''} à racheter pour ce jour ${open ? '▴' : '▾'}</button>${list}</div>`;
+}
 function viewDay() {
   const date = ui.date, mon = mondayOf(date), wl = weekLabel(mon), tgt = targetForLabel(wl.label), soft = false;
   const day = S.days[date] || emptyDay(), tot = dayTotals(date);
@@ -2026,8 +2111,8 @@ function viewDay() {
   const meals = MEALS.map(m => {
     const list = day.meals[m.id] || [], mt = sumEntries(list);
     const rows = list.map((e, i) => {
-      const f = foodMap.get(e[0]), em = entryMacros(e);
-      return `<div class="ln${f ? '' : ' gone'}" data-row data-meal="${m.id}" data-idx="${i}"><div class="qc"><span class="grip" draggable="true" data-meal="${m.id}" data-idx="${i}" title="Glisser pour réordonner" aria-hidden="true">⋮⋮</span><button class="qs" data-a="qstep" data-meal="${m.id}" data-idx="${i}" data-dir="-1" tabindex="-1" aria-label="Diminuer" title="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(e[1])}" data-i="qty" data-meal="${m.id}" data-idx="${i}" data-fk="q-${m.id}-${i}" aria-label="Quantité"><button class="qs" data-a="qstep" data-meal="${m.id}" data-idx="${i}" data-dir="1" tabindex="-1" aria-label="Augmenter" title="Augmenter">+</button><span class="u">${f ? unitLabel(f) : ''}</span></div><div class="n" title="${esc(f?.name)}">${f ? esc(f.name) : 'Aliment supprimé'}${f?.recipe ? ` <button class="rcl" data-a="gorecipe" data-id="${f.id}" title="Voir la recette">recette</button>` : ''}</div><span>${f1(em.p)}</span><span>${f1(em.c)}</span><span>${f1(em.l)}</span><span>${f1(em.f)}</span><span class="k">${f0(em.k)}</span><span class="acts"><button class="x" data-a="swap" data-meal="${m.id}" data-idx="${i}" aria-label="Remplacer l'aliment" title="Remplacer l'aliment">${icon('swap')}</button><button class="x" data-a="del" data-meal="${m.id}" data-idx="${i}" aria-label="Retirer">${icon('x')}</button></span></div>`;
+      const f = foodMap.get(e[0]), em = entryMacros(e), sx = stkEntryFlag(date, m.id, e), spOpen = !!sx && ui.stkPop === `${date}|${m.id}|${i}`;
+      return `<div class="ln${f ? '' : ' gone'}" data-row data-meal="${m.id}" data-idx="${i}"><div class="qc"><span class="grip" draggable="true" data-meal="${m.id}" data-idx="${i}" title="Glisser pour réordonner" aria-hidden="true">⋮⋮</span><button class="qs" data-a="qstep" data-meal="${m.id}" data-idx="${i}" data-dir="-1" tabindex="-1" aria-label="Diminuer" title="Diminuer">−</button><input class="qin" type="text" inputmode="decimal" value="${qtxt(e[1])}" data-i="qty" data-meal="${m.id}" data-idx="${i}" data-fk="q-${m.id}-${i}" aria-label="Quantité"><button class="qs" data-a="qstep" data-meal="${m.id}" data-idx="${i}" data-dir="1" tabindex="-1" aria-label="Augmenter" title="Augmenter">+</button><span class="u">${f ? unitLabel(f) : ''}</span></div><div class="n${sx ? ' hs' : ''}" title="${esc(f?.name)}">${sx ? `<span class="nt">${f ? esc(f.name) : ''}</span>` : f ? esc(f.name) : 'Aliment supprimé'}${f?.recipe ? ` <button class="rcl" data-a="gorecipe" data-id="${f.id}" title="Voir la recette">recette</button>` : ''}${sx ? ` <button class="chipw ${sx.state === 'zero' ? 'r' : 'o'}" data-a="stkpop" data-meal="${m.id}" data-idx="${i}" aria-expanded="${spOpen}" title="Voir pourquoi">${esc(stkEntryChip(sx))}</button>` : ''}</div><span>${f1(em.p)}</span><span>${f1(em.c)}</span><span>${f1(em.l)}</span><span>${f1(em.f)}</span><span class="k">${f0(em.k)}</span><span class="acts"><button class="x" data-a="swap" data-meal="${m.id}" data-idx="${i}" aria-label="Remplacer l'aliment" title="Remplacer l'aliment">${icon('swap')}</button><button class="x" data-a="del" data-meal="${m.id}" data-idx="${i}" aria-label="Retirer">${icon('x')}</button></span></div>${spOpen ? `<div class="pop">${esc(stkEntryMsg(sx))}</div>` : ''}`;
     }).join('');
     return `<section class="meal" data-drop="${m.id}"><div class="mh"><h3>${m.label}</h3><button class="lnk addh" data-a="add" data-meal="${m.id}">${icon('plus')} Ajouter un aliment</button><span>${list.length ? `${f0(mt.k)} kcal` : '—'}</span></div>${list.length ? `<div class="ln h"><span>Qté</span><span>Aliment</span><span class="hp">P</span><span class="hc">G</span><span class="hl">L</span><span class="hf">F</span><span>kcal</span><span></span></div>` : ''}${rows}</section>`;
   }).join('');
@@ -2037,7 +2122,7 @@ function viewDay() {
     <button class="ib" data-a="day" data-n="1" aria-label="Jour suivant">${icon('right')}</button>
 <label class="titlebox"><span>Repas du jour</span><input class="titlein" type="text" placeholder="Nom du repas du jour (ex. Couscous)" value="${esc(day.title)}" data-i="title" data-fk="title" aria-label="Nom du repas du jour"></label>    <div class="sp">${isToday ? '' : '<button class="btn" data-a="today">Aujourd\'hui</button>'}<button class="btn ib2" data-a="saveastpl" title="Enregistrer cette journée comme repas type" aria-label="Enregistrer en repas type"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button><button class="btn dng" data-a="clearday">Vider la journée</button><button class="btn dmore" data-a="daymenu" aria-label="Plus d'actions" aria-expanded="${!!ui.dmenu}">⋯</button>${ui.dmenu ? `<div class="dscrim2" data-a="daymenu"></div><div class="dmenu" role="menu">${isToday ? '' : '<button data-a="dmact" data-k="today">Aller à aujourd\'hui</button>'}<button data-a="dmact" data-k="saveastpl">Enregistrer comme repas type</button><button class="dng" data-a="dmact" data-k="clearday">Vider la journée</button></div>` : ''}</div></div>
     
-    <div class="sbar-m">${totalsPanel(tot, tgt, wl, bad, true)}</div>${meals}</main>
+    <div class="sbar-m">${totalsPanel(tot, tgt, wl, bad, true)}</div>${stkDayBanner(date, day)}${meals}</main>
     <aside class="right">${totalsPanel(tot, tgt, wl, bad)}<h5>Pour finir la journée</h5>${suggestions(tot, tgt) || '<p class="mini">Rien à combler : tes objectifs du jour sont atteints.</p>'}<div class="notebox"><h5>Note du jour</h5><textarea class="notein" rows="3" data-i="note" data-fk="note" placeholder="Contexte de la journée : resto, fatigue, faim…" aria-label="Note du jour">${esc(day.note || '')}</textarea></div></aside>`;
 }
 
@@ -2385,7 +2470,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 17/11/2026 à 22:42 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 18/11/2026 à 20:46 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2440,7 +2525,7 @@ function renderAddList() {
   $('#acats').classList.toggle('show', open); const tg = $('#actog'); if (tg) { tg.textContent = `${open ? 'Masquer' : 'Afficher'} les filtres · ${cn}`; tg.setAttribute('aria-expanded', open); }
   $('#acats').innerHTML = cats.map(c => `<button class="chip ${m.cat === c ? 'on' : ''}" data-a="addcat" data-c="${esc(c)}">${c === 'recent' ? 'Récents' : c === 'all' ? 'Tous' : esc(c)}</button>`).join('');
   const list = addCandidates(m); m.list = list.map(f => f.id); m.sel = Math.min(m.sel || 0, Math.max(0, list.length - 1));
-  $('#alist').innerHTML = list.length ? list.map((f, i) => { const b = perBasis(f); return `<button class="ai ${i === m.sel ? 'sel' : ''}" role="option" data-a="pickfood" data-id="${f.id}" data-i="${i}"><span class="an">${esc(f.name)}</span><span class="am">${b.txt} · ${f0(f.k * b.fac)} kcal · P ${f1(f.p * b.fac)} · G ${f1(f.c * b.fac)} · L ${f1(f.l * b.fac)}</span></button>`; }).join('') : `<p class="mini" style="padding:12px">Aucun résultat${m.cat !== 'all' && m.q.trim() ? ` dans ce filtre. <a href="#" data-a="addall">Chercher dans « Tous »</a>. Ou tu` : '. Tu'} peux <a href="#" data-a="newfromadd">créer cet aliment</a>.</p>`;
+  $('#alist').innerHTML = list.length ? list.map((f, i) => { const b = perBasis(f), sa = stkAvailAt(f.id, ui.date, m.meal), sb = sa ? (sa.avail <= 0.001 ? `<small class="sb zr">${sa.have > 0.001 && sa.last ? 'épuisé après ' + esc(stkWhen(sa.last.d, sa.last.m)) : 'épuisé'}</small>` : `<small class="sb ok">${esc(stkQ(f, sa.avail))} en stock</small>`) : ''; return `<button class="ai ${i === m.sel ? 'sel' : ''}" role="option" data-a="pickfood" data-id="${f.id}" data-i="${i}"><span class="an">${esc(f.name)}${sb}</span><span class="am">${b.txt} · ${f0(f.k * b.fac)} kcal · P ${f1(f.p * b.fac)} · G ${f1(f.c * b.fac)} · L ${f1(f.l * b.fac)}</span></button>`; }).join('') : `<p class="mini" style="padding:12px">Aucun résultat${m.cat !== 'all' && m.q.trim() ? ` dans ce filtre. <a href="#" data-a="addall">Chercher dans « Tous »</a>. Ou tu` : '. Tu'} peux <a href="#" data-a="newfromadd">créer cet aliment</a>.</p>`;
   const s = $('#alist .sel'); s?.scrollIntoView({ block: 'nearest' });
 }
 function qtyStep(m) {
@@ -2486,6 +2571,8 @@ const actions = {
   weeklabel: () => openModal({ type: 'label' }),
   pickLabel: el => { setWeekLabel(mondayOf(ui.date), el.dataset.l, !progActive(el.dataset.l)); closeModal(); },
   del: el => removeEntry(ui.date, el.dataset.meal, +el.dataset.idx),
+  stkpop: el => { const k = `${ui.date}|${el.dataset.meal}|${el.dataset.idx}`; ui.stkPop = ui.stkPop === k ? null : k; render(); },
+  stkday: () => { ui.stkDay = ui.stkDay === ui.date ? null : ui.date; render(); },
   add: el => { openModal({ type: 'add', meal: el.dataset.meal, step: 'list', q: '', cat: recentFoods(el.dataset.meal).length ? 'recent' : 'all', sel: 0, added: 0 }); },
   close: () => closeModal(),
   ovclick: (el, e) => { if (e.target === el) closeModal(); },
@@ -2677,7 +2764,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '17/11/2026 à 22:42';
+const BUILD_ID = '18/11/2026 à 20:46';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
