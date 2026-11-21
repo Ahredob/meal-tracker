@@ -1315,6 +1315,19 @@ const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = se
 
 // fetch avec limite de temps : sur téléphone, une requête interrompue par la mise en veille peut rester bloquée pour toujours
 const fetchT = (url, opts = {}, ms = 25000) => { const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms); return fetch(url, { ...opts, signal: ac.signal }).finally(() => setTimeout(() => clearTimeout(t), ms)); };
+// limites de GitHub : quand il refuse pour « trop de requêtes », toutes les synchros attendent (ghHold) puis réessaient toutes seules ; et un même canal n'envoie pas plus d'une fois toutes les 20 s (les modifications rapprochées partent ensemble)
+let ghHold = 0, shareSentAt = 0, devSentAt = 0;
+const ghWait = ms => Math.max(ms, ghHold - Date.now());
+const gapFrom = (last, ms) => Math.max(ms, (last || 0) + 20000 - Date.now());
+async function ghLimit(r) {   // secondes à attendre si GitHub limite le débit, sinon 0
+  if (r.status !== 403 && r.status !== 429) return 0;
+  let t = ''; try { t = await r.clone().text(); } catch { }
+  const ra = +r.headers.get('retry-after') || 0, rem = r.headers.get('x-ratelimit-remaining'), rs = +r.headers.get('x-ratelimit-reset') || 0;
+  if (!(r.status === 429 || ra || rem === '0' || /rate limit|abuse|too many/i.test(t))) return 0;
+  const w = ra || (rem === '0' && rs ? rs - Math.floor(Date.now() / 1000) : 0) || 60;
+  return Math.min(Math.max(w, 30), 900);
+}
+const ghRateErr = w => { ghHold = Date.now() + w * 1000; return Object.assign(new Error('GitHub ralentit les envois (trop de modifications d\'un coup). Tes changements sont gardés : ils partiront tout seuls dans ' + (w < 90 ? 'une minute' : Math.ceil(w / 60) + ' minutes') + '.'), { code: 429, rate: w }); };
 // une synchro marquée « en cours » depuis trop longtemps est considérée comme bloquée
 const stuck = s => !s.busy || Date.now() - (s.busyAt || 0) > 40000;
 
@@ -2479,7 +2492,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 18/11/2026 à 21:27 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 21/11/2026 à 09:49 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2773,7 +2786,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '18/11/2026 à 21:27';
+const BUILD_ID = '21/11/2026 à 09:49';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
@@ -3362,6 +3375,7 @@ async function ghFetch(token, path, method = 'GET', body) {
   let r;
   try { r = await fetchT('https://api.github.com' + path, { method, headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined }); }
   catch { throw Object.assign(new Error('Pas de connexion à GitHub (internet ?).'), { code: 0 }); }
+  { const w = await ghLimit(r); if (w) throw ghRateErr(w); }
   if (r.status === 401) throw Object.assign(new Error('Jeton refusé ou expiré : crée-en un nouveau (bouton « Changer de jeton »).'), { code: 401 });
   if (r.status === 403) throw Object.assign(new Error('GitHub refuse : le jeton n\'a pas le droit « gist », ou trop de requêtes. Réessaie plus tard.'), { code: 403 });
   if (r.status === 404) throw Object.assign(new Error('Données introuvables chez GitHub (gist supprimé ?). Arrête puis réactive la synchronisation.'), { code: 404 });
@@ -3382,17 +3396,19 @@ function syncInfo() {
 }
 async function syncPush(force) {
   const s = ui.sync, c = s.cfg; if (!c || !stuck(s) || !S) return;
+  if (!force && Date.now() < ghHold) { syncSoon(ghHold - Date.now() + 500); return; }
   const { text, hash } = syncPayload();
   if (!force && hash === c.hash && !s.err) return;
   s.busy = true; s.busyAt = Date.now(); syncPaint();
   try {
     await ghFetch(c.token, '/gists/' + c.gistId, 'PATCH', { files: { [SYNC_FILE]: { content: text } } });
     c.hash = hash; c.last = Date.now(); s.err = ''; await idbSet('sync', { ...c });
-  } catch (e) { s.err = e.message || String(e); if (e.code !== 401 && e.code !== 404 && e.code !== 403) syncSoon(300000); if (force) toast(s.err, [], 5000); }
+  } catch (e) { s.err = e.message || String(e); if (e.rate) syncSoon(e.rate * 1000); else if (e.code !== 401 && e.code !== 404 && e.code !== 403) syncSoon(300000); if (force) toast(s.err, [], 5000); }
   s.busy = false; syncPaint();
 }
-function syncSoon(ms = 15000) { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncPush(false), ms); }
-subscribe(() => { if (ui.sync.cfg) syncSoon(); });
+function syncSoon(ms = 15000) { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncPush(false), ghWait(ms)); }
+subscribe(() => { if (ui.sync.cfg) syncSoon(gapFrom(ui.sync.cfg.last, 15000)); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && ui.sync.cfg) { clearTimeout(syncTimer); syncPush(false); } });   // on quitte l'appli : envoyer tout de suite
 async function syncInit() {
   while (!S) await new Promise(r => setTimeout(r, 50));
   try { const c = await idbGet('sync'); if (c?.token && c?.gistId) { ui.sync.cfg = c; syncSoon(3000); } } catch { }
@@ -4948,6 +4964,7 @@ async function ghGet(token, path, etag) {
   try { r = await fetchT('https://api.github.com' + path, { cache: 'no-store', headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', ...(etag ? { 'If-None-Match': etag } : {}) } }); }
   catch { throw Object.assign(new Error('Pas de connexion à GitHub (internet ?).'), { code: 0 }); }
   if (r.status === 304) return { status: 304 };
+  { const w = await ghLimit(r); if (w) throw ghRateErr(w); }
   if (!r.ok) throw ghErr(r.status);
   return { status: 200, json: await r.json(), etag: r.headers.get('ETag') };
 }
@@ -4960,9 +4977,10 @@ async function shareRead() {
   const p = JSON.parse(text); p._etag = r.etag; return p;
 }
 let shareTimer = null;
-const shareSoon = (ms = 3000) => { clearTimeout(shareTimer); shareTimer = setTimeout(() => shareSync(false), ms); };
+const shareSoon = (ms = 3000) => { clearTimeout(shareTimer); shareTimer = setTimeout(() => shareSync(false), ghWait(ms)); };
 async function shareSync(force) {
   const s = ui.share, c = s.cfg; if (!c || !S || !shareOn()) return;
+  if (!force && Date.now() < ghHold) { shareSoon(ghHold - Date.now() + 500); return; }
   if (!stuck(s)) { s.again = true; return; }
   s.busy = true; s.busyAt = Date.now(); sharePaint();
   try {
@@ -4974,9 +4992,9 @@ async function shareSync(force) {
     }
     if (shareStamp(false)) scheduleSave();
     const out = shareBuild(), hash = fnv(JSON.stringify({ ...out, at: '' }));
-    if (force || hash !== c.hash) { await ghFetch(c.token, '/gists/' + c.myGist, 'PATCH', { files: { [SHARE_FILE]: { content: JSON.stringify(out) } } }); c.hash = hash; }
+    if (force || hash !== c.hash) { shareSentAt = Date.now(); await ghFetch(c.token, '/gists/' + c.myGist, 'PATCH', { files: { [SHARE_FILE]: { content: JSON.stringify(out) } } }); c.hash = hash; }
     c.last = Date.now(); s.err = ''; await idbSet('share', { ...c });
-  } catch (e) { s.err = e.message || String(e); if (force) toast(s.err, [], 5000); }
+  } catch (e) { s.err = e.message || String(e); if (e.rate) s.again = false, shareSoon(e.rate * 1000); if (force) toast(s.err, [], 5000); }
   s.busy = false; sharePaint();
   if (s.again) { s.again = false; shareSoon(400); }
 }
@@ -5093,7 +5111,7 @@ async function shareInit() {
       shareSoon(2500);
     }
   } catch { }
-  subscribe(() => { if (ui.share.cfg && !ui.share.applying && shareOn()) shareSoon(1500); });
+  subscribe(() => { if (ui.share.cfg && !ui.share.applying && shareOn()) shareSoon(gapFrom(shareSentAt, 1500)); });
   setInterval(() => { if (!document.hidden && ui.share.cfg) shareSync(false); }, 45000);
   document.addEventListener('visibilitychange', () => {
     if (!ui.share.cfg) return;
@@ -5321,9 +5339,10 @@ async function devRead(c) {
   return { files: out, etag: r.etag };
 }
 let devTimer = null;
-const devSoon = (ms = 3000) => { clearTimeout(devTimer); devTimer = setTimeout(() => devSync(false), ms); };
+const devSoon = (ms = 3000) => { clearTimeout(devTimer); devTimer = setTimeout(() => devSync(false), ghWait(ms)); };
 async function devSync(force) {
   const s = ui.dev, c = s.cfg; if (!c || !stuck(s) || !S || !devOn()) return;
+  if (!force && Date.now() < ghHold) { devSoon(ghHold - Date.now() + 500); return; }
   s.busy = true; s.busyAt = Date.now(); devPaint();
   try {
     const rd = await devRead(c);
@@ -5331,13 +5350,13 @@ async function devSync(force) {
     const cur = devCollect(); if (devStamp(false, cur).size) scheduleSave();
     const out = devBuild(cur), hash = fnv(JSON.stringify({ ...out, at: '' }));
     if (force || hash !== c.hash || c.file !== devFileOf(c.me) || c.missing) {
-      const want = devFileOf(c.me), content = JSON.stringify(out);
-      if (c.file && c.file !== want) { try { await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [c.file]: { filename: want, content } } }); } catch (e) { if (e.code === 401 || e.code === 0) throw e; await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [want]: { content } } }); } }
+      const want = devFileOf(c.me), content = JSON.stringify(out); devSentAt = Date.now();
+      if (c.file && c.file !== want) { try { await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [c.file]: { filename: want, content } } }); } catch (e) { if (e.code === 401 || e.code === 0 || e.rate) throw e; await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [want]: { content } } }); } }
       else await ghFetch(c.token, '/gists/' + c.gist, 'PATCH', { files: { [want]: { content } } });
       c.file = want; c.hash = hash; c.etag = ''; c.missing = false;
     }
     c.last = Date.now(); s.err = ''; await idbSet('dev', { ...c });
-  } catch (e) { s.err = e.message || String(e); if (force) toast(s.err, [], 5000); }
+  } catch (e) { s.err = e.message || String(e); if (e.rate) devSoon(e.rate * 1000); if (force) toast(s.err, [], 5000); }
   s.busy = false; devPaint();
 }
 function devInfo() {
@@ -5447,9 +5466,9 @@ async function devInit() {
       devSoon(2500);
     }
   } catch { }
-  subscribe(() => { if (ui.dev.cfg && !ui.dev.applying && devOn()) { S.meta.dev.lc = Date.now(); devSoon(3000); } });
+  subscribe(() => { if (ui.dev.cfg && !ui.dev.applying && devOn()) { S.meta.dev.lc = Date.now(); devSoon(gapFrom(devSentAt, 3000)); } });
   setInterval(() => { if (!document.hidden && ui.dev.cfg) devSync(false); }, 45000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && ui.dev.cfg) devSoon(500); });
+  document.addEventListener('visibilitychange', () => { if (!ui.dev.cfg) return; if (document.hidden) { clearTimeout(devTimer); devSync(false); } else devSoon(500); });   // en quittant l'appli : envoi immédiat
   window.addEventListener('pageshow', e => { if (e.persisted && ui.dev.cfg) devSoon(500); });
   render();
 }
