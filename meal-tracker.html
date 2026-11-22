@@ -1272,6 +1272,7 @@ tr.wkdrag{opacity:.55;background:var(--soft)}
 .stkl>div{padding:8px 0;border-top:1px solid var(--line);font-size:14px}.stkl>div:first-child{border-top:0}
 .stkl span{display:block;color:var(--mute);font-size:13px;margin-top:1px}
 .ai .sb{display:block;width:max-content;max-width:100%;font-size:11.5px;font-weight:700;border-radius:9px;padding:1px 8px;margin:3px 0 0;white-space:normal}
+@media (min-width:641px){.ai .sb{display:inline-block;margin:0 0 0 8px;vertical-align:1px;white-space:nowrap}}
 .ai .sb.ok{background:var(--accent-soft);color:var(--accent)}.ai .sb.zr{background:var(--warn-soft);color:var(--warn)}
 @media (prefers-color-scheme:dark){:root:not([data-mode=light]) .chipw.o{background:#3A2E14;color:#F2B04C}}
 :root[data-mode=dark] .chipw.o{background:#3A2E14;color:#F2B04C}
@@ -2492,7 +2493,7 @@ function viewSettings() {
     ${phoneCard()}
     <section class="card"><h2>Repartir de zéro</h2><p>Efface des données pour recommencer à blanc : soit seulement ton suivi personnel (journées, semaines, poids), soit tout. Une copie de sécurité est gardée avant.</p><div class="row"><button class="btn dng" data-a="wipe">Repartir de zéro…</button></div></section>
     <p class="mini">Meal Tracker · ${S.foods.filter(f => !f.hidden).length} aliments · ${Object.keys(S.days).length} jours enregistrés · ${S.templates.length} repas types · tes données restent dans ce navigateur.</p>
-    <p class="mini">Version du 22/11/2026 à 09:53 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
+    <p class="mini">Version du 22/11/2026 à 21:41 (l'application vérifie toute seule à chaque ouverture). <button class="lnk" style="margin:0" data-a="chkupd">Vérifier les mises à jour</button></p></main>`;
   return html.replace(/<section class="card"><h2>(.*?)<\/h2>([\s\S]*?)<\/section>/g, (m0, t, body) => `<section class="card"><h2>${t}</h2>${body}${btnLegend(body, t)}</section>`).replace(/<section class="card">(?:<h2>(.*?)<\/h2>)/g, (m0, t) => settingsOpen(t)).replace(/<\/section>/g, '</details>');
 }
 
@@ -2787,7 +2788,7 @@ function onKey(e) {
 }
 
 // ---------- mise à jour de l'application ----------
-const BUILD_ID = '22/11/2026 à 09:53';
+const BUILD_ID = '22/11/2026 à 21:41';
 let updAt = 0;
 async function checkUpdate(manual) {
   if (location.protocol === 'file:') { if (manual) toast('Vérification impossible depuis un fichier local'); return; }
